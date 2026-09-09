@@ -4583,6 +4583,8 @@ async def main():
         app.add_handler(CallbackQueryHandler(handle_stop_quiz_from_pause, pattern="^stopquiz_"))
         app.add_handler(CommandHandler("autorun", autorun_command))
         app.add_handler(CommandHandler("stopautorun", stopautorun_command))
+        # अन्य handlers के साथ add करें:
+        app.add_handler(CallbackQueryHandler(handle_ask_tutor, pattern="^asktutor_"))
         
         app.add_handler(PollAnswerHandler(track_poll_answers))
         app.add_handler(InlineQueryHandler(inline_query_handler))
