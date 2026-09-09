@@ -2741,9 +2741,9 @@ async def send_next_group_poll(chat_id, context):
             logging.warning(f"Q{game['current_q']} exceeds Telegram limits. Using text fallback.")
             
             # 1. पूरा सवाल और ऑप्शंस चैट में नॉर्मल मैसेज की तरह भेजें
-            fallback_text = f"<blockquote>📝 प्रश्न [{game['current_q'] + 1}/{len(questions)}]:{q_text}</blockquote>\n\n<blockquote>विकल्प (Options):</blockquote>\n"
+            fallback_text = f"<blockquote>📝 प्रश्न [{game['current_q'] + 1}/{len(questions)}]: {q_text}</blockquote>\n\n<blockquote>विकल्प (Options):</blockquote>\n"
             for i, opt in enumerate(options):
-                fallback_text += f"{i+1}. {opt}\n"
+                fallback_text += f"<blockquote>{i+1}. {opt}</blockquote>\n"
                 
             try:
                 await context.bot.send_message(chat_id=chat_id, text=fallback_text, parse_mode="HTML")
@@ -2752,7 +2752,7 @@ async def send_next_group_poll(chat_id, context):
                 logging.error(f"Failed to send fallback message text: {e}")
             
             # 2. पोल के लिए डेटा छोटा करें
-            poll_question = f"प्रश्न [{game['current_q'] + 1}/{len(questions)}] का सही उत्तर चुनें:"
+            poll_question = f"[{game['current_q'] + 1}/{len(questions)}] ऊपर दिए गए प्रश्न का सही उत्तर चुनें:"
             poll_options = [f"Option {i+1}" for i in range(len(options))]
 
         # Send poll with retry
