@@ -2553,7 +2553,7 @@ async def handle_pause_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logging.error(f"Error in handle_pause_quiz: {e}")
         await query.answer("❌ Error", show_alert=True)
-        
+
 async def handle_stop_quiz_from_pause(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle quiz stop from pause menu"""
     query = update.callback_query
@@ -2584,7 +2584,7 @@ async def handle_stop_quiz_from_pause(update: Update, context: ContextTypes.DEFA
             except Exception:
                 pass # अगर पोल पहले से बंद हो तो एरर न आए
         
-        # Tracking clear karein
+        # Tracking clear करें
         game.pop("pause_message_id", None)
         
         await query.edit_message_text(
@@ -2594,15 +2594,17 @@ async def handle_stop_quiz_from_pause(update: Update, context: ContextTypes.DEFA
         
         await compile_group_leaderboard(chat_id, context)
         
-        # ⚡ फिक्स 3: रिजल्ट दिखाने के बाद डेटा को मेमोरी से पूरी तरह डिलीट करें
-        GROUP_GAMES.pop(chat_id, None)
+        # ✅ FIX: यहाँ भी GROUP_GAMES.pop() को REMOVE किया है
+        # GROUP_GAMES.pop(chat_id, None)  # ❌ REMOVE THIS - Let cleanup handler do it
+        
+        logging.info(f"🕐 Cleanup will happen automatically in 10 minutes for chat {chat_id}")
         
     except Exception as e:
         logging.error(f"Error in handle_stop_quiz_from_pause: {e}", exc_info=True)
         await query.answer("❌ Error", show_alert=True)
         
 async def stop_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Stop the running quiz in group"""
+    """Stop the running quiz in group - PROPERLY"""
     try:
         chat_id = update.effective_chat.id
         
@@ -2617,27 +2619,52 @@ async def stop_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not game.get("quiz_started"):
             await update.message.reply_text("❌ Quiz abhi start hi nahi huya hai!")
             return
-            
-        # ⚡ फिक्स 1: बैकग्राउंड टाइमर/टास्क को तुरंत मारें (Cancel करें) ताकि अगला सवाल लोड न हो
-        if "current_task" in game and not game["current_task"].done():
-            game["current_task"].cancel()
-            logging.info(f"Quiz background task cancelled via /stop for chat {chat_id}")
-            
-        # ⚡ फिक्स 2: ग्रुप में खुले हुए चालू पोल (Active Poll) को तुरंत बंद करें
+        
+        logging.info(f"🛑 Stopping quiz for chat {chat_id}")
+        
+        # ✅ FIX 1: Mark quiz as paused/stopped immediately
+        game["quiz_paused"] = True
+        game["quiz_started"] = False
+        logging.info(f"✅ Set quiz_paused=True and quiz_started=False")
+        
+        # ✅ FIX 2: Cancel any pending background tasks
+        if "current_task" in game:
+            task = game["current_task"]
+            if task and not task.done():
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    logging.info(f"✅ Cancelled background task for chat {chat_id}")
+                except Exception as e:
+                    logging.warning(f"⚠️ Error while cancelling task: {e}")
+        
+        # ✅ FIX 3: Stop active poll if any
         current_q_idx = game.get("current_q", 0)
         poll_ids_dict = game.get("poll_message_ids", {})
-        if current_q_idx in poll_ids_dict:
-            try:
-                await context.bot.stop_poll(chat_id=chat_id, message_id=poll_ids_dict[current_q_idx])
-            except Exception:
-                pass # अगर पोल पहले से बंद हो तो क्रैश न हो
         
-        # Stop the quiz and show leaderboard
-        await update.message.reply_text("Quiz stop ho gaya! Final Result dikha raha hoon...")
+        if current_q_idx in poll_ids_dict:
+            poll_msg_id = poll_ids_dict[current_q_idx]
+            try:
+                await context.bot.stop_poll(chat_id=chat_id, message_id=poll_msg_id)
+                logging.info(f"✅ Stopped active poll (msg_id={poll_msg_id})")
+            except Exception as e:
+                logging.warning(f"⚠️ Could not stop poll: {e}")
+        
+        # ✅ FIX 4: Wait a bit for cleanup
+        await asyncio.sleep(1)
+        
+        # Show stop message
+        await update.message.reply_text(
+            "🛑 <b>Quiz stop ho gaya!</b>\n\n"
+            "🏁 Final Result dikha raha hoon...",
+            parse_mode="HTML"
+        )
+        
+        # ✅ FIX 5: Send leaderboard
         await compile_group_leaderboard(chat_id, context)
         
-        # ⚡ फिक्स 3: लीडरबोर्ड दिखाने के बाद तुरंत डेटा हटा दें ताकि मेमोरी पूरी साफ हो जाए
-        GROUP_GAMES.pop(chat_id, None)
+        logging.info(f"✅ Quiz properly stopped for chat {chat_id}")
         
     except Exception as e:
         logging.error(f"Error in stop_quiz: {e}", exc_info=True)
