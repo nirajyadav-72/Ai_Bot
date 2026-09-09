@@ -2741,12 +2741,12 @@ async def send_next_group_poll(chat_id, context):
             logging.warning(f"Q{game['current_q']} exceeds Telegram limits. Using text fallback.")
             
             # 1. पूरा सवाल और ऑप्शंस चैट में नॉर्मल मैसेज की तरह भेजें
-            fallback_text = f"📝 *प्रश्न [{game['current_q'] + 1}/{len(questions)}]:*\n{q_text}\n\n*विकल्प (Options):*\n"
+            fallback_text = f"<blockquote>📝 प्रश्न [{game['current_q'] + 1}/{len(questions)}]:{q_text}</blockquote>\n\n<blockquote>विकल्प (Options):</blockquote>\n"
             for i, opt in enumerate(options):
                 fallback_text += f"{i+1}. {opt}\n"
                 
             try:
-                await context.bot.send_message(chat_id=chat_id, text=fallback_text, parse_mode="Markdown")
+                await context.bot.send_message(chat_id=chat_id, text=fallback_text, parse_mode="HTML")
                 await asyncio.sleep(1)
             except Exception as e:
                 logging.error(f"Failed to send fallback message text: {e}")
