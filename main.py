@@ -2504,7 +2504,12 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         # Otherwise just update the ready-count button
         try:
-            live_btn = InlineKeyboardButton(text=f"I am ready!  ({ready_count})", callback_data=f"ready_{quiz_id}")
+            # ✅ **GREEN COLOR BUTTON** - style: success
+            live_btn = {
+                "text": f"I am ready! ({ready_count})",
+                "callback_data": f"ready_{quiz_id}",
+                "style": "success"  # 🟢 GREEN COLOR
+            }
             await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup([[live_btn]]))
         except Exception as e:
             logging.debug(f"Could not update ready-button markup: {e}")
