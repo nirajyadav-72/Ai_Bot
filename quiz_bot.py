@@ -1156,21 +1156,31 @@ async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     try:
         title = update.message.text.strip()
         
-        # 🔴 NEW: Check if title exceeds 128 characters
+        # Check if title exceeds 128 characters
         if len(title) > 128:
             await update.message.reply_text(
                 "⚠️ This title is too long. Please send a new one, 128 characters max."
             )
             return TITLE
         
+        # FIX: quiz_build को properly initialize करो अगर वो None है
+        if "quiz_build" not in context.user_data:
+            context.user_data["quiz_build"] = {"title": "", "description": "", "questions": []}
+        
         context.user_data["quiz_build"]["title"] = title
+        
+        # FIX: ReplyKeyboardRemove() को सही से use करो
         await update.message.reply_text(
-            "Good. Now send me a description of your quiz. This is optional, you can /skip this step.",
-            reply_markup=ReplyKeyboardRemove()
+            "✅ Title Saved!\n\n"
+            "📝 *Step 4:* Send a description of your quiz.\n"
+            "or type /skip to skip this step.",
+            reply_markup=ReplyKeyboardRemove(),
+            parse_mode="Markdown"
         )
         return DESCRIPTION
     except Exception as e:
-        logging.error(f"Error in receive_title: {e}")
+        logging.error(f"Error in receive_title: {e}", exc_info=True)
+        await update.message.reply_text("❌ Error occurred. Please try again.")
         return TITLE
 
 async def receive_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
