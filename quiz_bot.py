@@ -2369,6 +2369,7 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
             GROUP_GAMES[chat_id] = {
                 "quiz_id": quiz_id,
                 "joined_users": {},
+                "instance_id": f"{quiz_id}_{int(time.time())}",
                 "current_q": 0,
                 "scores": {},
                 "poll_map": {},
