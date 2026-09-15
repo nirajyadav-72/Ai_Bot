@@ -2963,6 +2963,7 @@ async def compile_group_leaderboard(chat_id, context):
         
         bot_username = context.bot.username if context.bot.username else "quiz_bot"
         
+        # 🔒 Safe Database fetching with try...finally
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
@@ -2974,7 +2975,14 @@ async def compile_group_leaderboard(chat_id, context):
         
         cursor.execute("SELECT question_text, options, correct_answer FROM questions WHERE quiz_id = ?", (game["quiz_id"],))
         questions = cursor.fetchall()
-        conn.close()
+    
+    except Exception as e:
+        logging.error(f"Database error in compile_group_leaderboard: {e}", exc_info=True)
+        return
+    finally:
+        if conn:
+            conn.close() # Ensures DB connection is ALWAYS closed
+
         
         total_questions_answered = len(questions)
         correct_answers = {}
