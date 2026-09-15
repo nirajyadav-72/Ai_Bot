@@ -3090,7 +3090,7 @@ async def compile_group_leaderboard(chat_id, context):
             else:
                 roast_msg = random.choice(roasts_middle)
                 
-            rank_icon = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"#{idx}"
+            rank_icon = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}"
             
             # Clean layout print without invalid characters or slashes
             leaderboard += f"{rank_icon} <b>{clean_username}</b>\n"
