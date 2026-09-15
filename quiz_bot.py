@@ -3178,9 +3178,6 @@ async def compile_group_leaderboard(chat_id, context):
         logging.info(f"🔔 [TIMER-SCHEDULED] Cleanup queued for instance_id={current_instance_id}")
         # ====================================================================================
 
-    except Exception as e:
-        logging.error(f"Error in compile_group_leaderboard: {e}", exc_info=True)
-
 # ask Ai tutor
 async def handle_ask_tutor(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show user ke galat questions - 10 min tak hi available"""
