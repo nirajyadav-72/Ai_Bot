@@ -2866,7 +2866,7 @@ async def send_next_group_poll(chat_id, context):
                         game["quiz_paused"] = True
                         await context.bot.send_message(
                             chat_id=chat_id,
-                            text="🔐 Quiz paused - nobody answering",
+                            text="🔐 Quiz paused - No one is attempting the questions.\n\nclick resume to continue or stop to end.",
                             reply_markup=InlineKeyboardMarkup([
                                 [InlineKeyboardButton("Resume", callback_data=f"pausequiz_{chat_id}")],
                                 [InlineKeyboardButton("Stop", callback_data=f"stopquiz_{chat_id}")]
