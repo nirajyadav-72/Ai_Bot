@@ -2767,17 +2767,17 @@ async def send_next_group_poll(chat_id, context):
         if is_question_too_long or is_any_option_too_long:
             logging.warning(f"Q{game['current_q']} exceeds limits. Using fallback.")
             
-            fallback_text = f"📝 *प्रश्न [{game['current_q'] + 1}/{len(questions)}]:*\n{q_text}\n\n*विकल्प (Options):*\n"
+            fallback_text = f"<blockquote>📝 प्रश्न [{game['current_q'] + 1}/{len(questions)}]:</blockquote>\n<blockquote>{q_text}</blockquote>\n\n<blockquote>विकल्प (Options):</blockquote>\n"
             for i, opt in enumerate(options):
-                fallback_text += f"{i+1}. {opt}\n"
+                fallback_text += f"<blockquote>{i+1}. {opt}</blockquote>\n"
                 
             try:
-                await context.bot.send_message(chat_id=chat_id, text=fallback_text, parse_mode="Markdown")
+                await context.bot.send_message(chat_id=chat_id, text=fallback_text, parse_mode="HTML")
                 await asyncio.sleep(1)
             except Exception as e:
                 logging.error(f"Failed to send fallback message: {e}")
             
-            poll_question = f"प्रश्न [{game['current_q'] + 1}/{len(questions)}] का सही उत्तर चुनें:"
+            poll_question = f"[{game['current_q'] + 1}/{len(questions)}] ऊपर दिए गए प्रश्न का सही उत्तर चुनें:"
             poll_options = [f"Option {i+1}" for i in range(len(options))]
 
         # Send poll
@@ -2862,7 +2862,7 @@ async def send_next_group_poll(chat_id, context):
                 
                 if not answers_received:
                     game["consecutive_no_answers"] += 1
-                    if game["consecutive_no_answers"] >= 500:
+                    if game["consecutive_no_answers"] >= 5:
                         game["quiz_paused"] = True
                         await context.bot.send_message(
                             chat_id=chat_id,
