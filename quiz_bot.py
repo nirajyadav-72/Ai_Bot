@@ -3147,7 +3147,7 @@ async def compile_group_leaderboard(chat_id, context):
             parse_mode="HTML"
         )
         
-# ==================== 🛠️ SAFE CLEANUP SYSTEM (INSTANCE PROOF) ====================
+        # ==================== 🛠️ SAFE CLEANUP SYSTEM (INSTANCE PROOF) ====================
         if chat_id in CLEANUP_TASKS:
             CLEANUP_TASKS[chat_id].cancel()
             logging.info(f"🔄 [CLEANUP-RESET] Cancelled old timer for chat {chat_id}")
@@ -3178,9 +3178,9 @@ async def compile_group_leaderboard(chat_id, context):
         logging.info(f"🔔 [TIMER-SCHEDULED] Cleanup queued for instance_id={current_instance_id}")
         # ====================================================================================
 
-        except Exception as e:
-            logging.error(f"Error in compile_group_leaderboard: {e}", exc_info=True)
-
+    except Exception as e:
+        logging.error(f"Error in compile_group_leaderboard: {e}", exc_info=True)
+        
 # ask Ai tutor
 async def handle_ask_tutor(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show user ke galat questions - 10 min tak hi available"""
