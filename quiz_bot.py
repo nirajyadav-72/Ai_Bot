@@ -3137,33 +3137,37 @@ async def compile_group_leaderboard(chat_id, context):
             parse_mode="HTML"
         )
         
-        # ✅ STEP 1: Data को 10 minutes के लिए memory में रखो
-        logging.info(f"✅ Leaderboard sent for chat {chat_id}")
-        logging.info(f"🕐 [TIMER-START] Data will be available for tutor for 10 minutes...")
-        
-        # ✅ STEP 2: 10 minutes baad cleanup schedule karo
-        async def cleanup_after_delay():
-            """10 minutes exactly baad GROUP_GAMES se data remove karo"""
+# ==================== 🛠️ SAFE CLEANUP SYSTEM (INSTANCE PROOF) ====================
+        if chat_id in CLEANUP_TASKS:
+            CLEANUP_TASKS[chat_id].cancel()
+            logging.info(f"🔄 [CLEANUP-RESET] Cancelled old timer for chat {chat_id}")
+
+        async def cleanup_after_delay(target_instance_id):
             try:
-                logging.info(f"⏳ [CLEANUP-TIMER] Started for chat {chat_id} - will wait 600 seconds")
-                await asyncio.sleep(600)  # 10 minutes = 600 seconds
+                logging.info(f"⏳ [CLEANUP-TIMER] Started for chat {chat_id} (Instance: {target_instance_id})")
+                await asyncio.sleep(600)  # Wait for 10 minutes
                 
-                if chat_id in GROUP_GAMES:
-                    quiz_id = GROUP_GAMES[chat_id].get("quiz_id")
+                # Check unique instance_id instead of quiz_id
+                if chat_id in GROUP_GAMES and GROUP_GAMES[chat_id].get("instance_id") == target_instance_id:
                     GROUP_GAMES.pop(chat_id, None)
-                    logging.info(f"✅ [CLEANUP-EXECUTED] Removed GROUP_GAMES[{chat_id}] (quiz_id={quiz_id})")
-                    logging.info(f"   Users ab sirf warning message dekh payenge ⏰")
+                    logging.info(f"✅ [CLEANUP-SUCCESS] Safely removed expired game data for instance {target_instance_id}")
                 else:
-                    logging.info(f"⚠️ [CLEANUP-FAILED] GROUP_GAMES[{chat_id}] already removed")
+                    logging.info(f"⚠️ [CLEANUP-SKIPPED] New quiz is running or completed! Safely skipped old cleanup.")
                     
             except asyncio.CancelledError:
-                logging.info(f"⚠️ [CLEANUP-CANCELLED] Cleanup task cancelled for chat {chat_id}")
+                logging.info(f"⚠️ [CLEANUP-CANCELLED] Timer forced-killed early for chat {chat_id}")
             except Exception as e:
-                logging.error(f"❌ [CLEANUP-ERROR] Error during cleanup for chat {chat_id}: {e}")
-        
-        # Background task mein run karo (fire and forget)
-        cleanup_task = asyncio.create_task(cleanup_after_delay())
-        logging.info(f"🔔 [TIMER-SCHEDULED] Cleanup will run in 600 seconds for chat {chat_id}")
+                logging.error(f"❌ [CLEANUP-ERROR] Error during cleanup: {e}")
+            finally:
+                if CLEANUP_TASKS.get(chat_id) == asyncio.current_task():
+                    CLEANUP_TASKS.pop(chat_id, None)
+
+        current_instance_id = game.get("instance_id")
+        cleanup_task = asyncio.create_task(cleanup_after_delay(current_instance_id))
+        CLEANUP_TASKS[chat_id] = cleanup_task
+        logging.info(f"🔔 [TIMER-SCHEDULED] Cleanup queued for instance_id={current_instance_id}")
+        # ====================================================================================
+
         
     except Exception as e:
         logging.error(f"Error in compile_group_leaderboard: {e}", exc_info=True)
