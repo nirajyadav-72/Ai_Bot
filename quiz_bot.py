@@ -3146,6 +3146,7 @@ async def compile_group_leaderboard(chat_id, context):
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="HTML"
         )
+        logging.info(f"✅ Leaderboard sent for chat {chat_id}")
         
         # ==================== 🛠️ SAFE CLEANUP SYSTEM (INSTANCE PROOF) ====================
         if chat_id in CLEANUP_TASKS:
@@ -3157,7 +3158,6 @@ async def compile_group_leaderboard(chat_id, context):
                 logging.info(f"⏳ [CLEANUP-TIMER] Started for chat {chat_id} (Instance: {target_instance_id})")
                 await asyncio.sleep(600)  # Wait for 10 minutes
                 
-                # Check unique instance_id instead of quiz_id
                 if chat_id in GROUP_GAMES and GROUP_GAMES[chat_id].get("instance_id") == target_instance_id:
                     GROUP_GAMES.pop(chat_id, None)
                     logging.info(f"✅ [CLEANUP-SUCCESS] Safely removed expired game data for instance {target_instance_id}")
@@ -3180,7 +3180,7 @@ async def compile_group_leaderboard(chat_id, context):
 
     except Exception as e:
         logging.error(f"Error in compile_group_leaderboard: {e}", exc_info=True)
-        
+
 # ask Ai tutor
 async def handle_ask_tutor(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show user ke galat questions - 10 min tak hi available"""
