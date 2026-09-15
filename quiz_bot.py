@@ -234,42 +234,8 @@ def migrate_fix_correct_answer():
 def check_active_quiz_creation(user_id, context):
     """Check if user has an active quiz creation in progress"""
     return "quiz_build" in context.user_data and context.user_data["quiz_build"].get("title")
-    
-async def new_quiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    try:
-        # 1. Get the chat and message object
-        chat_obj = update.effective_chat
-        msg_obj = update.callback_query.message if update.callback_query else update.message
-        user_id = update.callback_query.from_user.id if update.callback_query else update.message.from_user.id
-        
-        # 2. Check if the command is used in a group or supergroup
-        if chat_obj.type in ['group', 'supergroup']:
-            if update.callback_query:
-                await update.callback_query.answer("Not allowed here", show_alert=True)
+     
             
-            await msg_obj.reply_text(
-                "⚠️ यह कमांड केवल प्राइवेट चैट में काम करती है। कृपया मुझे पर्सनल मैसेज (DM) में `/newquiz` भेजें।"
-            )
-            return ConversationHandler.END  # Stop the conversation handler inside groups
-
-        # 3. Rest of your original code for private chat
-        if update.callback_query:
-            await update.callback_query.answer()
-            
-        await msg_obj.reply_text(
-            "Let's create a new quiz. First, send me the title of your quiz (e.g., 'Aptitude Test' or '10 questions about bears').\n\n⚠️ Note: Title must be 128 characters or less.",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        context.user_data["quiz_build"] = {"title": "", "description": "", "questions": []}
-        context.user_data["quiz_build_creator_id"] = user_id
-        return TITLE
-    except Exception as e:
-        logging.error(f"Error in new_quiz_start: {e}")
-        # Safeguard if msg_obj is available during an error
-        if 'msg_obj' in locals():
-            await msg_obj.reply_text("❌ An error occurred. Please try again with /newquiz")
-        return ConversationHandler.END
-
 # --- CONVERSATION STATES ---
 (TOPIC, Q_COUNT, TITLE, DESCRIPTION, LANGUAGE, 
  EXPLANATION, DIFFICULTY, OPTIONS_COUNT, TIME_LIMIT, NEGATIVE) = range(10)
@@ -1151,6 +1117,41 @@ async def quizzes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if update.message:
             await update.message.reply_text("❌ Error loading quizzes. Please try again.")
             
+async def new_quiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    try:
+        # 1. Get the chat and message object
+        chat_obj = update.effective_chat
+        msg_obj = update.callback_query.message if update.callback_query else update.message
+        user_id = update.callback_query.from_user.id if update.callback_query else update.message.from_user.id
+        
+        # 2. Check if the command is used in a group or supergroup
+        if chat_obj.type in ['group', 'supergroup']:
+            if update.callback_query:
+                await update.callback_query.answer("Not allowed here", show_alert=True)
+            
+            await msg_obj.reply_text(
+                "⚠️ यह कमांड केवल प्राइवेट चैट में काम करती है। कृपया मुझे पर्सनल मैसेज (DM) में `/newquiz` भेजें।"
+            )
+            return ConversationHandler.END  # Stop the conversation handler inside groups
+
+        # 3. Rest of your original code for private chat
+        if update.callback_query:
+            await update.callback_query.answer()
+            
+        await msg_obj.reply_text(
+            "Let's create a new quiz. First, send me the title of your quiz (e.g., 'Aptitude Test' or '10 questions about bears').\n\n⚠️ Note: Title must be 128 characters or less.",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        context.user_data["quiz_build"] = {"title": "", "description": "", "questions": []}
+        context.user_data["quiz_build_creator_id"] = user_id
+        return TITLE
+    except Exception as e:
+        logging.error(f"Error in new_quiz_start: {e}")
+        # Safeguard if msg_obj is available during an error
+        if 'msg_obj' in locals():
+            await msg_obj.reply_text("❌ An error occurred. Please try again with /newquiz")
+        return ConversationHandler.END
+
 async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         title = update.message.text.strip()
