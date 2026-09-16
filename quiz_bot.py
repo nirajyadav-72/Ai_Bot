@@ -940,14 +940,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Welcome message text layout
         welcome_text = (
             "<blockquote>👋 Welcome to Premium Quiz Bot!</blockquote>\n\n"
-            "Aap is bot se quizzes bana kar apne dosto ke sath groups me realtime khel sakte hain.\n\n"
+            "<i>Aap is bot se quizzes bana kar apne dosto ke sath groups me realtime khel sakte hain.</i>\n\n"
             "💡 Check Available Commands:\n"
             "➤ /help – Open help center\n\n"
             "👥 Add the bot to a group and start quizzes\n"
-            "🤖 Welcome to AI Auto-Quiz Generator Bot!\n\n"
+            "</ins>🤖 Welcome to AI Auto-Quiz Generator Bot!</ins>\n\n"
             "<blockquote>⚡ Commands Layout:</blockquote>\n"
-            "👉 `/autoquiz` - Naya AI Quiz generate karne ki step-by-step process shuru karein.\n"
-            f"<ins>📢 Owner Details: ID `{OWNER_ID}`</ins>"
+            "<pre>👉 `/autoquiz` - Naya AI Quiz generate karne ki step-by-step process shuru karein.</pre>\n"
+            f"<tg-spoiler>📢 Owner Details: ID `{OWNER_ID}`</tg-spoiler>"
         )
         
         # 🌟 FIX: Welcome panel ke buttons ko bhi custom color diya (Blue aur Green)
