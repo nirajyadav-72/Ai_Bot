@@ -947,7 +947,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🤖 Welcome to AI Auto-Quiz Generator Bot!\n\n"
             "<blockquote>⚡ Commands Layout:</blockquote>\n"
             "👉 `/autoquiz` - Naya AI Quiz generate karne ki step-by-step process shuru karein.\n"
-            f"📢 Owner Details: ID `{OWNER_ID}`"
+            f"📢 Owner Details: ID `{OWNER_ID}`\n"
+            f"<a href="https://t.me/Comeback_009">Onwer</a>"
         )
         
         # 🌟 FIX: Welcome panel ke buttons ko bhi custom color diya (Blue aur Green)
