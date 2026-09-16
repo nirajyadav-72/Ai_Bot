@@ -944,7 +944,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "💡 Check Available Commands:\n"
             "➤ /help – Open help center\n\n"
             "👥 Add the bot to a group and start quizzes\n"
-            "</ins>🤖 Welcome to AI Auto-Quiz Generator Bot!</ins>\n\n"
+            "<ins>🤖 Welcome to AI Auto-Quiz Generator Bot!</ins>\n\n"
             "<blockquote>⚡ Commands Layout:</blockquote>\n"
             "<pre>👉 `/autoquiz` - Naya AI Quiz generate karne ki step-by-step process shuru karein.</pre>\n"
             f"<tg-spoiler>📢 Owner Details: ID `{OWNER_ID}`</tg-spoiler>"
