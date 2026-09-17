@@ -932,7 +932,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
 
                 init_text = (
-                    f"<blockquote>🎲 Get ready for the quiz!</blockquote>\n\n"
+                    f"<blockquote><ins>🎲 Get ready for the quiz!</ins></blockquote>\n\n"
                     f"<blockquote>📚 Title: {escape_markdown(title)}</blockquote>\n"
                     f"<blockquote>🔥 Description: {escape_markdown(desc) if desc else 'No description'}</blockquote>\n"
                     f"<blockquote>🖊️ Questions: {total_q}</blockquote>\n"
@@ -972,7 +972,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Welcome message text layout
         welcome_text = (
-            "<blockquote>👋 Welcome to Premium Quiz Bot!</blockquote>\n\n"
+            "<blockquote><ins>👋 Welcome to Premium Quiz Bot!</ins></blockquote>\n\n"
             "Aap is bot se quizzes bana kar apne dosto ke sath groups me realtime khel sakte hain.\n\n"
             "💡 Check Available Commands:\n"
             "➤ /help – Open help center\n\n"
@@ -1041,9 +1041,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         pass
 
         help_text = (
-            "<blockquote>Help Menu</blockquote>\n\n"
+            "<blockquote><ins>Help Menu</ins></blockquote>\n\n"
             "Aap is bot se quizzes bana kar apne dosto ke sath groups me realtime khel sakte hain.\n\n"
-            "<blockquote>💡 Available Commands:</blockquote>\n"
+            "<blockquote><ins>💡 Available Commands:</ins></blockquote>\n"
             "➤ /newquiz – Create a new quiz\n"
             "➤ /quizzes – View your quizzes\n"
             "➤ /start – Start the bot | quiz\n"
