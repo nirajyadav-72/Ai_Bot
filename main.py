@@ -2842,9 +2842,9 @@ async def send_next_group_poll(chat_id, context):
         
         if not answers_received:
             game["consecutive_no_answers"] += 1
-            if game["consecutive_no_answers"] >= 500:
+            if game["consecutive_no_answers"] >= 5:
                 game["quiz_paused"] = True
-                pause_msg = f"🔐 Quiz paused - nobody answering"
+                pause_msg = f"🔐 Quiz paused - No one is attempting the questions.\n\nclick resume to continue or stop to end."
                 keyboard = [
                     [InlineKeyboardButton("Resume", callback_data=f"pausequiz_{chat_id}")],
                     [InlineKeyboardButton("Stop", callback_data=f"stopquiz_{chat_id}")]
