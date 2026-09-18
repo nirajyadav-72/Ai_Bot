@@ -282,7 +282,7 @@ def generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt):
         return None
     
     # 1. डायनेमिकली आज की वर्तमान तारीख प्राप्त करना (Real-Time Anchoring)
-    current_date_str = datetime.datetime.now().strftime("%B %d, %Y")
+    current_date_str = datetime.now().strftime("%B %d, %Y")
     
     # 2. डिफिकल्टी लेवल के आधार पर सख्त गाइडलाइंस तैयार करना
     difficulty_lower = str(difficulty).lower()
