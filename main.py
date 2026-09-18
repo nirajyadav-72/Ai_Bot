@@ -2,6 +2,7 @@ import os
 import sqlite3
 import json
 import re
+import datetime
 import uuid
 import logging
 import random
@@ -275,18 +276,37 @@ async def new_quiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
  EXPLANATION, DIFFICULTY, OPTIONS_COUNT, TIME_LIMIT, NEGATIVE) = range(10)
 
 # AI Question Generator helper
-# Line 207 के पास - generate_bulk_questions_ai function को इससे रिप्लेस करें
 def generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt):
     if not ai_client:
         logging.warning("⚠️ AI CLIENT NOT INITIALIZED - Returning None")
         logging.warning(f"GEMINI_API_KEY present: {bool(GEMINI_API_KEY)}")
         return None
     
-    # OPTIMIZED PROMPT: करंट अफेयर्स और लेटेस्ट 2026 डेटा के लिए
+    # 1. डायनेमिकली आज की वर्तमान तारीख प्राप्त करना (Real-Time Anchoring)
+    current_date_str = datetime.datetime.now().strftime("%B %d, %Y")
+    
+    # 2. डिफिकल्टी लेवल के आधार पर सख्त गाइडलाइंस तैयार करना
+    difficulty_lower = str(difficulty).lower()
+    if "easy" in difficulty_lower:
+        diff_instruction = "- DIFFICULTY LEVEL [EASY]: Focus on direct facts, well-known personalities, major events, and straightforward definitions. Options should be distinct, and incorrect options should be easily filterable. Avoid tricky or deeply hidden data."
+    elif "hard" in difficulty_lower or "difficult" in difficulty_lower:
+        diff_instruction = "- DIFFICULTY LEVEL [HARD]: Focus on deep conceptual depth, lesser-known details of major events, analytical questions, chronological order, or statements-based questions. Options must be very close, confusing, and highly competitive to test advanced knowledge."
+    else:  # Medium / Default
+        diff_instruction = "- DIFFICULTY LEVEL [MEDIUM]: Balance between direct facts and conceptual understanding. Questions should require moderate thinking, and options should be realistic and require careful reading."
+
+    # 3. प्रॉम्प्ट में क्रिटिकल रूल्स, डिफिकल्टी और करंट डेट को शामिल करना
     prompt = f"""Generate exactly {count} unique quiz questions ONLY in {lang} language about "{topic}".
 
-CRITICAL CONTEXT FOR CURRENT AFFAIRS:
-If the topic is "Current Affairs", "General Knowledge", "News", or related to recent events, you MUST focus on the latest national and international events, awards, sports, appointments, and developments up to the current year 2026. Ensure all facts are updated, highly accurate, and non-speculative.
+CRITICAL CONTEXT & TEMPORAL AWARENESS (CRITICAL RULES):
+- Today's current real-world date is exactly: {current_date_str}.
+- You MUST evaluate all events, sports tournaments, awards, elections, and news based on this current date ({current_date_str}).
+- Do NOT suffer from temporal hallucination: If an event (e.g., T20 World Cup 2026, elections, budget) has already occurred BEFORE {current_date_str}, you must treat it as a PAST event (e.g., use "Who won..?", "Where was it held..?"). 
+- Do NOT ask questions predicting it as a future event (e.g., do NOT ask "When WILL it happen" for an event that already concluded).
+- Ensure all current affairs facts are fully updated, highly accurate, and non-speculative up to today ({current_date_str}).
+
+STRICT DIFFICULTY LEVEL RULE:
+{diff_instruction}
+Ensure the question phrasing and options strictly match this target difficulty.
 
 Topic: {topic}
 Language: {lang}
@@ -317,50 +337,70 @@ CRITICAL RULES:
 11. Return ONLY JSON array"""
 
     try:
-        logging.info(f"🤖 Requesting AI for {count} questions on {topic}...")
-        response = ai_client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-        )
+        logging.info(f"🤖 Requesting AI for {count} questions on {topic} ({difficulty})...")
         
-        logging.info(f"📝 Response received: {response.text[:100]}...")
-        clean_text = response.text.strip()
+        try:
+            response = ai_client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+            )
+            if not response or not response.text:
+                logging.error("❌ Empty response received from Gemini API.")
+                return None
+            response_text = response.text.strip()
+        except Exception as api_err:
+            logging.error(f"❌ Gemini API Call failed: {api_err}")
+            return None
         
-        # Clean markdown
-        clean_text = clean_text.replace("```json", "").replace("```", "").strip()
+        logging.info(f"📝 Response received: {response_text[:100]}...")
         
-        # Advanced Regex cleaning to extract only JSON array if extra text is present
+        clean_text = response_text.replace("```json", "").replace("```", "").strip()
+        
         match = re.search(r'\[.*\]', clean_text, re.DOTALL)
         if match:
             clean_text = match.group(0)
+        else:
+            logging.error("❌ Failed to find a valid JSON array pattern in the response.")
+            return None
             
-        questions = json.loads(clean_text)
+        try:
+            questions = json.loads(clean_text)
+            if not isinstance(questions, list):
+                logging.error("❌ Parsed JSON is not a list/array.")
+                return None
+        except json.JSONDecodeError as je:
+            logging.error(f"❌ JSON Parse Error (Malformed JSON from AI): {je}")
+            return None
         
         # ✅ Validation Loop
         valid_questions = []
         for idx, q in enumerate(questions):
             try:
-                if not q.get("question") or not q.get("options"):
-                    logging.warning(f"Skipping invalid question: {q}")
+                if not isinstance(q, dict):
+                    continue
+                    
+                if not q.get("question") or not q.get("options") or not isinstance(q["options"], list):
+                    logging.warning(f"Skipping invalid question structure: {q}")
                     continue
                 
+                if len(q["options"]) != options_cnt:
+                    logging.warning(f"Q{idx}: Expected {options_cnt} options, got {len(q['options'])}. Skipping.")
+                    continue
+
                 correct_idx = q.get("correct", 0)
                 
-                # Ensure correct is INTEGER and valid
                 if not isinstance(correct_idx, int):
                     try:
                         correct_idx = int(correct_idx)
                     except (ValueError, TypeError):
                         correct_idx = 0
                 
-                # Validate index range
                 if correct_idx < 0 or correct_idx >= len(q["options"]):
                     logging.warning(f"Q{idx}: Invalid index {correct_idx}, using 0")
                     correct_idx = 0
                 
                 q["correct"] = correct_idx
                 
-                # Explanation fallback handling
                 if "explanation" not in q or not q["explanation"]:
                     q["explanation"] = f"The correct answer is option {correct_idx + 1}."
                     
@@ -368,25 +408,20 @@ CRITICAL RULES:
                 logging.info(f"✅ Q{len(valid_questions)}: '{q['question'][:40]}...' | Correct at index {correct_idx}")
                 
             except Exception as q_err:
-                logging.warning(f"Question parse error: {q_err}")
+                logging.warning(f"Individual question parse error at index {idx}: {q_err}")
                 continue
         
-        # ✅ NEW LOGIC: अगर मांगे गए काउंट से कम मिले पर न्यूनतम 10 (या मांगे गए काउंट से कम पर कम से कम 10) सवाल मिल गए हैं तो पास करें
-        min_required = min(10, count) # अगर यूज़र ने खुद ही 5 या 10 से कम माँगे हों तो उसके लिए सेफ-गार्ड
+        min_required = min(10, count)
         
         if len(valid_questions) >= min_required:
             logging.info(f"✅ Minimum threshold met. Proceeding with {len(valid_questions)} questions.")
             return valid_questions[:count]
         else:
-            # 10 से कम होने पर ही कैंसिल होगा
-            logging.warning(f"⚠️ Only {len(valid_questions)} questions received. Less than minimum {min_required}. Cancelling.")
+            logging.warning(f"⚠️ Only {len(valid_questions)} questions validated. Less than minimum {min_required}. Cancelling.")
             return None
         
-    except json.JSONDecodeError as je:
-        logging.error(f"❌ JSON Parse Error: {je}")
-        return None
     except Exception as e:
-        logging.error(f"❌ AI Generation Error: {e}", exc_info=True)
+        logging.error(f"❌ Critical Global AI Generation Error: {e}", exc_info=True)
         return None
 
 # --- BOT ROUTINES & HANDLERS ---
