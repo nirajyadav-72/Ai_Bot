@@ -2842,7 +2842,7 @@ async def send_next_group_poll(chat_id, context):
         
         if not answers_received:
             game["consecutive_no_answers"] += 1
-            if game["consecutive_no_answers"] >= 5:
+            if game["consecutive_no_answers"] >= 100:
                 game["quiz_paused"] = True
                 pause_msg = f"🔐 Quiz paused - No one is attempting the questions.\n\nclick resume to continue or stop to end."
                 keyboard = [
@@ -3681,7 +3681,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 f"<blockquote>⏱ Time per question: {time_disp}</blockquote>\n"
                 f"<blockquote>📉 Negative Marking: -{db_neg_val} Marks per wrong answer</blockquote>\n\n"
                 "🏁 This quiz will start automatically shortly.\n"
-                "Use /stop in the group to stop it once started."
+                "<tg-spoiler>Use /stop in the group to stop it once started.</tg-spoiler>"
             )
 
             # 🇮🇳 IST time use करो (UTC नहीं)
@@ -3813,8 +3813,8 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                     try:
                         await app.bot.send_message(
                             chat_id=SUPPORT_GROUP_ID,
-                            text="<blockquote><b>🤖 Auto-starting quiz with 0 participants!</b></blockquote>\n\n"
-                                 "<blockquote><b>Users can still join and participate! ✅</b></blockquote>",
+                            text="<blockquote><b><tg-spoiler>🤖 Auto-starting quiz with 0 participants!</tg-spoiler></b></blockquote>\n\n"
+                                 "<blockquote><b><tg-spoiler>Users can still join and participate! ✅</tg-spoiler></b></blockquote>",
                             parse_mode="HTML"
                         )
                         logging.info(f"Autorun {autorun_id}: sent 'starting with 0 participants' message")
@@ -3824,8 +3824,8 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                     try:
                         await app.bot.send_message(
                             chat_id=SUPPORT_GROUP_ID,
-                            text=f"<blockquote><b>🎯 Starting quiz now with {joined_count} participant(s)!</blockquote></b>\n\n"
-                                 f"<blockquote><b>👥 Ready: {ready_count} | Total Joined: {joined_count}</blockquote></b>",
+                            text=f"<blockquote><b><tg-spoiler>🎯 Starting quiz now with {joined_count} participant(s)!</tg-spoiler></blockquote></b>\n\n"
+                                 f"<blockquote><b><tg-spoiler>👥 Ready: {ready_count} | Total Joined: {joined_count}</tg-spoiler></blockquote></b>",
                             parse_mode="HTML"
                         )
                         logging.info(f"Autorun {autorun_id}: sent 'starting with participants' message")
