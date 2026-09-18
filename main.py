@@ -22,6 +22,7 @@ from telegram.ext import (
 from telegram.error import NetworkError
 from telegram.request import HTTPXRequest
 from google import genai
+from google.genai import types
 
 TIME_RE = re.compile(r'^\d{1,2}:\d{2}$')
 # Enable Logging
@@ -276,151 +277,331 @@ async def new_quiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 # AI Question Generator helper
 def generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt):
+    """
+    Generate quiz questions using Gemini with Google Search Grounding.
+
+    Returns:
+        list[dict] | None
+    """
+
     if not ai_client:
-        logging.warning("⚠️ AI CLIENT NOT INITIALIZED - Returning None")
+        logging.warning("⚠️ AI CLIENT NOT INITIALIZED")
         logging.warning(f"GEMINI_API_KEY present: {bool(GEMINI_API_KEY)}")
         return None
-    
-    # 1. डायनेमिकली आज की वर्तमान तारीख प्राप्त करना (Real-Time Anchoring)
-    current_date_str = datetime.now().strftime("%B %d, %Y")
-    
-    # 2. डिफिकल्टी लेवल के आधार पर सख्त गाइडलाइंस तैयार करना
-    difficulty_lower = str(difficulty).lower()
-    if "easy" in difficulty_lower:
-        diff_instruction = "- DIFFICULTY LEVEL [EASY]: Focus on direct facts, well-known personalities, major events, and straightforward definitions. Options should be distinct, and incorrect options should be easily filterable. Avoid tricky or deeply hidden data."
-    elif "hard" in difficulty_lower or "difficult" in difficulty_lower:
-        diff_instruction = "- DIFFICULTY LEVEL [HARD]: Focus on deep conceptual depth, lesser-known details of major events, analytical questions, chronological order, or statements-based questions. Options must be very close, confusing, and highly competitive to test advanced knowledge."
-    else:  # Medium / Default
-        diff_instruction = "- DIFFICULTY LEVEL [MEDIUM]: Balance between direct facts and conceptual understanding. Questions should require moderate thinking, and options should be realistic and require careful reading."
-
-    # 3. प्रॉम्प्ट में क्रिटिकल रूल्स, डिफिकल्टी और करंट डेट को शामिल करना
-    prompt = f"""Generate exactly {count} unique quiz questions ONLY in {lang} language about "{topic}".
-
-CRITICAL CONTEXT & TEMPORAL AWARENESS (CRITICAL RULES):
-- Today's current real-world date is exactly: {current_date_str}.
-- You MUST evaluate all events, sports tournaments, awards, elections, and news based on this current date ({current_date_str}).
-- Do NOT suffer from temporal hallucination: If an event (e.g., T20 World Cup 2026, elections, budget) has already occurred BEFORE {current_date_str}, you must treat it as a PAST event (e.g., use "Who won..?", "Where was it held..?"). 
-- Do NOT ask questions predicting it as a future event (e.g., do NOT ask "When WILL it happen" for an event that already concluded).
-- Ensure all current affairs facts are fully updated, highly accurate, and non-speculative up to today ({current_date_str}).
-
-STRICT DIFFICULTY LEVEL RULE:
-{diff_instruction}
-Ensure the question phrasing and options strictly match this target difficulty.
-
-Topic: {topic}
-Language: {lang}
-Difficulty: {difficulty}
-Options per question: {options_cnt}
-
-Return ONLY valid JSON array (no markdown, no extra text):
-[
-  {{
-    "question": "What is..?", 
-    "options": ["A", "B", "C", "D"], 
-    "correct": 2, 
-    "explanation": "Short explanation here"
-  }}
-]
-
-CRITICAL RULES:
-1. "correct" MUST be a 0-based index (0, 1, 2, 3, etc)
-2. "correct" values should be RANDOMLY placed - use different positions for EACH question
-3. Do NOT put correct answer always at position 0 or position 1
-4. For {options_cnt} options: "correct" can be ANY value from 0 to {options_cnt-1}
-5. Each question must have correct answer at DIFFERENT random position
-6. Example: Q1 correct=1, Q2 correct=3, Q3 correct=0, Q4 correct=2 (varied!)
-7. All options must be DIFFERENT and meaningful
-8. Questions must strictly relate to {topic}
-9. NO sample/dummy questions
-10. Each item MUST include an "explanation" string (one or two sentences) explaining the correct answer
-11. Return ONLY JSON array"""
 
     try:
-        logging.info(f"🤖 Requesting AI for {count} questions on {topic} ({difficulty})...")
-        
+        count = int(count)
+        options_cnt = int(options_cnt)
+    except (TypeError, ValueError):
+        logging.error("❌ Invalid count or options count")
+        return None
+
+    if count <= 0 or options_cnt < 2:
+        logging.error("❌ Count must be greater than 0 and options must be at least 2")
+        return None
+
+    # Current date for time-sensitive questions
+    current_date_str = datetime.now(IST).strftime("%B %d, %Y")
+
+    difficulty_lower = str(difficulty).strip().lower()
+
+    if "easy" in difficulty_lower:
+        difficulty_instruction = """
+- Difficulty: EASY
+- Ask direct factual and basic conceptual questions.
+- Use well-known facts and clearly distinguishable options.
+- Avoid confusing wording and obscure details.
+"""
+
+    elif "hard" in difficulty_lower or "difficult" in difficulty_lower:
+        difficulty_instruction = """
+- Difficulty: HARD
+- Ask deep conceptual, analytical, chronological, or statement-based questions.
+- Use realistic and closely related incorrect options.
+- Verify every fact carefully using Google Search.
+"""
+
+    else:
+        difficulty_instruction = """
+- Difficulty: MEDIUM
+- Mix factual knowledge with moderate conceptual understanding.
+- Questions should require some thinking but must remain unambiguous.
+- Incorrect options should be plausible but clearly incorrect after analysis.
+"""
+
+    prompt = f"""
+You are an expert quiz-question generator.
+
+Generate exactly {count} unique multiple-choice quiz questions about:
+"{topic}"
+
+Output language:
+{lang}
+
+Required options per question:
+{options_cnt}
+
+Today's real-world date is:
+{current_date_str}
+
+Use Google Search grounding to verify current, changing, or time-sensitive information.
+
+IMPORTANT DATE RULES:
+1. Treat {current_date_str} as today's date.
+2. If an event has already happened before today's date, describe it as a past event.
+3. Do not describe completed events as future events.
+4. Do not invent future results, winners, elections, awards, tournaments, or appointments.
+5. For current-affairs questions, use only facts verified through Google Search.
+6. Avoid speculative or uncertain information.
+7. If a fact cannot be verified reliably, do not use it.
+
+{difficulty_instruction}
+
+STRICT OUTPUT RULES:
+1. Return ONLY a valid JSON array.
+2. Do not return Markdown.
+3. Do not use ```json or ``` fences.
+4. Do not add explanations before or after the JSON array.
+5. Generate exactly {count} questions if possible.
+6. Every question must be unique.
+7. Every question must contain exactly {options_cnt} options.
+8. All options must be different and meaningful.
+9. The "correct" value must be a zero-based integer index.
+10. The correct index must be between 0 and {options_cnt - 1}.
+11. Vary the correct answer position across questions.
+12. Do not always place the correct answer at index 0.
+13. Every question must contain an explanation string.
+14. The explanation must justify the correct answer briefly.
+15. Do not include citations, URLs, or Markdown inside the JSON values.
+
+Required JSON format:
+[
+  {{
+    "question": "Question text?",
+    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+    "correct": 2,
+    "explanation": "Brief explanation of why this answer is correct."
+  }}
+]
+"""
+
+    try:
+        logging.info(
+            f"🤖 Requesting Gemini with Google Search Grounding: "
+            f"{count} questions on '{topic}' ({difficulty})"
+        )
+
+        # Google Search Grounding is enabled here
+        response = ai_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[
+                    types.Tool(
+                        google_search=types.GoogleSearch()
+                    )
+                ]
+            ),
+        )
+
+        if not response:
+            logging.error("❌ Empty response object received from Gemini")
+            return None
+
+        response_text = getattr(response, "text", None)
+
+        if not response_text:
+            logging.error("❌ Gemini returned no text")
+            return None
+
+        response_text = response_text.strip()
+
+        logging.info(
+            f"📝 Gemini response received: {response_text[:150]}..."
+        )
+
+        # Remove accidental Markdown fences
+        response_text = response_text.replace("```json", "")
+        response_text = response_text.replace("```", "")
+        response_text = response_text.strip()
+
+        # Extract only the JSON array
+        match = re.search(r"\[.*\]", response_text, re.DOTALL)
+
+        if not match:
+            logging.error("❌ No JSON array found in Gemini response")
+            logging.error(f"Raw response: {response_text[:1000]}")
+            return None
+
+        json_text = match.group(0).strip()
+
         try:
-            response = ai_client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-            )
-            if not response or not response.text:
-                logging.error("❌ Empty response received from Gemini API.")
-                return None
-            response_text = response.text.strip()
-        except Exception as api_err:
-            logging.error(f"❌ Gemini API Call failed: {api_err}")
+            generated_questions = json.loads(json_text)
+        except json.JSONDecodeError as json_error:
+            logging.error(f"❌ JSON parsing failed: {json_error}")
+            logging.error(f"Raw JSON text: {json_text[:1000]}")
             return None
-        
-        logging.info(f"📝 Response received: {response_text[:100]}...")
-        
-        clean_text = response_text.replace("```json", "").replace("```", "").strip()
-        
-        match = re.search(r'\[.*\]', clean_text, re.DOTALL)
-        if match:
-            clean_text = match.group(0)
-        else:
-            logging.error("❌ Failed to find a valid JSON array pattern in the response.")
+
+        if not isinstance(generated_questions, list):
+            logging.error("❌ Gemini response is not a JSON list")
             return None
-            
-        try:
-            questions = json.loads(clean_text)
-            if not isinstance(questions, list):
-                logging.error("❌ Parsed JSON is not a list/array.")
-                return None
-        except json.JSONDecodeError as je:
-            logging.error(f"❌ JSON Parse Error (Malformed JSON from AI): {je}")
-            return None
-        
-        # ✅ Validation Loop
+
         valid_questions = []
-        for idx, q in enumerate(questions):
+        used_questions = set()
+
+        for index, question_data in enumerate(generated_questions):
             try:
-                if not isinstance(q, dict):
-                    continue
-                    
-                if not q.get("question") or not q.get("options") or not isinstance(q["options"], list):
-                    logging.warning(f"Skipping invalid question structure: {q}")
-                    continue
-                
-                if len(q["options"]) != options_cnt:
-                    logging.warning(f"Q{idx}: Expected {options_cnt} options, got {len(q['options'])}. Skipping.")
+                if not isinstance(question_data, dict):
+                    logging.warning(
+                        f"⚠️ Skipping item {index}: not an object"
+                    )
                     continue
 
-                correct_idx = q.get("correct", 0)
-                
-                if not isinstance(correct_idx, int):
-                    try:
-                        correct_idx = int(correct_idx)
-                    except (ValueError, TypeError):
-                        correct_idx = 0
-                
-                if correct_idx < 0 or correct_idx >= len(q["options"]):
-                    logging.warning(f"Q{idx}: Invalid index {correct_idx}, using 0")
-                    correct_idx = 0
-                
-                q["correct"] = correct_idx
-                
-                if "explanation" not in q or not q["explanation"]:
-                    q["explanation"] = f"The correct answer is option {correct_idx + 1}."
-                    
-                valid_questions.append(q)
-                logging.info(f"✅ Q{len(valid_questions)}: '{q['question'][:40]}...' | Correct at index {correct_idx}")
-                
-            except Exception as q_err:
-                logging.warning(f"Individual question parse error at index {idx}: {q_err}")
+                question_text = question_data.get("question")
+                options = question_data.get("options")
+                correct_index = question_data.get("correct")
+                explanation = question_data.get("explanation", "")
+
+                # Validate question text
+                if not isinstance(question_text, str):
+                    logging.warning(
+                        f"⚠️ Skipping item {index}: invalid question text"
+                    )
+                    continue
+
+                question_text = question_text.strip()
+
+                if not question_text:
+                    logging.warning(
+                        f"⚠️ Skipping item {index}: empty question"
+                    )
+                    continue
+
+                # Avoid duplicate questions
+                question_key = question_text.casefold()
+
+                if question_key in used_questions:
+                    logging.warning(
+                        f"⚠️ Skipping duplicate question: {question_text[:60]}"
+                    )
+                    continue
+
+                # Validate options
+                if not isinstance(options, list):
+                    logging.warning(
+                        f"⚠️ Skipping item {index}: options are not a list"
+                    )
+                    continue
+
+                if len(options) != options_cnt:
+                    logging.warning(
+                        f"⚠️ Q{index + 1}: expected {options_cnt} options, "
+                        f"received {len(options)}"
+                    )
+                    continue
+
+                cleaned_options = []
+
+                for option in options:
+                    if not isinstance(option, str):
+                        option = str(option)
+
+                    option = option.strip()
+
+                    if not option:
+                        raise ValueError("An option is empty")
+
+                    cleaned_options.append(option)
+
+                # Ensure options are unique
+                normalized_options = [
+                    option.casefold() for option in cleaned_options
+                ]
+
+                if len(set(normalized_options)) != len(normalized_options):
+                    logging.warning(
+                        f"⚠️ Skipping Q{index + 1}: duplicate options"
+                    )
+                    continue
+
+                # Convert correct answer to integer index
+                if isinstance(correct_index, bool):
+                    correct_index = int(correct_index)
+
+                elif not isinstance(correct_index, int):
+                    correct_index = int(str(correct_index).strip())
+
+                if not 0 <= correct_index < len(cleaned_options):
+                    logging.warning(
+                        f"⚠️ Skipping Q{index + 1}: invalid correct index "
+                        f"{correct_index}"
+                    )
+                    continue
+
+                # Validate explanation
+                if explanation is None:
+                    explanation = ""
+
+                if not isinstance(explanation, str):
+                    explanation = str(explanation)
+
+                explanation = explanation.strip()
+
+                if not explanation:
+                    explanation = (
+                        f"The correct answer is "
+                        f"option {correct_index + 1}."
+                    )
+
+                valid_questions.append(
+                    {
+                        "question": question_text,
+                        "options": cleaned_options,
+                        "correct": correct_index,
+                        "explanation": explanation,
+                    }
+                )
+
+                used_questions.add(question_key)
+
+                logging.info(
+                    f"✅ Q{len(valid_questions)} validated: "
+                    f"correct index={correct_index}"
+                )
+
+            except (ValueError, TypeError, KeyError) as question_error:
+                logging.warning(
+                    f"⚠️ Could not validate question {index + 1}: "
+                    f"{question_error}"
+                )
                 continue
-        
-        min_required = min(10, count)
-        
-        if len(valid_questions) >= min_required:
-            logging.info(f"✅ Minimum threshold met. Proceeding with {len(valid_questions)} questions.")
-            return valid_questions[:count]
-        else:
-            logging.warning(f"⚠️ Only {len(valid_questions)} questions validated. Less than minimum {min_required}. Cancelling.")
+
+        # At least one valid question is required
+        if not valid_questions:
+            logging.error("❌ No valid questions were generated")
             return None
-        
-    except Exception as e:
-        logging.error(f"❌ Critical Global AI Generation Error: {e}", exc_info=True)
+
+        # For normal generation, require the requested count.
+        # If Gemini returns fewer valid questions, return the available ones
+        # so the calling code can display the actual count.
+        if len(valid_questions) < count:
+            logging.warning(
+                f"⚠️ Requested {count} questions, but only "
+                f"{len(valid_questions)} were valid"
+            )
+
+        logging.info(
+            f"✅ Google-grounded generation complete: "
+            f"{len(valid_questions)} valid questions"
+        )
+
+        return valid_questions[:count]
+
+    except Exception as error:
+        logging.error(
+            f"❌ Critical AI generation error: {error}",
+            exc_info=True
+        )
         return None
 
 # --- BOT ROUTINES & HANDLERS ---
