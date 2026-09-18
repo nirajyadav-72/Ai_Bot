@@ -3675,7 +3675,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
             db_neg_val = negative_value if negative_value is not None else 0.0
 
             init_text = (
-                f"<blockquote>🎮 <b>LIVE QUIZ STARTED SOON</b></blockquote>\n\n"
+                f"<blockquote>🎮 <b><ins>LIVE QUIZ STARTED SOON</ins></b></blockquote>\n\n"
                 f"<blockquote>📚 Title: {escape_markdown(title)}</blockquote>\n"
                 f"<blockquote>🔥 Description: {escape_markdown(desc) if desc else 'No description'}</blockquote>\n"
                 f"<blockquote>⏱ Time per question: {time_disp}</blockquote>\n"
@@ -3813,9 +3813,9 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                     try:
                         await app.bot.send_message(
                             chat_id=SUPPORT_GROUP_ID,
-                            text="🤖 *Auto-starting quiz with 0 participants!*\n\n"
-                                 "Users can still join and participate! ✅",
-                            parse_mode="Markdown"
+                            text="<blockquote><b>🤖 Auto-starting quiz with 0 participants!</b></blockquote>\n\n"
+                                 "<blockquote><b>Users can still join and participate! ✅</b></blockquote>",
+                            parse_mode="HTML"
                         )
                         logging.info(f"Autorun {autorun_id}: sent 'starting with 0 participants' message")
                     except Exception as e:
@@ -3824,9 +3824,9 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                     try:
                         await app.bot.send_message(
                             chat_id=SUPPORT_GROUP_ID,
-                            text=f"🎯 *Starting quiz now with {joined_count} participant(s)!*\n\n"
-                                 f"👥 Ready: {ready_count} | Total Joined: {joined_count}",
-                            parse_mode="Markdown"
+                            text=f"<blockquote><b>🎯 Starting quiz now with {joined_count} participant(s)!</blockquote></b>\n\n"
+                                 f"<blockquote><b>👥 Ready: {ready_count} | Total Joined: {joined_count}</blockquote></b>",
+                            parse_mode="HTML"
                         )
                         logging.info(f"Autorun {autorun_id}: sent 'starting with participants' message")
                     except Exception as e:
