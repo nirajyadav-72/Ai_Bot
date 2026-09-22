@@ -702,6 +702,125 @@ Required JSON format:
 
     return None
 
+def repair_question_with_ai(question_text, options, correct_index, explanation):
+    """Question, correct option और explanation को दोबारा verify करता है।"""
+
+    if not ai_client:
+        return None
+
+    prompt = f"""
+आप current affairs MCQ के strict fact-checker हैं।
+
+नीचे दिए गए प्रश्न को Google Search से verify करें।
+Check करें कि:
+1. Correct option वास्तव में factual रूप से सही है।
+2. Explanation उसी correct option को explain करता है।
+3. अगर answer या explanation गलत है, तो उसे ठीक करें।
+
+केवल valid JSON return करें:
+
+{{
+  "question": "same question",
+  "options": ["option 1", "option 2", "option 3", "option 4"],
+  "correct": 0,
+  "explanation": "सही option का छोटा और स्पष्ट explanation"
+}}
+
+Rules:
+- "correct" zero-based integer index होना चाहिए।
+- Correct index सही option की ओर point करना चाहिए।
+- Explanation correct option को ही explain करना चाहिए।
+- कोई अनुमान या unverified information नहीं देनी है।
+- Markdown या code fence का उपयोग नहीं करना है।
+- Options की संख्या original options के बराबर रखें।
+
+Question:
+{question_text}
+
+Options:
+{options}
+
+Current correct index:
+{correct_index}
+
+Current explanation:
+{explanation}
+"""
+
+    try:
+        response = ai_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                tools=[
+                    types.Tool(
+                        google_search=types.GoogleSearch()
+                    )
+                ]
+            )
+        )
+
+        response_text = getattr(response, "text", None)
+
+        if not response_text:
+            return None
+
+        response_text = response_text.strip()
+        response_text = response_text.replace("```json", "")
+        response_text = response_text.replace("```", "")
+        response_text = response_text.strip()
+
+        match = re.search(r"\{.*\}", response_text, re.DOTALL)
+
+        if not match:
+            return None
+
+        result = json.loads(match.group(0))
+
+        question = result.get("question")
+        verified_options = result.get("options")
+        verified_correct = result.get("correct")
+        verified_explanation = result.get("explanation")
+
+        if not isinstance(question, str):
+            return None
+
+        if not isinstance(verified_options, list):
+            return None
+
+        if not verified_options:
+            return None
+
+        try:
+            verified_correct = int(verified_correct)
+        except (ValueError, TypeError):
+            return None
+
+        if not 0 <= verified_correct < len(verified_options):
+            return None
+
+        if not isinstance(verified_explanation, str):
+            return None
+
+        if not verified_explanation.strip():
+            return None
+
+        verified_options = [str(option).strip() for option in verified_options]
+
+        if any(not option for option in verified_options):
+            return None
+
+        return {
+            "question": question.strip(),
+            "options": verified_options,
+            "correct": verified_correct,
+            "explanation": verified_explanation.strip()
+        }
+
+    except Exception as error:
+        logging.warning(f"Question verification failed: {error}")
+        return None
+
 # --- BOT ROUTINES & HANDLERS ---
 async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
