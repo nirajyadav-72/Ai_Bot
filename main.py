@@ -1995,11 +1995,11 @@ async def show_summary_panel(query, context, quiz_id):
         escaped_desc = escape_markdown(description) if description else "No description"
         
         summary_text = (
-            "👍 *Here's your quiz:*\n\n"
-            f"💌 Title: **{escaped_title}**\n"
-            f"🫥 **Description:** {escaped_desc}\n"
-            f"⚡ {total_q[0]} question(s) · ⏱ Time: {time_display}\n\n"
-            f"🔗 External sharing link:\n"
+            "👍 <b>Here's your quiz:</b>\n\n"
+            f"💌 <b>Title: {escaped_title}</b>\n"
+            f"🫥 <b>Description: {escaped_desc}</b>\n"
+            f"⚡ <b>{total_q[0]} question(s) · ⏱ Time: {time_display}</b>\n\n"
+            f"🔗 <b>External sharing link:</b>\n"
             f"`https://t.me/{bot_username}?start=quiz_{quiz_id}`"
         )
         
@@ -2010,7 +2010,7 @@ async def show_summary_panel(query, context, quiz_id):
             [InlineKeyboardButton("⚙️ Edit", callback_data=f"edit_{quiz_id}")]
         ]
         reply_markup = InlineKeyboardMarkup(inline_keyboard)
-        await query.message.reply_text(summary_text, reply_markup=reply_markup, parse_mode="Markdown")
+        await query.message.reply_text(summary_text, reply_markup=reply_markup, parse_mode="HTML")
     except Exception as e:
         logging.error(f"Error in show_summary_panel: {e}")
         await query.message.reply_text(f"❌ Error: {str(e)}")
@@ -2038,11 +2038,11 @@ async def show_summary_panel_text(update, context, quiz_id):
         escaped_desc = escape_markdown(description) if description else "No description"
         
         summary_text = (
-            "🏁 *Here's your quiz:*\n\n"
-            f"📒 **Title: {escaped_title}**\n"
-            f"🫥 **Description:** {escaped_desc}\n"
-            f"⚡ {total_q[0]} question(s) · ⏱ Time: {time_display}\n\n"
-            f"🔗 External sharing link:\n"
+            "🏁 <b>Here's your quiz:</b>\n\n"
+            f"📒 <b>Title: {escaped_title}</b>\n"
+            f"🫥 <b>Description: {escaped_desc}</b>\n"
+            f"⚡ <b>{total_q[0]} question(s) · ⏱ Time: {time_display}</b>\n\n"
+            f"🔗 <b>External sharing link:</b>\n"
             f"`https://t.me/{bot_username}?start=quiz_{quiz_id}`"
         )
         
@@ -2053,7 +2053,7 @@ async def show_summary_panel_text(update, context, quiz_id):
             [InlineKeyboardButton("⚙️ Edit", callback_data=f"edit_{quiz_id}")]
         ]
         reply_markup = InlineKeyboardMarkup(inline_keyboard)
-        await update.message.reply_text(summary_text, reply_markup=reply_markup, parse_mode="Markdown")
+        await update.message.reply_text(summary_text, reply_markup=reply_markup, parse_mode="HTML")
     except Exception as e:
         logging.error(f"Error in show_summary_panel_text: {e}")
         await update.message.reply_text(f"❌ Error: {str(e)}")
