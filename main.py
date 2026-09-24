@@ -1995,12 +1995,12 @@ async def show_summary_panel(query, context, quiz_id):
         escaped_desc = escape_markdown(description) if description else "No description"
         
         summary_text = (
-            "👍 <b>Here's your quiz:</b>\n\n"
+            "<blockquote>👍 <ins><b>Here's your quiz:</ins></b></blockquote>\n\n"
             f"💌 <b>Title: {escaped_title}</b>\n"
             f"🫥 <b>Description: {escaped_desc}</b>\n"
             f"⚡ <b>{total_q[0]} question(s) · ⏱ Time: {time_display}</b>\n\n"
-            f"🔗 <b>External sharing link:</b>\n"
-            f"`https://t.me/{bot_username}?start=quiz_{quiz_id}`"
+            f"<blockquote>🔗 <b>External sharing link:</b></blockquote>\n"
+            f"<tg-spoiler>`https://t.me/{bot_username}?start=quiz_{quiz_id}`</tg-spoiler>"
         )
         
         inline_keyboard = [
@@ -2038,12 +2038,12 @@ async def show_summary_panel_text(update, context, quiz_id):
         escaped_desc = escape_markdown(description) if description else "No description"
         
         summary_text = (
-            "🏁 <b>Here's your quiz:</b>\n\n"
+            "<blockquote>🏁 <ins><b>Here's your quiz:</ins></b></blockquote>\n\n"
             f"📒 <b>Title: {escaped_title}</b>\n"
             f"🫥 <b>Description: {escaped_desc}</b>\n"
             f"⚡ <b>{total_q[0]} question(s) · ⏱ Time: {time_display}</b>\n\n"
-            f"🔗 <b>External sharing link:</b>\n"
-            f"`https://t.me/{bot_username}?start=quiz_{quiz_id}`"
+            f"<blockquote>🔗 <b>External sharing link:</b></blockquote>\n"
+            f"<tg-spoiler>`https://t.me/{bot_username}?start=quiz_{quiz_id}`</tg-spoiler>"
         )
         
         inline_keyboard = [
