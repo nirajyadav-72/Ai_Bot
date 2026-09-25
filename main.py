@@ -3509,7 +3509,7 @@ async def compile_group_leaderboard(chat_id, context):
             leaderboard += f"   <blockquote><b>{roast_msg}</b></blockquote>\n"
             leaderboard += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
         
-        footer = "\n🏆 Congratulations to all participants!"
+        footer = "\n🏆 <b>Congratulations to all participants!</b>"
         full_message = header + subheader + leaderboard + footer
         
         # 🌟 FIX: Library wrapper ko bypass karke raw dictionary payload bheja taaki crash na ho
@@ -3672,8 +3672,8 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
                     
                     # List me se click karte hi ye text aur panel direct chat me share ho jayega
                     share_message_text = (
-                        f"🎲 Quiz {escaped_title}\n\n"
-                        f"💌 **Description:** {escaped_desc}\n"
+                        f"🎲 <b>Quiz {escaped_title}</b>\n\n"
+                        f"💌 <b>Description:</b> {escaped_desc}\n"
                         f"🖋️ {total_q} questions · ⏱ {time_display}"
                     )
                     
@@ -3694,7 +3694,7 @@ async def inline_query_handler(update: Update, context: ContextTypes.DEFAULT_TYP
                             description=f"⚡ {total_q} Qs   ·   ⏱ {time_display}", 
                             input_message_content=InputTextMessageContent(
                                 message_text=share_message_text,
-                                parse_mode="Markdown"
+                                parse_mode="HTML"
                             ),
                             reply_markup=InlineKeyboardMarkup(inline_keyboard)
                         )
