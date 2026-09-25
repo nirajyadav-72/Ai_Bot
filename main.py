@@ -4112,8 +4112,8 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 f"<blockquote>🔥 Description: {escape_markdown(desc) if desc else 'No description'}</blockquote>\n"
                 f"<blockquote>⏱ Time per question: {time_disp}</blockquote>\n"
                 f"<blockquote>📉 Negative Marking: -{db_neg_val} Marks per wrong answer</blockquote>\n\n"
-                "🏁 This quiz will start automatically shortly.\n"
-                "<tg-spoiler>Use /stop in the group to stop it once started.</tg-spoiler>"
+                "🏁 <b>This quiz will start automatically shortly.</b>\n"
+                "<b>Use /stop in the group to stop it once started.</b>"
             )
 
             # 🇮🇳 IST time use करो (UTC नहीं)
