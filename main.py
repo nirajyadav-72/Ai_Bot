@@ -1995,11 +1995,11 @@ async def show_summary_panel(query, context, quiz_id):
         escaped_desc = escape_markdown(description) if description else "No description"
         
         summary_text = (
-            "<blockquote>👍 <ins><b>Here's your quiz:</ins></b></blockquote>\n\n"
-            f"💌 <b>Title: {escaped_title}</b>\n"
-            f"🫥 <b>Description: {escaped_desc}</b>\n"
-            f"⚡ <b>{total_q[0]} question(s) · ⏱ Time: {time_display}</b>\n\n"
-            f"<blockquote>🔗 <b>External sharing link:</b></blockquote>\n"
+            "<blockquote>👍 Here's your quiz:</blockquote>\n\n"
+            f"💌 <b>Title:</b> {escaped_title}\n"
+            f"🫥 <b>Description:</b> {escaped_desc}\n"
+            f"⚡ {total_q[0]} questions · ⏱ Time: {time_display}\n\n"
+            f"<blockquote>🔗 External sharing link:</blockquote>\n"
             f"<tg-spoiler>`https://t.me/{bot_username}?start=quiz_{quiz_id}`</tg-spoiler>"
         )
         
@@ -2038,11 +2038,11 @@ async def show_summary_panel_text(update, context, quiz_id):
         escaped_desc = escape_markdown(description) if description else "No description"
         
         summary_text = (
-            "<blockquote>🏁 <ins><b>Here's your quiz:</ins></b></blockquote>\n\n"
-            f"📒 <b>Title: {escaped_title}</b>\n"
-            f"🫥 <b>Description: {escaped_desc}</b>\n"
-            f"⚡ <b>{total_q[0]} question(s) · ⏱ Time: {time_display}</b>\n\n"
-            f"<blockquote>🔗 <b>External sharing link:</b></blockquote>\n"
+            "<blockquote>🏁 Here's your quiz:</blockquote>\n\n"
+            f"📒 <b>Title:</b> {escaped_title}\n"
+            f"🫥 <b>Description:</b> {escaped_desc}\n"
+            f"⚡ {total_q[0]} questions · ⏱ Time: {time_display}\n\n"
+            f"<blockquote>🔗 External sharing link:</blockquote>\n"
             f"<tg-spoiler>`https://t.me/{bot_username}?start=quiz_{quiz_id}`</tg-spoiler>"
         )
         
