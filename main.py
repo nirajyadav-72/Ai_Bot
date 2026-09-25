@@ -3509,7 +3509,7 @@ async def compile_group_leaderboard(chat_id, context):
             leaderboard += f"   <blockquote><b>{roast_msg}</b></blockquote>\n"
             leaderboard += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
         
-        footer = "\n🏆 <b>Congratulations to all participants!</b>"
+        footer = "\n🏆 Congratulations to all participants!"
         full_message = header + subheader + leaderboard + footer
         
         # 🌟 FIX: Library wrapper ko bypass karke raw dictionary payload bheja taaki crash na ho
