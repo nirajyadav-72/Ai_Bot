@@ -4700,7 +4700,7 @@ async def build_autorun_list_text():
             f"{next_run_text}\n"
         )
 
-    lines.append(f"📊 <b>Total Active Autoruns:</b> {len(rows)}\n<b>Onwer:=> Niraj</b>")
+    lines.append(f"💖 <b>Onwer:=> Niraj</b>\n📊 <b>Total Active Autoruns:</b> {len(rows)}")
 
     return "\n".join(lines)
 
@@ -4847,7 +4847,7 @@ async def autorun_list_command(update: Update, context: ContextTypes.DEFAULT_TYP
             "✅ Autorun list automatic update शुरू हो गया है।\n\n"
             "📤 अभी support group में list भेजी गई है।\n"
             "🔄 हर 2 घंटे में पुराना message delete करके नया list भेजा जाएगा।\n\n"
-            "⛔ बंद करने के लिए: /stopautorunlist"
+            "⏳ बंद करने के लिए: /stopautorunlist"
         )
 
     except Exception as error:
