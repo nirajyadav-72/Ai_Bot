@@ -4700,7 +4700,7 @@ async def build_autorun_list_text():
             f"{next_run_text}\n"
         )
 
-    lines.append(f"📊 <b>Total Active Autoruns:</b> {len(rows)}")
+    lines.append(f"📊 <b>Total Active Autoruns:</b> {len(rows)}\n<b>Onwer:=> Niraj</b>")
 
     return "\n".join(lines)
 
@@ -4727,7 +4727,7 @@ async def send_autorun_list_to_support(bot, old_message_id=None):
     list_text = await build_autorun_list_text()
 
     # Telegram message limit protection
-    if len(list_text) <= 4096:
+    if len(list_text) <= 4000:
         sent_message = await bot.send_message(
             chat_id=SUPPORT_GROUP_ID,
             text=list_text,
@@ -4787,7 +4787,7 @@ async def autorun_list_worker(bot):
             await asyncio.sleep(2 * 60 * 60)
 
     except asyncio.CancelledError:
-        logging.info("🛑 Automatic autorun list worker stopped")
+        logging.info("Automatic autorun list worker stopped")
 
         # Worker stop होने पर आखिरी list भी delete कर दें
         if old_message_id:
