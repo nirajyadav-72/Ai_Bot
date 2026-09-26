@@ -4755,7 +4755,7 @@ async def send_autorun_list_to_support(bot, old_message_id=None):
 
 async def autorun_list_worker(bot):
     """
-    Support group में autorun list हर 2 घंटे में update करता है।
+    Support group में autorun list हर 1 घंटे में update करता है।
     पुराना list message delete करके नया message भेजता है।
     """
 
@@ -4771,7 +4771,7 @@ async def autorun_list_worker(bot):
 
                 logging.info(
                     "✅ Autorun list sent to support group. "
-                    "Next update after 2 hours."
+                    "Next update after 1 hours."
                 )
 
             except asyncio.CancelledError:
@@ -4784,7 +4784,7 @@ async def autorun_list_worker(bot):
                 )
 
             # 2 hours = 7200 seconds
-            await asyncio.sleep(2 * 60 * 60)
+            await asyncio.sleep(1 * 60 * 60)
 
     except asyncio.CancelledError:
         logging.info("Automatic autorun list worker stopped")
@@ -4806,7 +4806,7 @@ async def autorun_list_command(update: Update, context: ContextTypes.DEFAULT_TYP
 
     /autorunlist:
     - तुरंत autorun list भेजता है
-    - हर 2 घंटे में पुराने message को delete करके नया भेजता है
+    - हर 1 घंटे में पुराने message को delete करके नया भेजता है
     """
 
     global AUTORUN_LIST_TASK
@@ -4846,7 +4846,7 @@ async def autorun_list_command(update: Update, context: ContextTypes.DEFAULT_TYP
         await message.reply_text(
             "✅ Autorun list automatic update शुरू हो गया है।\n\n"
             "📤 अभी support group में list भेजी गई है।\n"
-            "🔄 हर 2 घंटे में पुराना message delete करके नया list भेजा जाएगा।\n\n"
+            "🔄 हर 1 घंटे में पुराना message delete करके नया list भेजा जाएगा।\n\n"
             "⏳ बंद करने के लिए: /stopautorunlist"
         )
 
