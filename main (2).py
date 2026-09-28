@@ -272,7 +272,7 @@ async def new_quiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return ConversationHandler.END
 
 # --- CONVERSATION STATES ---
-(TOPIC, Q_COUNT, TITLE, DESCRIPTION, LANGUAGE, 
+(TOPIC, BOOK_NAME, Q_COUNT, TITLE, DESCRIPTION, LANGUAGE, 
  EXPLANATION, DIFFICULTY, OPTIONS_COUNT, TIME_LIMIT, NEGATIVE) = range(10)
 
 # AI Question Generator helper
