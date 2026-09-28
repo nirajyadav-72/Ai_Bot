@@ -1927,66 +1927,103 @@ async def handle_timer_text(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         logging.error(f"Error in handle_timer_text: {e}")
         return TIMER
         
-        
 async def view_my_quizzes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Fetches and displays all quizzes created by the user with View buttons - 2 per row"""
+    """Fetches and displays all quizzes created by the user with 10 items per page"""
     try:
+        query = update.callback_query
         # Check for active quiz creation
-        if check_active_quiz_creation(update.callback_query.from_user.id, context):
-            await update.callback_query.answer(
+        if check_active_quiz_creation(query.from_user.id, context):
+            await query.answer(
                 "⚠️ You have an unfinished quiz. Please finish creating your quiz or send /cancel.",
                 show_alert=True
             )
             return
         
-        query = update.callback_query
-        user_id = query.from_user.id
         await query.answer()
-
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        # Fetch quizzes with question count
-        cursor.execute("""
-            SELECT q.quiz_id, q.title, q.timer, COUNT(qu.id) as question_count
-            FROM quizzes q
-            LEFT JOIN questions qu ON q.quiz_id = qu.quiz_id
-            WHERE q.creator_id = ?
-            GROUP BY q.quiz_id
-            ORDER BY q.quiz_id DESC
-        """, (user_id,))
-        rows = cursor.fetchall()
-        conn.close()
-
-        if not rows:
-            keyboard = [[InlineKeyboardButton("Create New Quiz 🚀", callback_data="btn_newquiz")]]
-            await query.edit_message_text(
-                text="❌ Aapne abhi tak koi quiz nahi banaya hai!",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-            return
-
-        # Build list with View buttons for each quiz - 2 buttons per row
-        text = "📚 *Aapke Banaye Huye Quizzes:*\n\n"
+        user_id = query.from_user.id
         
-        keyboard = []
-        for idx, (qid, title, timer, q_count) in enumerate(rows, 1):
-            time_display = f"{timer}s" if timer < 60 else f"{timer // 60}m"
-            text += f"{idx}. **{escape_markdown(title)}**\n"
-            text += f"   ☞ {q_count} question{'s' if q_count != 1 else ''} | {time_display}/Q\n\n"
-            # Add View button for each quiz - 2 per row
-            if len(keyboard) == 0 or len(keyboard[-1]) == 2:
-                keyboard.append([])
-            keyboard[-1].append(InlineKeyboardButton(f"📖 Q{idx}", callback_data=f"viewq_{qid}"))
-        
-        # Back button on its own row
-        keyboard.append([InlineKeyboardButton("Back to Main Menu 🔙", callback_data="back_main")])
-        await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        # डिफ़ॉल्ट रूप से पहला पेज (Page 0) रेंडर करें
+        await render_quizzes_page_callback(update, user_id, page=0)
+
     except Exception as e:
         logging.error(f"Error in view_my_quizzes: {e}")
-        await query.answer("❌ Error loading quizzes", show_alert=True)
+        try:
+            await update.callback_query.answer("❌ Error loading quizzes", show_alert=True)
+        except Exception:
+            pass
 
+# 🆕 हेल्पर फ़ंक्शन: जो पेजिनेशन के साथ लिस्ट को एडिट या शो करेगा
+async def render_quizzes_page_callback(update: Update, user_id: int, page: int):
+    limit = 10  # एक पेज पर अधिकतम 10 क्विज़
+    offset = page * limit
+    query = update.callback_query
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # कुल क्विज़ की संख्या पता करें (Pagination के लिए)
+    cursor.execute("SELECT COUNT(quiz_id) FROM quizzes WHERE creator_id = ?", (user_id,))
+    total_quizzes = cursor.fetchone()[0]
+
+    # सिर्फ इस पेज के 10 क्विज़ निकालें
+    cursor.execute("""
+        SELECT q.quiz_id, q.title, q.timer, COUNT(qu.id) as question_count
+        FROM quizzes q
+        LEFT JOIN questions qu ON q.quiz_id = qu.quiz_id
+        WHERE q.creator_id = ?
+        GROUP BY q.quiz_id
+        ORDER BY q.quiz_id DESC
+        LIMIT ? OFFSET ?
+    """, (user_id, limit, offset))
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows and page == 0:
+        keyboard = [[InlineKeyboardButton("Create New Quiz 🚀", callback_data="btn_newquiz")]]
+        keyboard.append([InlineKeyboardButton("Back to Main Menu 🔙", callback_data="back_main")])
+        await query.edit_message_text(
+            text="❌ Aapne abhi tak koi quiz nahi banaya hai!",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return
+
+    # मेसेज का हेडर टेक्स्ट
+    text = f"📚 **Aapke Banaye Huye Quizzes (Page {page + 1}):**\n\n"
+    keyboard = []
+    
+    for idx, (qid, title, timer, q_count) in enumerate(rows, 1):
+        display_idx = offset + idx 
+        time_display = f"{timer}s" if timer < 60 else f"{timer // 60}m"
+        
+        # नाम और डिटेल्स नॉर्मल टेक्स्ट में जुड़ेंगे
+        text += f"{display_idx}. **{escape_markdown(title)}** ({q_count}Q | {time_display})\n\n"
+        
+        # ओपन बटन (हर क्विज़ के लिए सिंगल रो में)
+        open_button = InlineKeyboardButton(text=f"📂 Open Quiz #{display_idx}", callback_data=f"viewq_{qid}")
+        keyboard.append([open_button])
+
+    # ⬅️ ➡️ Navigation Buttons + ❌ Close List का लॉजिक
+    nav_row = []
+    if page > 0:
+        nav_row.append(InlineKeyboardButton("⬅️ Back", callback_data=f"quizpage_{page - 1}"))
+    
+    # बीच में क्लोज लिस्ट का बटन
+    nav_row.append(InlineKeyboardButton("❌ Close List", callback_data="close_quiz_list"))
+    
+    if offset + limit < total_quizzes:
+        nav_row.append(InlineKeyboardButton("Next ➡️", callback_data=f"quizpage_{page + 1}"))
+        
+    keyboard.append(nav_row)
+    
+    # बैक टू मेन मेन्यू बटन हमेशा सबसे नीचे रहेगा
+    keyboard.append([InlineKeyboardButton("Back to Main Menu 🔙", callback_data="back_main")])
+
+    await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
+
+# 🛠️ संशोधित हैंडलर (ताकि ओपन होने पर पुरानी लिस्ट डिलीट न हो)
 async def handle_view_quiz_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handles opening summary panel from the quiz list"""
+    """Handles opening summary panel from the quiz list without deleting the list"""
     query = update.callback_query
     try:
         # Callback query format validation (Bug #6 Fix)
@@ -2009,11 +2046,10 @@ async def handle_view_quiz_callback(update: Update, context: ContextTypes.DEFAUL
         # Sab sahi hone par process aage badhayenge
         await query.answer()
         
-        try:
-            await query.message.delete()
-        except Exception as delete_error:
-            logging.warning(f"Could not delete message in handle_view_quiz_callback: {delete_error}")
+        # 🚫 REMOVED: await query.message.delete() को यहाँ से हटा दिया गया है 
+        # ताकि समरी पैनल खुलते ही पुरानी लिस्ट गायब न हो।
 
+        # सीधे समरी पैनल को लोड करें (यह एक नया मैसेज भेजेगा, पुराना डिलीट नहीं करेगा)
         await show_summary_panel(query, context, quiz_id)
 
     except Exception as e:
@@ -2022,6 +2058,7 @@ async def handle_view_quiz_callback(update: Update, context: ContextTypes.DEFAUL
             await query.answer("❌ Error loading quiz", show_alert=True)
         except Exception:
             pass
+
             
 async def show_summary_panel(query, context, quiz_id):
     try:
