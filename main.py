@@ -5143,7 +5143,6 @@ async def main():
         app.add_handler(CommandHandler("stop", stop_quiz))
         app.add_handler(CommandHandler("status", owner_status_text_command))
         app.add_handler(CallbackQueryHandler(quiz_page_callback, pattern="^quizpage_"))
-        app.add_handler(CallbackQueryHandler(quiz_summary_callback, pattern="^viewq_"))
         
         app.add_handler(new_quiz_handler)
         app.add_handler(quiz_edit_flow_handler)
