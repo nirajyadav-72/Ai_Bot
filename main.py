@@ -1551,10 +1551,10 @@ async def send_quizzes_page(update: Update, user_id: int, page: int, is_callback
         display_idx = offset + idx 
         time_display = f"{timer}s" if timer < 60 else f"{timer // 60}m"
         
-        text += f"{display_idx}. **{escape_markdown(title)}** ({q_count}Q | {time_display})\n\n"
+        text += f"{display_idx}. 📚 **{escape_markdown(title)}**\n🎯 ({q_count} Questions | ⏰ Time/Question {time_display})\n\n"
         
         # ओपन बटन
-        open_button = InlineKeyboardButton(text=f"📂 Open Quiz #{display_idx}", callback_data=f"viewq_{qid}")
+        open_button = InlineKeyboardButton(text=f"Open Quiz {display_idx}", callback_data=f"viewq_{qid}")
         keyboard.append([open_button])
 
     # ⬅️ ➡️ Navigation Buttons (Next / Back) + ❌ Close List का लॉजिक
@@ -1996,10 +1996,10 @@ async def render_quizzes_page_callback(update: Update, user_id: int, page: int):
         time_display = f"{timer}s" if timer < 60 else f"{timer // 60}m"
         
         # नाम और डिटेल्स नॉर्मल टेक्स्ट में जुड़ेंगे
-        text += f"{display_idx}. **{escape_markdown(title)}** ({q_count}Q | {time_display})\n\n"
+        text += f"{display_idx}. 📚 **{escape_markdown(title)}**\n🎯 ({q_count} Questions | ⏰ Time/Question {time_display})\n\n"
         
         # ओपन बटन (हर क्विज़ के लिए सिंगल रो में)
-        open_button = InlineKeyboardButton(text=f"📂 Open Quiz #{display_idx}", callback_data=f"viewq_{qid}")
+        open_button = InlineKeyboardButton(text=f"Open Quiz {display_idx}", callback_data=f"viewq_{qid}")
         keyboard.append([open_button])
 
     # ⬅️ ➡️ Navigation Buttons + ❌ Close List का लॉजिक
