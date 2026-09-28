@@ -1518,7 +1518,7 @@ async def send_quizzes_page(update: Update, user_id: int, page: int, is_callback
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
-    # कुल क्विज़ की संख्या पता करें (Pagination बटन्स के लिए)
+    # कुल क्विज़ की संख्या पता करें
     cursor.execute("SELECT COUNT(quiz_id) FROM quizzes WHERE creator_id = ?", (user_id,))
     total_quizzes = cursor.fetchone()[0]
 
@@ -1544,33 +1544,32 @@ async def send_quizzes_page(update: Update, user_id: int, page: int, is_callback
             await update.message.reply_text(text=msg_text, reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    # मेसेज टेक्स्ट और ओपन बटन्स तैयार करना
     text = f"📚 **Aapke Banaye Huye Quizzes (Page {page + 1}):**\n\n"
     keyboard = []
     
     for idx, (qid, title, timer, q_count) in enumerate(rows, 1):
-        # सीरियल नंबर को पेज के हिसाब से सही करने के लिए (जैसे पेज 2 पर 11, 12...)
         display_idx = offset + idx 
         time_display = f"{timer}s" if timer < 60 else f"{timer // 60}m"
         
-        # टेक्स्ट लिस्ट जोड़ें
         text += f"{display_idx}. **{escape_markdown(title)}** ({q_count}Q | {time_display})\n\n"
         
-        # ओपन बटन जोड़ें
+        # ओपन बटन
         open_button = InlineKeyboardButton(text=f"📂 Open Quiz #{display_idx}", callback_data=f"viewq_{qid}")
         keyboard.append([open_button])
 
-    # ⬅️ ➡️ Navigation Buttons (Next / Back) का लॉजिक
-    nav_buttons = []
+    # ⬅️ ➡️ Navigation Buttons (Next / Back) + ❌ Close List का लॉजिक
+    nav_row = []
     if page > 0:
-        nav_buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"quizpage_{page - 1}"))
+        nav_row.append(InlineKeyboardButton("⬅️ Back", callback_data=f"quizpage_{page - 1}"))
+    
+    # हमेशा बीच में या अंत में 'Close' बटन रखें
+    nav_row.append(InlineKeyboardButton("❌ Close List", callback_data="close_quiz_list"))
+    
     if offset + limit < total_quizzes:
-        nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"quizpage_{page + 1}"))
+        nav_row.append(InlineKeyboardButton("Next ➡️", callback_data=f"quizpage_{page + 1}"))
         
-    if nav_buttons:
-        keyboard.append(nav_buttons)
+    keyboard.append(nav_row)
 
-    # अगर बटन क्लिक से आया है तो एडिट करें, नहीं तो नया मेसेज भेजें
     if is_callback:
         query = update.callback_query
         await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
@@ -1589,6 +1588,16 @@ async def quiz_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # अगला या पिछला पेज लोड करें
         await send_quizzes_page(update, user_id, page=next_page, is_callback=True)
 
+async def close_buttons_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Deletes the message when close button is clicked"""
+    query = update.callback_query
+    await query.answer()
+    
+    # बटन क्लिक होने पर उस पर्टिकुलर मेसेज को डिलीट कर देगा
+    try:
+        await query.message.delete()
+    except Exception as e:
+        logging.error(f"Error deleting message: {e}")
 
 async def new_quiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
@@ -5143,6 +5152,8 @@ async def main():
         app.add_handler(CommandHandler("stop", stop_quiz))
         app.add_handler(CommandHandler("status", owner_status_text_command))
         app.add_handler(CallbackQueryHandler(quiz_page_callback, pattern="^quizpage_"))
+        app.add_handler(CallbackQueryHandler(close_buttons_callback, pattern="^close_quiz_list$"))
+        app.add_handler(CallbackQueryHandler(close_buttons_callback, pattern="^delete_this_msg$"))
         
         app.add_handler(new_quiz_handler)
         app.add_handler(quiz_edit_flow_handler)
