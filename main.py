@@ -1582,6 +1582,41 @@ async def quizzes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if update.message:
             await update.message.reply_text("❌ Error loading quizzes. Please try again.")
             
+async def new_quiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    try:
+        # 1. Get the chat and message object
+        chat_obj = update.effective_chat
+        msg_obj = update.callback_query.message if update.callback_query else update.message
+        user_id = update.callback_query.from_user.id if update.callback_query else update.message.from_user.id
+        
+        # 2. Check if the command is used in a group or supergroup
+        if chat_obj.type in ['group', 'supergroup']:
+            if update.callback_query:
+                await update.callback_query.answer("Not allowed here", show_alert=True)
+            
+            await msg_obj.reply_text(
+                "⚠️ यह कमांड केवल प्राइवेट चैट में काम करती है। कृपया मुझे पर्सनल मैसेज (DM) में `/newquiz` भेजें।"
+            )
+            return ConversationHandler.END  # Stop the conversation handler inside groups
+
+        # 3. Rest of your original code for private chat
+        if update.callback_query:
+            await update.callback_query.answer()
+            
+        await msg_obj.reply_text(
+            "Let's create a new quiz. First, send me the title of your quiz (e.g., 'Aptitude Test' or '10 questions about bears').\n\n⚠️ Note: Title must be 128 characters or less.",
+            reply_markup=ReplyKeyboardRemove()
+        )
+        context.user_data["quiz_build"] = {"title": "", "description": "", "questions": []}
+        context.user_data["quiz_build_creator_id"] = user_id
+        return TITLE
+    except Exception as e:
+        logging.error(f"Error in new_quiz_start: {e}")
+        # Safeguard if msg_obj is available during an error
+        if 'msg_obj' in locals():
+            await msg_obj.reply_text("❌ An error occurred. Please try again with /newquiz")
+        return ConversationHandler.END
+
 async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         title = update.message.text.strip()
@@ -2065,7 +2100,7 @@ async def handle_start_private(update: Update, context: ContextTypes.DEFAULT_TYP
         quiz_id = int(query.data.split("_")[1])
         
         await query.edit_message_text(
-            text="🎮 **Private Mode**\n\nAap akele is quiz ko start karne ke liye ready ho gaye?\n\nClick 'Confirm' to begin!",
+            text="🎮 Private Mode\n\nAap akele is quiz ko start karne ke liye ready ho gaye?\n\nClick 'Confirm' to begin!",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("✅ Confirm Start", callback_data=f"confirm_private_{quiz_id}")]
             ])
@@ -2178,12 +2213,12 @@ async def handle_quiz_status(update: Update, context: ContextTypes.DEFAULT_TYPE)
         
         # 🌟 FIX: Markdown double asterisks (**) ko title string ke dono taraf sahi lagaya hai
         status_text = (
-            f"📊 **Quiz Status**\n\n"
-            f"**Title:** {escape_markdown(title)}\n"
-            f"**Description:** {escape_markdown(description) if description else 'No description'}\n"
-            f"**Total Questions:** {total_q[0]}\n"
-            f"**Time per Q:** {time_display}\n"
-            f"✅ **Status:** Active"
+            f"📊 *Quiz Status*\n\n"
+            f"*Title:* {escape_markdown(title)}\n"
+            f"*Description:* {escape_markdown(description) if description else 'No description'}\n"
+            f"*Total Questions:* {total_q[0]}\n"
+            f"*Time per Q:* {time_display}\n"
+            f"✅ *Status:* Active"
         )
         
         await query.edit_message_text(
@@ -2370,7 +2405,7 @@ async def edit_pre_message_trigger(update: Update, context: ContextTypes.DEFAULT
         context.user_data["editing_quiz_id"] = quiz_id
         
         await query.message.reply_text(
-            "💬 **Send the pre-message content** (text, caption, etc.) that will appear before this question.\n\n"
+            "💬 *Send the pre-message content* (text, caption, etc.) that will appear before this question.\n\n"
             "Or type /remove to delete the existing pre-message, /skip to cancel."
         )
         return EDIT_QUESTION_PRE_MESSAGE
@@ -2432,7 +2467,7 @@ async def edit_explanation_trigger(update: Update, context: ContextTypes.DEFAULT
         context.user_data["editing_quiz_id"] = quiz_id
         
         await query.message.reply_text(
-            "📖 **Send the explanation** for the correct answer.\n\n"
+            "📖 *Send the explanation* for the correct answer.\n\n"
             "Or type /remove to delete the existing explanation, /skip to cancel."
         )
         return EDIT_QUESTION_EXPLANATION
