@@ -1485,18 +1485,16 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ========================================
 # 🔴 NEW COMMAND: /quizzes
 # ========================================
-
+# 1. मुख्य कमांड फ़ंक्शन
 async def quizzes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Display user's quizzes directly via /quizzes command"""
+    """Display user's quizzes with a limit of 10 per page"""
     try:
-        # 1. Group check: Send warning and block if used in group/supergroup
         if update.effective_chat.type in ['group', 'supergroup']:
             await update.message.reply_text(
                 "⚠️ यह कमांड केवल प्राइवेट चैट में काम करती है। कृपया मुझे पर्सनल मैसेज (DM) में `/quizzes` भेजें।"
             )
             return
 
-        # Check for active quiz creation
         if check_active_quiz_creation(update.message.from_user.id, context):
             await update.message.reply_text(
                 "⚠️ **You have an unfinished quiz.** Please finish creating your quiz or send /cancel.\n\n"
@@ -1504,49 +1502,94 @@ async def quizzes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-        user_id = update.message.from_user.id
-        
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        # Fetch quizzes with question count
-        cursor.execute("""
-            SELECT q.quiz_id, q.title, q.timer, COUNT(qu.id) as question_count
-            FROM quizzes q
-            LEFT JOIN questions qu ON q.quiz_id = qu.quiz_id
-            WHERE q.creator_id = ?
-            GROUP BY q.quiz_id
-            ORDER BY q.quiz_id DESC
-        """, (user_id,))
-        rows = cursor.fetchall()
-        conn.close()
+        # डिफ़ॉल्ट रूप से पहला पेज (Page 0) लोड करें
+        await send_quizzes_page(update, update.message.from_user.id, page=0, is_callback=False)
 
-        if not rows:
-            keyboard = [[InlineKeyboardButton("Create New Quiz 🚀", callback_data="btn_newquiz")]]
-            await update.message.reply_text(
-                text="❌ Aapne abhi tak koi quiz nahi banaya hai!\n\nNaya quiz banane ke liye 'Create New Quiz' button click karein.",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
-            return
-
-        # Build list with View buttons for each quiz - 2 buttons per row
-        text = "📚 Aapke Banaye Huye Quizzes:\n\n"
-        
-        keyboard = []
-        for idx, (qid, title, timer, q_count) in enumerate(rows, 1):
-            time_display = f"{timer}s" if timer < 60 else f"{timer // 60}m"
-            text += f"{idx}. **{escape_markdown(title)}**\n"
-            text += f"   ☞ {q_count} question{'s' if q_count != 1 else ''} | {time_display}/Q\n\n"
-            # Add View button for each quiz - 2 per row
-            if len(keyboard) == 0 or len(keyboard[-1]) == 2:
-                keyboard.append([])
-            keyboard[-1].append(InlineKeyboardButton(f"📖 Q{idx}", callback_data=f"viewq_{qid}"))
-        
-        await update.message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
     except Exception as e:
         logging.error(f"Error in quizzes_command: {e}")
         if update.message:
             await update.message.reply_text("❌ Error loading quizzes. Please try again.")
-            
+
+# 2. पेज रेंडर करने वाला हेल्पर फ़ंक्शन (इसे आप अपने कोड में कहीं भी रख सकते हैं)
+async def send_quizzes_page(update: Update, user_id: int, page: int, is_callback: bool = False):
+    limit = 10  # एक पेज पर अधिकतम 10 क्विज़
+    offset = page * limit
+
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # कुल क्विज़ की संख्या पता करें (Pagination बटन्स के लिए)
+    cursor.execute("SELECT COUNT(quiz_id) FROM quizzes WHERE creator_id = ?", (user_id,))
+    total_quizzes = cursor.fetchone()[0]
+
+    # सिर्फ इस पेज के 10 क्विज़ निकालें
+    cursor.execute("""
+        SELECT q.quiz_id, q.title, q.timer, COUNT(qu.id) as question_count
+        FROM quizzes q
+        LEFT JOIN questions qu ON q.quiz_id = qu.quiz_id
+        WHERE q.creator_id = ?
+        GROUP BY q.quiz_id
+        ORDER BY q.quiz_id DESC
+        LIMIT ? OFFSET ?
+    """, (user_id, limit, offset))
+    rows = cursor.fetchall()
+    conn.close()
+
+    if not rows and page == 0:
+        keyboard = [[InlineKeyboardButton("Create New Quiz 🚀", callback_data="btn_newquiz")]]
+        msg_text = "❌ Aapne abhi tak koi quiz nahi banaya hai!\n\nNaya quiz banane ke liye 'Create New Quiz' button click karein."
+        if is_callback:
+            await update.callback_query.edit_message_text(text=msg_text, reply_markup=InlineKeyboardMarkup(keyboard))
+        else:
+            await update.message.reply_text(text=msg_text, reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    # मेसेज टेक्स्ट और ओपन बटन्स तैयार करना
+    text = f"📚 **Aapke Banaye Huye Quizzes (Page {page + 1}):**\n\n"
+    keyboard = []
+    
+    for idx, (qid, title, timer, q_count) in enumerate(rows, 1):
+        # सीरियल नंबर को पेज के हिसाब से सही करने के लिए (जैसे पेज 2 पर 11, 12...)
+        display_idx = offset + idx 
+        time_display = f"{timer}s" if timer < 60 else f"{timer // 60}m"
+        
+        # टेक्स्ट लिस्ट जोड़ें
+        text += f"{display_idx}. **{escape_markdown(title)}** ({q_count}Q | {time_display})\n\n"
+        
+        # ओपन बटन जोड़ें
+        open_button = InlineKeyboardButton(text=f"📂 Open Quiz #{display_idx}", callback_data=f"viewq_{qid}")
+        keyboard.append([open_button])
+
+    # ⬅️ ➡️ Navigation Buttons (Next / Back) का लॉजिक
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"quizpage_{page - 1}"))
+    if offset + limit < total_quizzes:
+        nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"quizpage_{page + 1}"))
+        
+    if nav_buttons:
+        keyboard.append(nav_buttons)
+
+    # अगर बटन क्लिक से आया है तो एडिट करें, नहीं तो नया मेसेज भेजें
+    if is_callback:
+        query = update.callback_query
+        await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    else:
+        await update.message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
+# 3. पेज बदलने वाले बटन का Callback Handler
+async def quiz_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    
+    data = query.data
+    if data.startswith("quizpage_"):
+        next_page = int(data.split("_")[1])
+        user_id = query.from_user.id
+        # अगला या पिछला पेज लोड करें
+        await send_quizzes_page(update, user_id, page=next_page, is_callback=True)
+
+
 async def new_quiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         # 1. Get the chat and message object
