@@ -1551,7 +1551,7 @@ async def send_quizzes_page(update: Update, user_id: int, page: int, is_callback
         display_idx = offset + idx 
         time_display = f"{timer}s" if timer < 60 else f"{timer // 60}m"
         
-        text += f"<b>{display_idx}. <blockquote>{escape_markdown(title)}</b></blockquote>\n🎯 <blockquote><b>{q_count} Questions | ⏰ Time/Q. {time_display}</blockquote></b>\n\n"
+        text += f"<b>{display_idx}.</b> <blockquote>{html.escape(title)}</blockquote>\n🎯 <blockquote><b>{q_count} Questions | ⏰ Time/Q. {time_display}</b></blockquote>\n\n"
         
         # ओपन बटन
         open_button = InlineKeyboardButton(text=f"Open Quiz {display_idx}", callback_data=f"viewq_{qid}")
