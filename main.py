@@ -2,6 +2,7 @@ import os
 import sqlite3
 import json
 import re
+import html
 import uuid
 import logging
 import random
