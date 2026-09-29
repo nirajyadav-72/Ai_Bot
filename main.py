@@ -1497,7 +1497,7 @@ async def quizzes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if check_active_quiz_creation(update.message.from_user.id, context):
             await update.message.reply_text(
-                "⚠️ **You have an unfinished quiz.** Please finish creating your quiz or send /cancel.\n\n"
+                "⚠️ *You have an unfinished quiz.* Please finish creating your quiz or send /cancel.\n\n"
                 "You cannot use commands until you complete this quiz."
             )
             return
@@ -1544,14 +1544,14 @@ async def send_quizzes_page(update: Update, user_id: int, page: int, is_callback
             await update.message.reply_text(text=msg_text, reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    text = f"📚 **Aapke Banaye Huye Quizzes (Page {page + 1}):**\n\n"
+    text = f"📚 <blockquote>Aapke Banaye Huye Quizzes (Page {page + 1}):</blockquote>\n\n"
     keyboard = []
     
     for idx, (qid, title, timer, q_count) in enumerate(rows, 1):
         display_idx = offset + idx 
         time_display = f"{timer}s" if timer < 60 else f"{timer // 60}m"
         
-        text += f"{display_idx}. 📚 **{escape_markdown(title)}**\n🎯 ({q_count} Questions | ⏰ Time/Question {time_display})\n\n"
+        text += f"<b>{display_idx}. <blockquote>{escape_markdown(title)}</b></blockquote>\n🎯 <blockquote><b>{q_count} Questions | ⏰ Time/Q. {time_display}</blockquote></b>\n\n"
         
         # ओपन बटन
         open_button = InlineKeyboardButton(text=f"Open Quiz {display_idx}", callback_data=f"viewq_{qid}")
@@ -1572,9 +1572,9 @@ async def send_quizzes_page(update: Update, user_id: int, page: int, is_callback
 
     if is_callback:
         query = update.callback_query
-        await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
     else:
-        await update.message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        await update.message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
 
 # 3. पेज बदलने वाले बटन का Callback Handler
 async def quiz_page_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
