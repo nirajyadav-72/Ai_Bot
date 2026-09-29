@@ -1988,7 +1988,7 @@ async def render_quizzes_page_callback(update: Update, user_id: int, page: int):
         return
 
     # मेसेज का हेडर टेक्स्ट
-    text = f"📚 **Aapke Banaye Huye Quizzes (Page {page + 1}):**\n\n"
+    text = f"📚 <blockquote>Aapke Banaye Huye Quizzes (Page {page + 1}):</blockquote>\n\n"
     keyboard = []
     
     for idx, (qid, title, timer, q_count) in enumerate(rows, 1):
@@ -1996,7 +1996,7 @@ async def render_quizzes_page_callback(update: Update, user_id: int, page: int):
         time_display = f"{timer}s" if timer < 60 else f"{timer // 60}m"
         
         # नाम और डिटेल्स नॉर्मल टेक्स्ट में जुड़ेंगे
-        text += f"{display_idx}. 📚 **{escape_markdown(title)}**\n🎯 ({q_count} Questions | ⏰ Time/Question {time_display})\n\n"
+        text += f"<blockquote><b>{display_idx}. {escape_markdown(title)}</b></blockquote>\n<b>🎯 {q_count} Questions | ⏰ Time/Q. {time_display}</b>\n\n"
         
         # ओपन बटन (हर क्विज़ के लिए सिंगल रो में)
         open_button = InlineKeyboardButton(text=f"Open Quiz {display_idx}", callback_data=f"viewq_{qid}")
@@ -2018,7 +2018,7 @@ async def render_quizzes_page_callback(update: Update, user_id: int, page: int):
     # बैक टू मेन मेन्यू बटन हमेशा सबसे नीचे रहेगा
     keyboard.append([InlineKeyboardButton("Back to Main Menu 🔙", callback_data="back_main")])
 
-    await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    await query.edit_message_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="HTML")
 
 
 # 🛠️ संशोधित हैंडलर (ताकि ओपन होने पर पुरानी लिस्ट डिलीट न हो)
