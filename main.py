@@ -1545,7 +1545,7 @@ async def send_quizzes_page(update: Update, user_id: int, page: int, is_callback
             await update.message.reply_text(text=msg_text, reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
-    text = f"📚 <blockquote>Aapke Banaye Huye Quizzes (Page {page + 1}):</blockquote>\n\n"
+    text = f"<blockquote>Aapke Banaye Huye Quizzes Page {page + 1}:</blockquote>\n\n"
     keyboard = []
     
     for idx, (qid, title, timer, q_count) in enumerate(rows, 1):
@@ -1556,8 +1556,8 @@ async def send_quizzes_page(update: Update, user_id: int, page: int, is_callback
         safe_title = html.escape(title)
         
         # FIX: Sahi tag nesting -> <b> Index </b> <blockquote> Title </blockquote>
-        text += f"<b>{display_idx}.</b> <blockquote>{safe_title}</blockquote>\n"
-        text += f"🎯 <blockquote><b>{q_count} Questions | ⏰ Time/Q. {time_display}</b></blockquote>\n\n"
+        text += f"<blockquote><b>{display_idx}. {safe_title}</b></blockquote>\n"
+        text += f"🎯 <b>{q_count} Questions | ⏰ Time/Q. {time_display}</b>\n\n"
         
         # ओपन बटन
         open_button = InlineKeyboardButton(text=f"Open Quiz {display_idx}", callback_data=f"viewq_{qid}")
@@ -1994,15 +1994,19 @@ async def render_quizzes_page_callback(update: Update, user_id: int, page: int):
         return
 
     # मेसेज का हेडर टेक्स्ट
-    text = f"📚 <blockquote>Aapke Banaye Huye Quizzes (Page {page + 1}):</blockquote>\n\n"
+    text = f"<blockquote>Aapke Banaye Huye Quizzes Page {page + 1}:</blockquote>\n\n"
     keyboard = []
     
     for idx, (qid, title, timer, q_count) in enumerate(rows, 1):
         display_idx = offset + idx 
         time_display = f"{timer}s" if timer < 60 else f"{timer // 60}m"
         
-        # नाम और डिटेल्स नॉर्मल टेक्स्ट में जुड़ेंगे
-        text += f"<blockquote><b>{display_idx}. {escape_markdown(title)}</b></blockquote>\n<b>🎯 {q_count} Questions | ⏰ Time/Q. {time_display}</b>\n\n"
+        # HTML ke liye html.escape use karein aur tags ko proper order me band karein
+        safe_title = html.escape(title)
+        
+        # FIX: Sahi tag nesting -> <b> Index </b> <blockquote> Title </blockquote>
+        text += f"<blockquote><b>{display_idx}. {safe_title}</b></blockquote>\n"
+        text += f"🎯 <b>{q_count} Questions | ⏰ Time/Q. {time_display}</b>\n\n"
         
         # ओपन बटन (हर क्विज़ के लिए सिंगल रो में)
         open_button = InlineKeyboardButton(text=f"Open Quiz {display_idx}", callback_data=f"viewq_{qid}")
