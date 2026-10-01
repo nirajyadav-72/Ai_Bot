@@ -378,19 +378,18 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     allowed_ids = get_allowed_ids()
     
-    # ग्रुप सुरक्षा जाँच
+    # 1. ग्रुप आईडी सुरक्षा जाँच (sirf group ke liye)
     if chat_type in ["group", "supergroup"]:
-        # चेक करें कि क्या सही सपोर्ट ग्रुप आईडी मैच हो रही है
         if SUPPORT_GROUP_ID and chat_id != SUPPORT_GROUP_ID:
             await update.message.reply_text("❌ <b>Security Error:</b> Yah command is group me allowed nahi hai.", parse_mode="HTML")
             return ConversationHandler.END
             
-        # चेक करें कि यूज़र ओनर या उन 4 अलाउड यूज़र्स में से है या नहीं
-        if user_id != OWNER_ID and user_id not in allowed_ids:
-            await update.message.reply_text("❌ <b>Sorry!</b> Group me yah command keval authorized users hi use kar sakte hain.", parse_mode="HTML")
-            return ConversationHandler.END
+    # 2. यूज़र सुरक्षा जाँच (Group aur Private Chat dono ke liye)
+    if user_id != OWNER_ID and user_id not in allowed_ids:
+        await update.message.reply_text("❌ <b>Sorry!</b> Yah command keval authorized users hi use kar sakte hain.", parse_mode="HTML")
+        return ConversationHandler.END
 
-    # बॉट DM (Private Chat) में कोई भी आम यूज़र चला सकता है
+    # बॉट DM या सही ग्रुप में सिर्फ अलाउड यूज़र ही यहाँ तक पहुँच पाएंगे
     context.user_data.clear()
     
     reply_keyboard = [['Current Affairs 2026 📰']]
