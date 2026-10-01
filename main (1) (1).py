@@ -24,7 +24,6 @@ from telegram.ext import (
 from telegram.error import NetworkError
 from telegram.request import HTTPXRequest
 from google import genai
-from google.genai import types
 from html import escape as html_escape
 
 TIME_RE = re.compile(r'^\d{1,2}:\d{2}$')
