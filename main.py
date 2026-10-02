@@ -290,7 +290,7 @@ CRITICAL RULES:
             
             # ✅ FIX: नए SDK के अनुसार interactions.create का उपयोग और सही मॉडल
             response = ai_client.interactions.create(
-                model='gemini-flash-latest',
+                model='gemini-3.6-flash',
                 input=prompt,
             )
             
