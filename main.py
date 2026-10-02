@@ -654,18 +654,23 @@ Required JSON format:
 
             if attempt < max_attempts:
                 import time
-                retry_delay = 2 * attempt
-                logging.info(
-                    f"🔁 Retrying AI generation after "
-                    f"{retry_delay} seconds..."
-                )
+                # 🛡️ 429 Error (Rate Limit) Check
+                # इसके लिए हम एरर मैसेज में '429' या 'RESOURCE_EXHAUSTED' ढूंढेंगे
+                error_str = str(api_error)
+                if "429" in error_str or "RESOURCE_EXHAUSTED" in error_str:
+                    retry_delay = 15 * attempt  # पहले अटेम्प्ट पर 15s, दूसरे पर 30s का गैप देगा
+                    logging.info(
+                        f"🛑 Gemini Rate Limit (429) hit! "
+                        f"Cooling down for {retry_delay} seconds before retry..."
+                    )
+                else:
+                    retry_delay = 3 * attempt   # अन्य सामान्य एरर के लिए छोटा गैप
+                    logging.info(
+                        f"🔁 General error. Retrying after {retry_delay} seconds..."
+                    )
+                
                 time.sleep(retry_delay)
 
-    logging.error(
-        f"❌ Quiz generation failed after {max_attempts} attempts"
-    )
-
-    return None
 
 def repair_question_with_ai(question_text, options, correct_index, explanation):
     """Question, correct option और explanation को दोबारा verify करता है।"""
