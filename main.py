@@ -446,105 +446,117 @@ async def handle_q_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data['q_count'] = int(text)
     # ... next step
 
-async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_authorized(update): return TITLE
-    
-    context.user_data['title'] = update.message.text
-    
-    # ✅ Selective Keyboard 3: Skip Description Button
-    reply_keyboard = [['Skip ⏭️']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-    
-    await update.message.reply_text(
-        "✅ Title Saved!\n\n"
-        "<blockquote>📝 <b>Step 4:</b> Send a Description for this quiz.</blockquote>\n"
-        "<blockquote>or niche diye gaye <b>skip ⏭️</b> button par click kare.</blockquote>",
-        parse_mode="HTML",
-        reply_markup=markup
-    )
-    return DESCRIPTION
-
-async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_authorized(update): return DESCRIPTION
-    
-    text = update.message.text
-    context.user_data['description'] = "None" if text in ["/skip", "Skip ⏭️"] else text
-    
-    # ✅ Selective Keyboard 4: Language Choice
-    reply_keyboard = [['English', 'Hindi']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-    
-    await update.message.reply_text(
-        "<blockquote>🌐 <b>Step 5 — Language</b>\nChoose quiz output layout language:</blockquote>",
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
-    return LANGUAGE
-
+# STEP 3 - LANGUAGE
 async def handle_language(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return LANGUAGE
     
-    context.user_data['language'] = update.message.text
+    text = update.message.text.strip()
+    valid_options = ['English', 'Hindi']
     
-    # ✅ Selective Keyboard 5: Explanation Choice
-    reply_keyboard = [['With Explanation', 'No Explanation']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    if text not in valid_options:
+        await update.message.reply_text(
+            "❌ Please select from buttons: English or Hindi",
+            reply_markup=ReplyKeyboardMarkup(
+                [['English', 'Hindi']], 
+                one_time_keyboard=True, 
+                resize_keyboard=True, 
+                selective=True
+            )
+        )
+        return LANGUAGE
     
-    await update.message.reply_text(
-        "<blockquote>✨ <b>Step 6 — Explanation</b>\nDo you want explanations?</blockquote>",
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
-    return EXPLANATION
+    context.user_data['language'] = text
+    # ... next step
 
+# STEP 4 - EXPLANATION
 async def handle_explanation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return EXPLANATION
     
-    context.user_data['explanation'] = update.message.text
+    text = update.message.text.strip()
+    valid_options = ['With Explanation', 'No Explanation']
     
-    # ✅ Selective Keyboard 6: Difficulty Choice
-    reply_keyboard = [['Easy', 'Medium', 'Hard']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    if text not in valid_options:
+        await update.message.reply_text(
+            "❌ Please select from buttons only",
+            reply_markup=ReplyKeyboardMarkup(
+                [['With Explanation', 'No Explanation']], 
+                one_time_keyboard=True, 
+                resize_keyboard=True, 
+                selective=True
+            )
+        )
+        return EXPLANATION
     
-    await update.message.reply_text(
-        "<blockquote>⚡ <b>Step 7 — Difficulty</b>\nChoose calculation difficulty:</blockquote>",
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
-    return DIFFICULTY
+    context.user_data['explanation'] = text
+    # ... next step
 
+# STEP 5 - DIFFICULTY
 async def handle_difficulty(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return DIFFICULTY
     
-    context.user_data['difficulty'] = update.message.text
+    text = update.message.text.strip()
+    valid_options = ['Easy', 'Medium', 'Hard']
     
-    # ✅ Selective Keyboard 7: Option Count Choice
-    reply_keyboard = [['2 Options', '3 Options', '4 Options']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    if text not in valid_options:
+        await update.message.reply_text(
+            "❌ Please select: Easy, Medium, or Hard",
+            reply_markup=ReplyKeyboardMarkup(
+                [['Easy', 'Medium', 'Hard']], 
+                one_time_keyboard=True, 
+                resize_keyboard=True, 
+                selective=True
+            )
+        )
+        return DIFFICULTY
     
-    await update.message.reply_text(
-        "<blockquote>🔥 <b>Step 8 — Option Count</b>\nHow many choices per card?</blockquote>",
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
-    return OPTIONS_COUNT
+    context.user_data['difficulty'] = text
+    # ... next step
 
+# STEP 6 - OPTIONS_COUNT
 async def handle_options_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return OPTIONS_COUNT
     
-    context.user_data['options_count'] = int(update.message.text.split()[0])
+    text = update.message.text.strip()
+    valid_options = ['2 Options', '3 Options', '4 Options']
     
-    # ✅ Selective Keyboard 8: Time Limit Choice
-    reply_keyboard = [['10 sec', '15 sec', '30 sec']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    if text not in valid_options:
+        await update.message.reply_text(
+            "❌ Please select: 2, 3, or 4 Options",
+            reply_markup=ReplyKeyboardMarkup(
+                [['2 Options', '3 Options', '4 Options']], 
+                one_time_keyboard=True, 
+                resize_keyboard=True, 
+                selective=True
+            )
+        )
+        return OPTIONS_COUNT
     
-    await update.message.reply_text(
-        "<blockquote>⏱ <b>Step 9 — Time Limit</b>\nSet ticker duration:</blockquote>",
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
-    return TIME_LIMIT
+    context.user_data['options_count'] = int(text.split()[0])
+    # ... next step
 
+# STEP 7 - TIME_LIMIT
+async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): 
+        return TIME_LIMIT
+    
+    text = update.message.text.strip()
+    valid_options = ['10 sec', '15 sec', '30 sec']
+    
+    if text not in valid_options:
+        await update.message.reply_text(
+            "❌ Please select: 10, 15, or 30 seconds",
+            reply_markup=ReplyKeyboardMarkup(
+                [['10 sec', '15 sec', '30 sec']], 
+                one_time_keyboard=True, 
+                resize_keyboard=True, 
+                selective=True
+            )
+        )
+        return TIME_LIMIT
+    
+    context.user_data['time_limit'] = int(text.split()[0])
+    
+# ... rest of your AI generation code
 async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): 
         return TIME_LIMIT
