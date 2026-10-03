@@ -446,6 +446,41 @@ async def handle_q_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data['q_count'] = int(text)
     # ... next step
 
+async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return TITLE
+    
+    context.user_data['title'] = update.message.text
+    
+    # ✅ Selective Keyboard 3: Skip Description Button
+    reply_keyboard = [['Skip ⏭️']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    
+    await update.message.reply_text(
+        "✅ Title Saved!\n\n"
+        "<blockquote>📝 <b>Step 4:</b> Send a Description for this quiz.</blockquote>\n"
+        "<blockquote>or niche diye gaye <b>skip ⏭️</b> button par click kare.</blockquote>",
+        parse_mode="HTML",
+        reply_markup=markup
+    )
+    return DESCRIPTION
+
+async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return DESCRIPTION
+    
+    text = update.message.text
+    context.user_data['description'] = "None" if text in ["/skip", "Skip ⏭️"] else text
+    
+    # ✅ Selective Keyboard 4: Language Choice
+    reply_keyboard = [['English', 'Hindi']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    
+    await update.message.reply_text(
+        "<blockquote>🌐 <b>Step 5 — Language</b>\nChoose quiz output layout language:</blockquote>",
+        reply_markup=markup,
+        parse_mode="HTML"
+    )
+    return LANGUAGE
+    
 # STEP 3 - LANGUAGE
 async def handle_language(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return LANGUAGE
