@@ -422,16 +422,29 @@ async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return Q_COUNT
 
 async def handle_q_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_authorized(update): return Q_COUNT
+    if not is_authorized(update): 
+        return Q_COUNT
     
-    context.user_data['q_count'] = int(update.message.text)
-    await update.message.reply_text(
-        f"<blockquote>✅ Questions Count: <b>{context.user_data['q_count']}</b></blockquote>\n\n"
-        "<blockquote>📝 <b>Step 3:</b> Send me the Title of your quiz.</blockquote>",
-        parse_mode="HTML",
-        reply_markup=ReplyKeyboardRemove(selective=True)
-    )
-    return TITLE
+    text = update.message.text.strip()
+    
+    # ✅ Sirf ye 4 options accept karo
+    valid_options = ['10', '20', '50', '70']
+    
+    if text not in valid_options:
+        await update.message.reply_text(
+            "❌ Please select from the buttons only:\n"
+            "10, 20, 50, or 70",
+            reply_markup=ReplyKeyboardMarkup(
+                [['10', '20', '50', '70']], 
+                one_time_keyboard=True, 
+                resize_keyboard=True, 
+                selective=True
+            )
+        )
+        return Q_COUNT
+    
+    context.user_data['q_count'] = int(text)
+    # ... next step
 
 async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return TITLE
