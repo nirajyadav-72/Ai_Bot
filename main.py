@@ -625,7 +625,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # 🎬 स्टेप 1: शुरुआती लोडिंग मैसेज (0 सेकंड)
     generating_msg = await update.message.reply_text(
         "<b>🚀 AI Quiz Generator</b>\n\n"
-        "CNM⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜\n"
+        "CNM⬜⬜⬜⬜⬜⬜⬜⬜\n"
         "🔎 Researching your topic...\n"
         "⏳ please wait...",
         parse_mode="HTML",
@@ -703,6 +703,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             except: pass
             generating_msg = await update.message.reply_text(
                 "<b>🚀 AI Quiz Generator</b>\n\n"
+                "Verified Answer's ✅\n"
                 "💯 Done generated...\n\n"
                 "🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩",
                 parse_mode="HTML"
