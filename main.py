@@ -247,11 +247,28 @@ def generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt):
         logging.warning(f"GEMINI_API_KEY present: {bool(GEMINI_API_KEY)}")
         return None
     
-    # OPTIMIZED PROMPT: करंट अफेयर्स और लेटेस्ट 2026 डेटा के लिए
+    # 🔎 EXAM DETECTION LOGIC: Check if topic contains popular exam keywords
+    exam_keywords = ["ssc", "gd", "chsl", "cgl", "mts", "railway", "ntpc", "group d", "banking", "ibps", "upsc", "police", "pet"]
+    is_exam_detected = any(keyword in topic.lower() for keyword in exam_keywords)
+    
+    # 🎯 DYNAMIC PROMPT EXTRACTION
+    if is_exam_detected:
+        exam_instruction = f"""
+CRITICAL CONTEXT FOR COMPETITIVE EXAMS (PYQs):
+The user has specified an exam-related topic: "{topic}". 
+You MUST strictly generate ONLY actual Previous Year Questions (PYQs) or highly accurate mock questions that perfectly match the official syllabus, standard, and weightage of that specific exam ({topic}). 
+Do NOT generate generic questions. The questions must mimic the exact language, format, and difficulty level seen in real past papers of this exam.
+"""
+    else:
+        exam_instruction = f"""
+CRITICAL CONTEXT FOR CURRENT AFFAIRS & GENERAL KNOWLEDGE:
+If the topic is "Current Affairs", "General Knowledge", "News", or related to recent events, you MUST focus on the latest national and international events, awards, sports, appointments, and developments up to the current year 2026. Ensure all facts are updated, highly accurate, and non-speculative.
+"""
+
+    # 📝 MAIN SYSTEM PROMPT
     prompt = f"""Generate exactly {count} unique quiz questions ONLY in {lang} language about "{topic}".
 
-CRITICAL CONTEXT FOR CURRENT AFFAIRS:
-If the topic is "Current Affairs", "General Knowledge", "News", or related to recent events, you MUST focus on the latest national and international events, awards, sports, appointments, and developments up to the current year 2026. Ensure all facts are updated, highly accurate, and non-speculative.
+{exam_instruction}
 
 Topic: {topic}
 Language: {lang}
@@ -288,13 +305,11 @@ CRITICAL RULES:
         try:
             logging.info(f"🤖 Requesting AI for {count} questions on {topic}...")
             
-            # ✅ FIX: नए SDK के अनुसार interactions.create का उपयोग और सही मॉडल
             response = ai_client.interactions.create(
                 model='gemini-3.5-flash-lite',
                 input=prompt,
             )
             
-            # ✅ FIX: response.text की जगह response.output_text का उपयोग
             if not response.output_text:
                 logging.warning("⚠️ AI returned empty output_text")
                 return None
@@ -314,7 +329,6 @@ CRITICAL RULES:
             break  # सफलता मिलने पर रीट्राई लूप से बाहर निकलें
 
         except Exception as e:
-            # ✅ FIX: 503 या UNAVAILABLE एरर आने पर ऑटोमैटिक रीट्राई करें
             if "503" in str(e) or "UNAVAILABLE" in str(e):
                 if attempt < max_retries - 1:
                     logging.warning(f"🔄 AI बिजी है (503)। {retry_delay} सेकंड में दोबारा प्रयास कर रहे हैं...")
@@ -325,7 +339,7 @@ CRITICAL RULES:
             logging.error(f"❌ AI Generation Error: {e}", exc_info=True)
             return None
             
-    # ✅ Validation Loop (यह आपकी ओरिजिनल वैलिडेशन लॉजिक है)
+    # Validation Loop
     valid_questions = []
     for idx, q in enumerate(questions):
         try:
@@ -335,21 +349,18 @@ CRITICAL RULES:
             
             correct_idx = q.get("correct", 0)
             
-            # Ensure correct is INTEGER and valid
             if not isinstance(correct_idx, int):
                 try:
                     correct_idx = int(correct_idx)
                 except (ValueError, TypeError):
                     correct_idx = 0
             
-            # Validate index range
             if correct_idx < 0 or correct_idx >= len(q["options"]):
                 logging.warning(f"Q{idx}: Invalid index {correct_idx}, using 0")
                 correct_idx = 0
             
             q["correct"] = correct_idx
             
-            # Explanation fallback handling
             if "explanation" not in q or not q["explanation"]:
                 q["explanation"] = f"The correct answer is option {correct_idx + 1}."
                 
@@ -360,7 +371,6 @@ CRITICAL RULES:
             logging.warning(f"Question parse error: {q_err}")
             continue
     
-    # ✅ Minimum threshold met logic
     min_required = min(10, count)
     
     if len(valid_questions) >= min_required:
