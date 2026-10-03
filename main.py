@@ -536,6 +536,20 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if not is_authorized(update): 
         return TIME_LIMIT
     
+    user_text = update.message.text.strip()
+    allowed_times = ['10 sec', '15 sec', '30 sec']
+    
+    # 🚫 VALIDATION: Check if user sent something other than the buttons
+    if user_text not in allowed_times:
+        reply_keyboard = [['10 sec', '15 sec', '30 sec']]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+        await update.message.reply_text(
+            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए बटनों में से ही टाइम लिमिट चुनें:",
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+        return TIME_LIMIT
+    
     context.user_data['time_limit'] = int(update.message.text.split()[0])
     
     topic = context.user_data.get('topic', 'General Knowledge')
