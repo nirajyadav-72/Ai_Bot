@@ -247,26 +247,35 @@ def generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt):
         logging.warning(f"GEMINI_API_KEY present: {bool(GEMINI_API_KEY)}")
         return None
     
+    # 🇮🇳 Dynamic Date-Time Handler (IST Timezone Base)
+    # Isse har request me current month aur year dynamically prompt me jayega
+    now_ist = datetime.now(tz=IST)
+    current_date_str = now_ist.strftime("%B %Y")  # Output Example: "October 2026"
+    current_year = now_ist.year
+    
     # 🔎 EXAM DETECTION LOGIC: Check if topic contains popular exam keywords
     exam_keywords = ["ssc", "gd", "chsl", "cgl", "mts", "railway", "ntpc", "group d", "banking", "ibps", "upsc", "police", "pet"]
     is_exam_detected = any(keyword in topic.lower() for keyword in exam_keywords)
     
-    # 🎯 DYNAMIC PROMPT EXTRACTION
+    # 🎯 DYNAMIC PROMPT EXTRACTION WITH CURRENT TIME CONTEXT
     if is_exam_detected:
         exam_instruction = f"""
 CRITICAL CONTEXT FOR COMPETITIVE EXAMS (PYQs):
 The user has specified an exam-related topic: "{topic}". 
 You MUST strictly generate ONLY actual Previous Year Questions (PYQs) or highly accurate mock questions that perfectly match the official syllabus, standard, and weightage of that specific exam ({topic}). 
-Do NOT generate generic questions. The questions must mimic the exact language, format, and difficulty level seen in real past papers of this exam.
+Do NOT generate generic questions. The questions must mimic the exact language, format, and difficulty level seen in real past papers of this exam. 
+If the exam has a current affairs section, ensure the data is verified up to the current date: {current_date_str}.
 """
     else:
         exam_instruction = f"""
 CRITICAL CONTEXT FOR CURRENT AFFAIRS & GENERAL KNOWLEDGE:
-If the topic is "Current Affairs", "General Knowledge", "News", or related to recent events, you MUST focus on the latest national and international events, awards, sports, appointments, and developments up to the current year 2026. Ensure all facts are updated, highly accurate, and non-speculative.
+If the topic is "Current Affairs", "General Knowledge", "News", or related to recent events, you MUST focus on the latest national and international events, awards, sports, appointments, and developments up to the current date: {current_date_str} (Year {current_year}). 
+Ensure all facts are updated, highly accurate, non-speculative, and reflect the real-world status as of {current_date_str}. Do NOT generate outdated historical current affairs.
 """
 
-    # 📝 MAIN SYSTEM PROMPT
+    # 📝 MAIN SYSTEM PROMPT (Embedded with dynamic date)
     prompt = f"""Generate exactly {count} unique quiz questions ONLY in {lang} language about "{topic}".
+Current Evaluation Date Context: {current_date_str}
 
 {exam_instruction}
 
@@ -303,7 +312,7 @@ CRITICAL RULES:
 
     for attempt in range(max_retries):
         try:
-            logging.info(f"🤖 Requesting AI for {count} questions on {topic}...")
+            logging.info(f"🤖 Requesting AI for {count} questions on {topic} (Time Context: {current_date_str})...")
             
             response = ai_client.interactions.create(
                 model='gemini-3.5-flash-lite',
@@ -326,7 +335,7 @@ CRITICAL RULES:
                 clean_text = match.group(0)
                 
             questions = json.loads(clean_text)
-            break  # सफलता मिलने पर रीट्राई लूप से बाहर निकलें
+            break  # सफलता मिलने पर रीतराई लूप से बाहर निकलें
 
         except Exception as e:
             if "503" in str(e) or "UNAVAILABLE" in str(e):
@@ -379,7 +388,7 @@ CRITICAL RULES:
     else:
         logging.warning(f"⚠️ Only {len(valid_questions)} questions received. Less than minimum {min_required}. Cancelling.")
         return None
-
+        
 # --- BOT ROUTINES & HANDLERS ---
 async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.message.from_user.id
