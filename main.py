@@ -424,7 +424,23 @@ async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def handle_q_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return Q_COUNT
     
-    context.user_data['q_count'] = int(update.message.text)
+    user_text = update.message.text.strip()
+    allowed_counts = ['10', '20', '50', '70']
+    
+    # 🚫 VALIDATION: Check if user sent something other than the buttons
+    if user_text not in allowed_counts:
+        reply_keyboard = [['10', '20', '50', '70']]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+        
+        await update.message.reply_text(
+            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए बटनों में से ही किसी एक संख्या को चुनें।\n"
+            "या मैन्युअली केवल 10, 20, 50, या 70 ही टाइप करें।",
+            parse_mode="HTML",
+            reply_markup=markup
+        )
+        return Q_COUNT # यूज़र को इसी स्टेप पर रोक कर रखेगा
+        
+    context.user_data['q_count'] = int(user_text)
     await update.message.reply_text(
         f"<blockquote>✅ Questions Count: <b>{context.user_data['q_count']}</b></blockquote>\n\n"
         "<blockquote>📝 <b>Step 3:</b> Send me the Title of your quiz.</blockquote>",
@@ -471,9 +487,21 @@ async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def handle_language(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return LANGUAGE
     
-    context.user_data['language'] = update.message.text
+    user_text = update.message.text.strip()
+    allowed_langs = ['English', 'Hindi']
     
-    # ✅ Selective Keyboard 5: Explanation Choice
+    if user_text not in allowed_langs:
+        reply_keyboard = [['English', 'Hindi']]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+        await update.message.reply_text(
+            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए बटनों में से ही भाषा चुनें:",
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+        return LANGUAGE
+
+    context.user_data['language'] = user_text
+    
     reply_keyboard = [['With Explanation', 'No Explanation']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
     
@@ -487,9 +515,21 @@ async def handle_language(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def handle_explanation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return EXPLANATION
     
-    context.user_data['explanation'] = update.message.text
+    user_text = update.message.text.strip()
+    allowed_expl = ['With Explanation', 'No Explanation']
     
-    # ✅ Selective Keyboard 6: Difficulty Choice
+    if user_text not in allowed_expl:
+        reply_keyboard = [['With Explanation', 'No Explanation']]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+        await update.message.reply_text(
+            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए बटनों में से ही चुनें:",
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+        return EXPLANATION
+
+    context.user_data['explanation'] = user_text
+    
     reply_keyboard = [['Easy', 'Medium', 'Hard']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
     
@@ -503,9 +543,21 @@ async def handle_explanation(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def handle_difficulty(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return DIFFICULTY
     
-    context.user_data['difficulty'] = update.message.text
+    user_text = update.message.text.strip()
+    allowed_diff = ['Easy', 'Medium', 'Hard']
     
-    # ✅ Selective Keyboard 7: Option Count Choice
+    if user_text not in allowed_diff:
+        reply_keyboard = [['Easy', 'Medium', 'Hard']]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+        await update.message.reply_text(
+            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए बटनों में से कठिनाई का स्तर चुनें:",
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+        return DIFFICULTY
+
+    context.user_data['difficulty'] = user_text
+    
     reply_keyboard = [['2 Options', '3 Options', '4 Options']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
     
@@ -519,9 +571,21 @@ async def handle_difficulty(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 async def handle_options_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return OPTIONS_COUNT
     
-    context.user_data['options_count'] = int(update.message.text.split()[0])
+    user_text = update.message.text.strip()
+    allowed_opts = ['2 Options', '3 Options', '4 Options']
     
-    # ✅ Selective Keyboard 8: Time Limit Choice
+    if user_text not in allowed_opts:
+        reply_keyboard = [['2 Options', '3 Options', '4 Options']]
+        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+        await update.message.reply_text(
+            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए बटनों में से विकल्पों की संख्या चुनें:",
+            reply_markup=markup,
+            parse_mode="HTML"
+        )
+        return OPTIONS_COUNT
+
+    context.user_data['options_count'] = int(user_text.split()[0])
+    
     reply_keyboard = [['10 sec', '15 sec', '30 sec']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
     
