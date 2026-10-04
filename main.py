@@ -3142,7 +3142,7 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logging.error(f"Error in track_poll_answers: {e}")
 
 # 🎖️ result leaderboard 
-# 🎖️ result leaderboard (FIXED: TOP 20 USERS IN GOLDEN IMAGE CHART)
+# 🎖️ result leaderboard (100% FIXED SYNTAX: WHITE THEME & LARGE TEXT - TOP 20)
 async def compile_group_leaderboard(chat_id, context):
     try:
         game = GROUP_GAMES.get(chat_id)
@@ -3203,14 +3203,12 @@ async def compile_group_leaderboard(chat_id, context):
             calculated_points = float(score) - (float(wrong) * float(db_neg_multiplier))
             final_scores[uid] = {"score": score, "wrong": wrong, "total_time": total_time, "points": calculated_points}
         
-        # ✅ TOP 20 USERS SELECTED FOR IMAGE CHART AND TEXT LIST
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:20]
         
         # ====================================================================
-        # 🖼️ MESSAGE 1: DYNAMIC GRAPHIC GOLDEN CANVAS GENERATOR (IMAGE ONLY)
+        # 🖼️ MESSAGE 1: DYNAMIC GRAPHIC PREMIUM WHITE CANVAS (IMAGE ONLY)
         # ====================================================================
-        # 🚀 20 प्लेयर्स को फिट करने के लिए कैनवास की ऊंचाई बढ़ाकर 920px की गई है
-        img = Image.new('RGB', (850, 920), color='#f1c40f')
+        img = Image.new('RGB', (850, 960), color='#ffffff')
         d = ImageDraw.Draw(img)
         
         font_path = "hindi_font.ttf"
@@ -3219,31 +3217,40 @@ async def compile_group_leaderboard(chat_id, context):
                 title_fnt = ImageFont.truetype(font_path, 24)
                 sub_title_fnt = ImageFont.truetype(font_path, 16)
                 table_fnt = ImageFont.truetype(font_path, 18)
+                use_custom_font = True
             except Exception:
                 title_fnt = sub_title_fnt = table_fnt = ImageFont.load_default()
+                use_custom_font = False
         else:
             title_fnt = sub_title_fnt = table_fnt = ImageFont.load_default()
+            use_custom_font = False
 
-        # इमेज पर मुख्य हेडर टाइटल्स
-        d.text((40, 20), f"QUIZ LEADERBOARD: {quiz_title.upper()}", fill='#1a1a24', font=title_fnt)
-        d.text((40, 52), f"Total Questions: {total_questions_answered}   |   Negative Marking: -{db_neg_multiplier}", fill='#2c3e50', font=sub_title_fnt)
+        def draw_custom_text(draw_obj, position, text, fill_color, current_font, make_bold=True):
+            x, y = position
+            if not use_custom_font and make_bold:
+                draw_obj.text((type(x) is int and x or x, y), text, fill=fill_color, font=current_font)
+                draw_obj.text((x+1, y), text, fill=fill_color, font=current_font)
+                draw_obj.text((x, y+1), text, fill=fill_color, font=current_font)
+                draw_obj.text((x+1, y+1), text, fill=fill_color, font=current_font)
+            else:
+                draw_obj.text((x, y), text, fill=fill_color, font=current_font)
+
+        draw_custom_text(d, (40, 20), f"QUIZ LEADERBOARD: {quiz_title.upper()}", '#1a1a24', title_fnt, make_bold=True)
+        draw_custom_text(d, (40, 52), f"Total Questions: {total_questions_answered}   |   Negative Marking: -{db_neg_multiplier}", '#34495e', sub_title_fnt, make_bold=False)
         
-        # मुख्य तालिका बॉर्डर रेखा
         d.line([(40, 85), (810, 85)], fill='#1a1a24', width=4)
+        
+        x_positions = [40, 110, 390, 500, 610, 740]
         headers = ["Rank", "Participant Name", "Correct", "Wrong", "Total Time", "Score"]
-        x_positions = [40, 110, 390, 490, 590, 720]
         
         for h, x in zip(headers, x_positions):
-            d.text((x, 95), h, fill='#1a1a24', font=table_fnt)
+            draw_custom_text(d, (x, 95), h, '#1a1a24', table_fnt, make_bold=True)
             
         d.line([(40, 130), (810, 130)], fill='#1a1a24', width=3)
         
-        # डेटा पंक्तियाँ (Row Grid Rendering)
-        y_offset = 145
+        y_offset = 150
         for idx, (uid, meta) in enumerate(sorted_scores, 1):
             user_display_name = game["joined_users"].get(uid, "Player")
-            
-            # हिंदी और अंग्रेजी दोनों टेक्स्ट को सुरक्षित रखना
             clean_name = re.sub(r'[^\w\s\d\u0900-\u097F]', '', user_display_name)[:16].strip()
             if not clean_name:
                 clean_name = f"Player {idx}"
@@ -3252,23 +3259,22 @@ async def compile_group_leaderboard(chat_id, context):
             t_sec = int(meta["total_time"])
             time_disp = f"{t_sec}s" if t_sec < 60 else f"{t_sec//60}m {t_sec%60}s"
             
-            # रो डेटा रेंडर करना
-            d.text((x_positions[0], y_offset), rank_label, fill='#1a1a24', font=table_fnt)
-            d.text((x_positions[1], y_offset), clean_name, fill='#1a1a24', font=table_fnt)
-            d.text((x_positions[2], y_offset), str(meta["score"]), fill='#1b5e20', font=table_fnt)
-            d.text((x_positions[3], y_offset), str(meta["wrong"]), fill='#b71c1c', font=table_fnt)
-            d.text((x_positions[4], y_offset), time_disp, fill='#1a1a24', font=table_fnt)
-            d.text((x_positions[5], y_offset), f"{meta['points']:+.2f}", fill='#000000', font=table_fnt)
+            row_text_color = '#1a1a24'
             
-            # बारीक हॉरिजॉन्टल डिवाइडर रेखा (दूरी 36px सेट की ताकि स्पेसिंग बनी रहे)
-            d.line([(40, y_offset + 28), (810, y_offset + 28)], fill='#d4ac0d', width=1)
-            y_offset += 36
+            draw_custom_text(d, (x_positions[0], y_offset), rank_label, '#b8860b' if idx==1 else row_text_color, table_fnt, make_bold=True)
+            draw_custom_text(d, (x_positions[1], y_offset), clean_name, row_text_color, table_fnt, make_bold=True)
+            draw_custom_text(d, (x_positions[2], y_offset), str(meta["score"]), '#1b5e20', table_fnt, make_bold=True)
+            draw_custom_text(d, (x_positions[3], y_offset), str(meta["wrong"]), '#b71c1c', table_fnt, make_bold=True)
+            draw_custom_text(d, (x_positions[4], y_offset), time_disp, row_text_color, table_fnt, make_bold=True)
+            draw_custom_text(d, (x_positions[5], y_offset), f"{meta['points']:+.2f}", '#000000', table_fnt, make_bold=True)
+            
+            d.line([(40, y_offset + 30), (810, y_offset + 30)], fill='#e0e0e0', width=1)
+            y_offset += 38
             
         image_stream = io.BytesIO()
         img.save(image_stream, format='PNG')
         image_stream.seek(0)
         
-        # 🚀 1. सबसे पहले केवल सुनहरी इमेज सेंड करें
         await context.bot.send_photo(
             chat_id=chat_id,
             photo=image_stream
@@ -3318,7 +3324,6 @@ async def compile_group_leaderboard(chat_id, context):
         footer_text = "\n🏆 <b>Congratulations to all participants!</b>"
         full_text_message = header_text + text_leaderboard + footer_text
         
-        # रिस्टार्ट बटन
         share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
         kb = [[{"text": "Start Again ✨", "url": share_url, "style": "success"}]]
         
