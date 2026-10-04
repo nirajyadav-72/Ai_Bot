@@ -3140,6 +3140,7 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logging.error(f"Error in track_poll_answers: {e}")
 
 # 🎖️ result leaderboard 
+# 🎖️ result leaderboard (WIDE SCROLLABLE TABLE DESIGN)
 async def compile_group_leaderboard(chat_id, context):
     try:
         game = GROUP_GAMES.get(chat_id)
@@ -3150,7 +3151,7 @@ async def compile_group_leaderboard(chat_id, context):
         
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        # Title ke sath negative_value column fetch ki
+        # Title के साथ negative_value कॉलम fetch की
         cursor.execute("SELECT title, negative_value FROM quizzes WHERE quiz_id = ?", (game["quiz_id"],))
         quiz_data = cursor.fetchone()
         quiz_title = quiz_data[0] if quiz_data else "Quiz"
@@ -3163,28 +3164,19 @@ async def compile_group_leaderboard(chat_id, context):
         total_questions_answered = len(questions)
         correct_answers = {}
         
-        # 🟢 FIXED: Convert ALL correct_answer values to INTEGER index
+        # ALL correct_answer values to INTEGER index
         for idx, (q_text, options_json, correct_ans) in enumerate(questions):
             options = json.loads(options_json)
-            
-            # ✅ Convert correct_ans to INTEGER
             try:
-                correct_idx = int(correct_ans)  # 🟢 Direct conversion
-                # Validate range
+                correct_idx = int(correct_ans)
                 if correct_idx < 0 or correct_idx >= len(options):
-                    logging.warning(f"Q{idx}: Invalid index {correct_idx}, using 0")
                     correct_idx = 0
             except (ValueError, TypeError):
-                # Fallback: try string matching (backward compat)
                 try:
                     correct_idx = options.index(str(correct_ans))
-                    logging.info(f"Q{idx}: Converted string '{correct_ans}' to index {correct_idx}")
                 except ValueError:
                     correct_idx = 0
-                    logging.warning(f"Q{idx}: Could not find '{correct_ans}', using 0")
-            
-            correct_answers[idx] = correct_idx  # 🟢 Store INTEGER
-            logging.info(f"✅ Leaderboard Q{idx}: correct_answer={correct_idx}, option='{options[correct_idx] if correct_idx < len(options) else 'N/A'}'")
+            correct_answers[idx] = correct_idx
         
         final_scores = {}
         for uid in game["user_answers"].keys():
@@ -3196,11 +3188,8 @@ async def compile_group_leaderboard(chat_id, context):
             total_time = 0.0
             
             for question_idx, answer_data in user_answers.items():
-                selected_idx = answer_data["selected"]  # User ne jo select kiya
-                correct_idx = correct_answers.get(question_idx, -1)  # 🟢 Correct answer index
-                
-                # 🟢 FIXED: Direct integer comparison (both are now INTEGER)
-                logging.info(f"User {uid}, Q{question_idx}: selected={selected_idx} (type: {type(selected_idx).__name__}), correct={correct_idx} (type: {type(correct_idx).__name__}), match={selected_idx == correct_idx}")
+                selected_idx = answer_data["selected"]
+                correct_idx = correct_answers.get(question_idx, -1)
                 
                 if selected_idx == correct_idx:
                     score += 1
@@ -3211,11 +3200,10 @@ async def compile_group_leaderboard(chat_id, context):
                 else:
                     wrong += 1
             
-            # Core Formula: Right - (Wrong * Selected Button Value)
             calculated_points = float(score) - (float(wrong) * float(db_neg_multiplier))
             final_scores[uid] = {"score": score, "wrong": wrong, "total_time": total_time, "points": calculated_points}
         
-        # Dynamic Sorting: Pehle high score (Descending), fir kam time (Ascending)
+        # Dynamic Sorting
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:50]
         
         header = f"🏁 <b>The quiz '{escape_markdown(quiz_title)}' has finished!</b>\n"
@@ -3223,17 +3211,23 @@ async def compile_group_leaderboard(chat_id, context):
         
         subheader = f"📋 <b>{total_questions_answered} questions answered</b>\n"
         subheader += f"👥 <b>Total Participants: {len(final_scores)}</b>\n"
-        subheader += f"━━━━━━━━━━━━━━━━━\n\n"
+        subheader += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         
-        # 🎭 डायलॉग्स पूल (बिना किसी फिक्स नाम के - रैंडमली इस्तेमाल के लिए)
+        # --- 📊 WIDE SLIDE TABLE CONSTRUCTION ---
+        # Markdown backticks (```) का उपयोग किया गया है ताकि Telegram में हॉरिजॉन्टल स्क्रॉल बार आ सके।
+        # कॉलम स्पेसिंग: Name(15), Right(8), Wrong(8), Total Time(13), Score(8)
+        table_text = "```\n"
+        table_text += "Name            Right   Wrong   Total Time   Score  \n"
+        table_text += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        
+        # डायलॉग्स के लिए पूल्स जो आपके कोड में पहले से थे
         roasts_topper = [
             "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? टॉपर बनने का इरादा प्रमाणित है!",
             "[किताबी कीड़ा] इतनी पढ़ाई कहाँ से करते हो भाई? हमें भी थोड़ा ज्ञान दे दो, गुरुजी!",
-            "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? या फिर अंतर्यामी हो?",
+            "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? या फिर अंतर्यामी हो!",
             "[वैज्ञानिक] इतना दिमाग लाते कहाँ से हो भाई? नासा (NASA) वाले ढूंढ रहे हैं तुम्हें!",
             "[रट्टू तोता] लगता है आज सुबह नाश्ते में पूरी किताब ही चबा कर खा गए थे। बाकी सब भूल गए!",
         ]
-        
         roasts_middle = [
             "[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए, थोड़ा जमीन पर आते तो नहीं?",
             "[समीक्षा बाबू] दूसरों की आलोचना करने में तो अव्वल हो, लेकिन नंबर देखकर लगता है सब भूल गए!",
@@ -3241,7 +3235,6 @@ async def compile_group_leaderboard(chat_id, context):
             "[सेफ राइडर] भाई ने उतना ही रिस्क लिया जितना घरवाले शादी में दूर के रिश्ते दिखाते हैं!",
             "[मिस कॉल] नंबर तो ठीक-ठाक आ गए, पर किस्मत ने आखिरी वक्त पर वैसे ही कट कर दिया!",
         ]
-        
         roasts_low = [
             "[सिर्फ हाजिरी] आप सिर्फ परीक्षा हॉल की हवा खाने आए थे क्या? इतना कम स्कोर देखकर हैरानी हुई!",
             "[पूजा की थाली] परीक्षा में केवल श्रद्धा और भावना से काम नहीं चलता, कुछ सहायक अध्ययन भी जरूरी है!",
@@ -3253,7 +3246,6 @@ async def compile_group_leaderboard(chat_id, context):
             "[धूप सेकने वाले] परीक्षा हॉल में धूप सेकने आए थे क्या बाबूजी? जितना स्कोर मिला उतनी ही धूप है!",
             "[मार्कशीट का विलेन] घरवाले अगर यह मार्कशीट देख लें, तो इनाम में सिर्फ फ्लॉप कॉलर ही मिलेगा!",
         ]
-        
         roasts_minus = [
             "[कर्जदार खिलाड़ी] हंसना तो दूर की बात है, आप तो परीक्षक से भी उधार में नंबर माँग रहे हैं!",
             "[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। अगली बार थोड़ा प्रयास करना!",
@@ -3262,59 +3254,58 @@ async def compile_group_leaderboard(chat_id, context):
             "[ब्लैक होल] आपके अकाउंट में नंबर आते नहीं, सीधे गायब हो जाते हैं। माइनस मार्क की सुंदरता!",
         ]
 
-        leaderboard = ""
+        leaderboard_dialogues = "\n💬 <b>Bakaiti & Full Dialogues</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+
         for idx, (uid, meta) in enumerate(sorted_scores, 1):
             user_display_name = game["joined_users"].get(uid, "Unknown User")
             
-            # 🌟 FIX: Agar name @ se shuru hota hai (username hai), toh escape nahi karenge taaki link valid rahe
-            if str(user_display_name).startswith("@"):
-                clean_username = user_display_name  # Keep pure clickable username
-            else:
-                clean_username = escape_markdown(user_display_name) # Safe escape for normal names
+            # नाम से इमोजी साफ़ करना ताकि टेबल स्पेसिंग न बिगड़े
+            clean_name = re.sub(r'[^\w\s\d]', '', user_display_name).strip()
+            if not clean_name:
+                clean_name = "Player"
                 
-            score = meta["score"]
-            wrong_count = meta["wrong"]
-            points = meta["points"]
-            total_time = format_time(meta["total_time"])
+            rank_icon = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
             
-            # रोस्ट लॉजिक के लिए स्कोर परसेंटेज निकालना
-            percentage = (points / total_questions_answered * 100) if total_questions_answered > 0 else 0.0
+            # 12 कैरेक्टर में नाम फिक्स करना (रैंक आइकॉन मिलाकर कुल 15 स्पेस)
+            display_name = clean_name[:10] + ".." if len(clean_name) > 12 else clean_name
+            name_cell = f"{rank_icon}{display_name}".ljust(16)
             
-            # 🔥 फिक्स रोस्ट सिलेक्शन: रैंक 1 को हमेशा टॉपर का सम्मान मिलेगा
+            # आपके कोड का मूल डेटा टेबल फॉर्मेट में सेट करना
+            score_cell = str(meta["score"]).ljust(8)
+            wrong_cell = str(meta["wrong"]).ljust(8)
+            time_cell = format_time(meta["total_time"]).ljust(13)
+            
+            points_val = meta["points"]
+            points_cell = f"{points_val:.2f}".ljust(8)
+            
+            # पूरी रो (Row) को वाइड स्ट्रक्चर में जोड़ना
+            table_text += f"{name_cell}{score_cell}{wrong_cell}{time_cell}{points_cell}\n"
+            
+            # --- रोस्ट / डायलॉग्स प्रोसेसिंग (जो नीचे साफ दिखेगा) ---
+            percentage = (points_val / total_questions_answered * 100) if total_questions_answered > 0 else 0.0
             if idx == 1:
                 roast_msg = random.choice(roasts_topper)
-            elif points < 0:
+            elif points_val < 0:
                 roast_msg = random.choice(roasts_minus)
             elif percentage < 25:
                 roast_msg = random.choice(roasts_low)
             else:
                 roast_msg = random.choice(roasts_middle)
                 
-            rank_icon = "🥇." if idx == 1 else "🥈." if idx == 2 else "🥉." if idx == 3 else f"{idx}."
-            
-            # Clean layout print without invalid characters or slashes
-            leaderboard += f"{rank_icon} <b>{clean_username}</b>\n"
-            leaderboard += f"   ➻ <b>Right:</b> {score}\n"
-            leaderboard += f"   ➻ <b>Wrong:</b> {wrong_count}\n"
-            leaderboard += f"   ➻ <b>Total Time Taken:</b> {total_time}\n"
-            leaderboard += f"   <blockquote><b>Final Score: {points:.2f} Points</b></blockquote>\n"
-            leaderboard += f"   <blockquote><b>{roast_msg}</b></blockquote>\n"
-            leaderboard += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
+            safe_display_name = html.escape(user_display_name)
+            leaderboard_dialogues += f"{rank_icon} <b>{safe_display_name}</b>\n    <b>Final Score: {points_val:.2f} Points</b>\n    <code>{roast_msg}</code>\n   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
+        
+        table_text += "```\n"
         
         footer = "\n🏆 <b>Congratulations to all participants!</b>"
-        full_message = header + subheader + leaderboard + footer
+        full_message = header + subheader + table_text + leaderboard_dialogues + footer
         
-        # 🌟 FIX: Library wrapper ko bypass karke raw dictionary payload bheja taaki crash na ho
-        share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
-        
-        # Raw structure format dictionary injection
+        share_url = f"https://t.me{bot_username}?startgroup=quiz_{game['quiz_id']}"
         raw_button = {
             "text": "Start Again ✨",
             "url": share_url,
-            "style": "success"  # Hara (Green) rang lagane ke liye. Neela chahiye toh "primary" likhein
+            "style": "success"
         }
-        
-        # InlineKeyboardMarkup constructor manually object structures feed kar lega
         kb = [[raw_button]]
         
         await context.bot.send_message(
@@ -3325,8 +3316,8 @@ async def compile_group_leaderboard(chat_id, context):
         )
         GROUP_GAMES.pop(chat_id, None)
     except Exception as e:
-        logging.error(f"Error in compile_group_leaderboard: {e}")
-                 
+        logging.error(f"Error in compile_group_leaderboard: {e}", exc_info=True)
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         user_id = update.message.from_user.id if update.message else update.callback_query.from_user.id
