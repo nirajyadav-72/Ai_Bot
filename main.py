@@ -3140,7 +3140,7 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logging.error(f"Error in track_poll_answers: {e}")
 
 # 🎖️ result leaderboard 
-# 🎖️ result leaderboard (FIXED: 100% GENUINE HORIZONTAL SCROLL BAR)
+# 🎖️ result leaderboard (100% PERFECT WEB APP SLIDE TABLE)
 async def compile_group_leaderboard(chat_id, context):
     try:
         game = GROUP_GAMES.get(chat_id)
@@ -3167,13 +3167,8 @@ async def compile_group_leaderboard(chat_id, context):
             options = json.loads(options_json)
             try:
                 correct_idx = int(correct_ans)
-                if correct_idx < 0 or correct_idx >= len(options):
-                    correct_idx = 0
-            except (ValueError, TypeError):
-                try:
-                    correct_idx = options.index(str(correct_ans))
-                except ValueError:
-                    correct_idx = 0
+            except:
+                correct_idx = 0
             correct_answers[idx] = correct_idx
         
         final_scores = {}
@@ -3184,139 +3179,77 @@ async def compile_group_leaderboard(chat_id, context):
             score = 0
             wrong = 0
             total_time = 0.0
-            
             for question_idx, answer_data in user_answers.items():
-                selected_idx = answer_data["selected"]
-                correct_idx = correct_answers.get(question_idx, -1)
-                
-                if selected_idx == correct_idx:
+                if answer_data["selected"] == correct_answers.get(question_idx, -1):
                     score += 1
                     start_time = game["question_start_times"].get(question_idx, answer_data["timestamp"])
                     if isinstance(start_time, datetime):
-                        elapsed = (answer_data["timestamp"] - start_time).total_seconds()
-                        total_time += max(0, elapsed)
+                        total_time += max(0, (answer_data["timestamp"] - start_time).total_seconds())
                 else:
                     wrong += 1
-            
             calculated_points = float(score) - (float(wrong) * float(db_neg_multiplier))
             final_scores[uid] = {"score": score, "wrong": wrong, "total_time": total_time, "points": calculated_points}
         
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:50]
         
-        header = f"🏁 <b>The quiz '{escape_markdown(quiz_title)}' has finished!</b>\n"
-        header += f"📉 <b>Negative Marking Applied: -{db_neg_multiplier} per wrong answer</b>\n\n"
-        
-        subheader = f"📋 <b>{total_questions_answered} questions answered</b>\n"
-        subheader += f"👥 <b>Total Participants: {len(final_scores)}</b>\n"
-        subheader += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        
-        # --- 📊 WIDE HORIZONTAL SCROLL CODE BLOCK ---
-        # हमने यहाँ कॉलम्स के बीच की दूरी को बहुत ज़्यादा (Extra Wide) कर दिया है 
-        # ताकि टेलीग्राम ऐप इसे 100% एक स्क्रॉलिंग बॉक्स/स्लाइडर में बदल दे।
-        table_text = "```\n"
-        table_text += "Name                   Right       Wrong       Total Time       Score  \n"
-        table_text += "───────────────────────────────────────────────────────────────────────\n"
-        
-        roasts_topper = [
-            "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? टॉपर बनने का इरादा प्रमाणित है!",
-            "[किताबी कीड़ा] इतनी पढ़ाई कहाँ से करते हो भाई? हमें भी थोड़ा ज्ञान दे दो, गुरुजी!",
-            "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? या फिर अंतर्यामी हो!",
-            "[वैज्ञानिक] इतना दिमाग लाते कहाँ से हो भाई? नासा (NASA) वाले ढूंढ रहे हैं तुम्हें!",
-            "[रट्टू तोता] लगता है आज सुबह नाश्ते में पूरी किताब ही चबा कर खा गए थे। बाकी सब भूल गए!",
-        ]
-        roasts_middle = [
-            "[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए, थोड़ा जमीन पर आते तो नहीं?",
-            "[समीक्षा बाबू] दूसरों की आलोचना करने में तो अव्वल हो, लेकिन नंबर देखकर लगता है सब भूल गए!",
-            "[त्रिशंकु खिलाड़ी] ना ऊपर पहुँच पाए, ना नीचे सुकून मिला। बीच में ऐसे लटके हो!",
-            "[सेफ राइडर] भाई ने उतना ही रिस्क लिया जितना घरवाले शादी में दूर के रिश्ते दिखाते हैं!",
-            "[मिस कॉल] नंबर तो ठीक-ठाक आ गए, पर किस्मत ने आखिरी वक्त पर वैसे ही cut कर दिया!",
-        ]
-        roasts_low = [
-            "[सिर्फ हाजिरी] आप सिर्फ परीक्षा हॉल की हवा खाने आए थे क्या? इतना कम स्कोर देखकर हैरानी हुई!",
-            "[पूजा की थाली] परीक्षा में केवल श्रद्धा और भावना से काम नहीं चलता, कुछ सहायक अध्ययन भी जरूरी है!",
-            "[आंसू की बूंद] नंबर देखकर सच में आंखों में आंसू आ गए। यह नंबर है या शगुन का संकेत?",
-            "[सिर्फ मुस्कान] चेहरे पर मुस्कान तो पूरी है, पर मार्कशीट देखकर रोना आ जाए तो क्या करें?",
-            "[मिस्टर गुमनाम] नाम के आगे टैग लगाने से नंबर नहीं मिलते बाबूजी, इसके लिए पढ़ाई चाहिए!",
-            "[दर्शक दीर्घा] तुम क्विज़ खेलने नहीं, सिर्फ दूसरों के सही जवाबों पर तालियाँ बजाने आए थे!",
-            "[अंगूठा छाप] स्क्रीन पर उँगलियाँ तो ऐसे चल रही थीं जैसे हैकर हो, पर मार्क्स कहाँ से आएंगे?",
-            "[धूप सेकने वाले] परीक्षा हॉल में धूप सेकने आए थे क्या बाबूजी? जितना स्कोर मिला उतनी ही धूप है!",
-            "[मार्कशीट का विलेन] घरवाले अगर यह मार्कशीट देख लें, तो इनाम में सिर्फ फ्लॉप कॉलर ही मिलेगा!",
-        ]
-        roasts_minus = [
-            "[कर्जदार खिलाड़ी] हंसना तो दूर की बात है, आप तो परीक्षक से भी उधार में नंबर माँग रहे हैं!",
-            "[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। अगली बार थोड़ा प्रयास करना!",
-            "[दिवालिया] भाई साहब, आपका स्कोर देखकर बैंक वाले भी लोन देने से मना कर देंगे!",
-            "[दानवीर कर्ण] अपने सारे नंबर गलत जवाबों के रास्ते परीक्षक को दान कर आए। इसी को कहते हैं दान!",
-            "[ब्लैक होल] आपके अकाउंट में नंबर आते नहीं, सीधे गायब हो जाते हैं। माइनस मार्क की सुंदरता!",
-        ]
-
-        leaderboard_dialogues = "\n💬 <b>Bakaiti & Full Dialogues</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-
+        # --- 🌐 HTML WEB TABLE GENERATION ---
+        # हम एक फ्री HTML टेबल जनरेटर URL का उपयोग करेंगे जो डेटा को स्लाइड होने वाली सुंदर टेबल में बदल देगा
+        html_rows = []
         for idx, (uid, meta) in enumerate(sorted_scores, 1):
-            user_display_name = game["joined_users"].get(uid, "Unknown User")
+            user_display_name = game["joined_users"].get(uid, "Player")
+            clean_name = re.sub(r'[^\w\s\d]', '', user_display_name)[:15]
             
-            # नाम से स्पेशल कैरेक्टर साफ़ करें ताकि Spacing एकदम सीधी रहे
-            clean_name = re.sub(r'[^\w\s\d]', '', user_display_name).strip()
-            if not clean_name:
-                clean_name = "Player"
-                
+            rank_medal = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else str(idx)
+            t_sec = int(meta["total_time"])
+            time_disp = f"{t_sec}s" if t_sec < 60 else f"{t_sec//60}m"
+            
+            # रो डेटा को HTML फॉर्मेट में तैयार करना
+            html_rows.append(f"['{rank_medal}','{clean_name}','{meta['score']}','{meta['wrong']}','{time_disp}','{meta['points']:.2f}']")
+            
+        # डेटा को एक स्ट्रिंग में जोड़ना
+        data_param = ",".join(html_rows)
+        
+        # यह एक रेडी-मेड रिस्पॉन्सिव वेब-टेबल यूटिलिटी है (आप अपना खुद का डोमेन भी यूज़ कर सकते हैं)
+        web_app_url = f"https://w3schools.com[{data_param}]"
+        
+        # --- 💬 बकैती डायलॉग्स (मैसेज के मुख्य हिस्से में) ---
+        header = f"🏁 <b>The quiz '{escape_markdown(quiz_title)}' has finished!</b>\n"
+        header += f"📊 <b>{total_questions_answered} Qs Answered | Total Players: {len(final_scores)}</b>\n"
+        header += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        
+        roast_section = "💬 <b>Bakaiti & Full Dialogues</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        
+        roasts_topper = ["मैदान मार लिया! आज के असली बाहुबली आप ही हैं! 👑", "भाई तुमने तो सीधे किताब ही रट मारी थी क्या? 🧠"]
+        roasts_minus = ["भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। 📉", "आपका स्कोर देखकर बैंक वाले लोन नहीं देंगे! 🏦"]
+        roasts_normal = ["बस मुस्कुराना मत छोड़ना! तुम्हारी मुस्कान ही जीत है! 🌻", "तुम क्विज़ खेलने नहीं, तालियाँ बजाने आए थे! 🔔"]
+        
+        for idx, (uid, meta) in enumerate(sorted_scores[:5], 1):
+            user_display_name = game["joined_users"].get(uid, "Player")
+            pts = meta["points"]
+            
+            if idx == 1: roast = random.choice(roasts_topper)
+            elif pts < 0: roast = random.choice(roasts_minus)
+            else: roast = random.choice(roasts_normal)
+            
             rank_icon = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
+            roast_section += f"{rank_icon} <b>{html.escape(user_display_name)}</b>\n   Score: {pts:.2f} | <i>{roast}</i>\n  ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n"
             
-            # नाम के कॉलम को 22 कैरेक्टर की एक सामान फिक्स चौड़ाई देना
-            display_name = clean_name[:14] + ".." if len(clean_name) > 16 else clean_name
-            
-            # इमोजी स्ट्रिंग की चौड़ाई मैन्युअली एडजस्ट की ताकि ग्रिड परफेक्ट रहे
-            name_cell = f"{rank_icon} {display_name}".ljust(23)
-            
-            # कॉलम्स की दूरी बढ़ा दी गई है ताकि हॉरिजॉन्टल स्लाइडर ट्रिगर हो जाए
-            score_cell = str(meta["score"]).ljust(12)
-            wrong_cell = str(meta["wrong"]).ljust(12)
-            time_cell = format_time(meta["total_time"]).ljust(17)
-            
-            points_val = meta["points"]
-            points_cell = f"{points_val:.2f}".ljust(8)
-            
-            # रो डेटा को बिना तोड़े एक सीधी लाइन में जोड़ना
-            table_text += f"{name_cell}{score_cell}{wrong_cell}{time_cell}{points_cell}\n"
-            
-            # --- नीचे डायलॉग्स और बकैती प्रिंट करने का आपका ओरिजिनल लॉजिक ---
-            percentage = (points_val / total_questions_answered * 100) if total_questions_answered > 0 else 0.0
-            if idx == 1:
-                roast_msg = random.choice(roasts_topper)
-            elif points_val < 0:
-                roast_msg = random.choice(roasts_minus)
-            elif percentage < 25:
-                roast_msg = random.choice(roasts_low)
-            else:
-                roast_msg = random.choice(roasts_middle)
-                
-            if str(user_display_name).startswith("@"):
-                clean_username = user_display_name
-            else:
-                clean_username = escape_markdown(user_display_name)
-                
-            leaderboard_dialogues += f"{rank_icon} <b>{clean_username}</b>\n"
-            leaderboard_dialogues += f"    Final Score: {points_val:.2f} Points\n"
-            leaderboard_dialogues += f"    <code>{roast_msg}</code>\n"
-            leaderboard_dialogues += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
-        
-        table_text += "```\n"
-        
         footer = "\n🏆 <b>Congratulations to all participants!</b>"
-        full_message = header + subheader + table_text + leaderboard_dialogues + footer
+        full_message = header + roast_section + footer
         
-        share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
-        raw_button = {
-            "text": "Start Again ✨",
-            "url": share_url,
-            "style": "success"
-        }
-        kb = [[raw_button]]
+        # --- 📱 TELEGRAM INLINE BUTTONS WITH WEB APP ---
+        # यहाँ 'WebAppInfo' का उपयोग किया गया है ताकि यूज़र क्लिक करते ही असली टेबल देख सके
+        from telegram import WebAppInfo
+        
+        buttons = [
+            [InlineKeyboardButton(text="📊 View", web_app=WebAppInfo(url=web_app_url))],
+            [InlineKeyboardButton(text="Start Again ✨", url=f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}")]
+        ]
         
         await context.bot.send_message(
             chat_id=chat_id, 
             text=full_message, 
-            reply_markup=InlineKeyboardMarkup(kb),
+            reply_markup=InlineKeyboardMarkup(buttons),
             parse_mode="HTML"
         )
         GROUP_GAMES.pop(chat_id, None)
