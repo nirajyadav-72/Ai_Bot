@@ -3142,8 +3142,9 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # 🎖️ result leaderboard 
 from PIL import Image, ImageDraw, ImageFont
 import io
+import os
 
-# 🎖️ result leaderboard (ROYAL GOLDEN - EXTRA BOLD LARGE TEXT)
+# 🎖️ result leaderboard (100% FIX FOR HINDI TEXT IN TERMUX WITH DYNAMIC FONT)
 async def compile_group_leaderboard(chat_id, context):
     try:
         game = GROUP_GAMES.get(chat_id)
@@ -3207,42 +3208,49 @@ async def compile_group_leaderboard(chat_id, context):
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:12]
         
         # --- 🖼️ DYNAMIC GRAPHIC GOLDEN CANVAS GENERATOR ---
-        # बड़े अक्षरों के लिए ऊंचाई बढ़ाकर 600 पिक्सल कर दी गई है
         img = Image.new('RGB', (850, 600), color='#f1c40f')
         d = ImageDraw.Draw(img)
         
-        # 🛠️ EXTRA BOLD / LARGE TEXT HELPER FUNCTION
-        # यह फंक्शन डिफ़ॉल्ट फॉन्ट को 3 बार ओवरलैप करके मोटा (Bold) और साफ बनाता है
-        def draw_bold_text(draw_obj, position, text, fill_color):
-            x, y = position
-            draw_obj.text((x, y), text, fill=fill_color)
-            draw_obj.text((x+1, y), text, fill=fill_color)
-            draw_obj.text((x, y+1), text, fill=fill_color)
-            draw_obj.text((x+1, y+1), text, fill=fill_color)
+        # 🛠️ HINDI TTF FONT LOADING LOGIC (टर्मक्स वातावरण के लिए)
+        font_path = "hindi_font.ttf"
+        if os.path.exists(font_path):
+            try:
+                # हिंदी अक्षरों को बड़ा और साफ़ दिखाने के लिए साइज़ सेट किया
+                title_fnt = ImageFont.truetype(font_path, 24)
+                sub_title_fnt = ImageFont.truetype(font_path, 16)
+                table_fnt = ImageFont.truetype(font_path, 18)
+                logging.info("✅ Hindi TTF Font loaded successfully in Termux.")
+            except Exception as fe:
+                logging.error(f"Error loading TTF font: {fe}")
+                title_fnt = sub_title_fnt = table_fnt = ImageFont.load_default()
+        else:
+            logging.warning("⚠️ hindi_font.ttf not found! Falling back to default font.")
+            title_fnt = sub_title_fnt = table_fnt = ImageFont.load_default()
 
-        # मुख्य टाइटल्स ड्रा करना (बोल्ड और बड़े)
-        draw_bold_text(d, (40, 20), f"👑 QUIZ LEADERBOARD: {quiz_title.upper()}", '#1a1a24')
-        d.text((40, 48), f"Total Questions: {total_questions_answered}   |   Negative Marking: -{db_neg_multiplier}", fill='#2c3e50')
+        # मुख्य टाइटल्स ड्रा करना
+        d.text((40, 20), f"👑 QUIZ LEADERBOARD: {quiz_title.upper()}", fill='#1a1a24', font=title_fnt)
+        d.text((40, 52), f"Total Questions: {total_questions_answered}   |   Negative Marking: -{db_neg_multiplier}", fill='#2c3e50', font=sub_title_fnt)
         
-        # टेबल का ऊपरी मुख्य बॉर्डर (मोटा बॉर्डर रेखा)
-        d.line([(40, 80), (810, 80)], fill='#1a1a24', width=4)
+        # टेबल का ऊपरी मुख्य बॉर्डर
+        d.line([(40, 85), (810, 85)], fill='#1a1a24', width=4)
         
-        # बड़े अक्षरों के हिसाब से कॉलम्स का नया पोजीशन मैप
+        # हेडर कॉलम्स का नया पोजीशन मैप
         headers = ["Rank", "Participant Name", "Correct", "Wrong", "Total Time", "Score"]
-        x_positions = [40, 120, 390, 500, 610, 730]
+        x_positions = [40, 110, 390, 500, 610, 740]
         
         for h, x in zip(headers, x_positions):
-            draw_bold_text(d, (x, 92), h, '#1a1a24')
+            d.text((x, 95), h, fill='#1a1a24', font=table_fnt)
             
         # हेडर के नीचे की विभाजक रेखा
-        d.line([(40, 125), (810, 125)], fill='#1a1a24', width=3)
+        d.line([(40, 130), (810, 130)], fill='#1a1a24', width=3)
         
-        # बड़े फॉन्ट के कारण रो की स्पेसिंग को बढ़ाकर 42 पिक्सल कर दिया गया है
-        y_offset = 145
+        # रो की स्पेसिंग को बढ़ाकर 42 पिक्सल किया गया है ताकि हिंदी की मात्राएं न कटें
+        y_offset = 150
         for idx, (uid, meta) in enumerate(sorted_scores, 1):
             user_display_name = game["joined_users"].get(uid, "Player")
             
-            clean_name = re.sub(r'[^\w\s\d]', '', user_display_name)[:16].strip()
+            # यहाँ हम नाम में से केवल अनचाहे सिम्बल्स हटा रहे हैं, हिंदी टेक्स्ट सुरक्षित रहेगा
+            clean_name = re.sub(r'[^\w\s\d\u0900-\u097F]', '', user_display_name)[:16].strip()
             if not clean_name:
                 clean_name = f"Player {idx}"
                 
@@ -3252,16 +3260,16 @@ async def compile_group_leaderboard(chat_id, context):
             
             row_text_color = '#1a1a24'
             
-            # रो डेटा को एक्स्ट्रा बोल्ड और बड़े फॉर्मैट में लिखना
-            draw_bold_text(d, (x_positions[0], y_offset), rank_label, row_text_color)
-            draw_bold_text(d, (x_positions[1], y_offset), clean_name, row_text_color)
-            draw_bold_text(d, (x_positions[2], y_offset), str(meta["score"]), '#1b5e20') # डार्क ग्रीन
-            draw_bold_text(d, (x_positions[3], y_offset), str(meta["wrong"]), '#b71c1c') # डार्क रेड
-            draw_bold_text(d, (x_positions[4], y_offset), time_disp, row_text_color)
-            draw_bold_text(d, (x_positions[5], y_offset), f"{meta['points']:+.2f}", '#000000')
+            # रो डेटा को हिंदी फॉन्ट के साथ इमेज पर ड्रा करना
+            d.text((x_positions[0], y_offset), rank_label, fill=row_text_color, font=table_fnt)
+            d.text((x_positions[1], y_offset), clean_name, fill=row_text_color, font=table_fnt)
+            d.text((x_positions[2], y_offset), str(meta["score"]), fill='#1b5e20', font=table_fnt) # डार्क ग्रीन
+            d.text((x_positions[3], y_offset), str(meta["wrong"]), fill='#b71c1c', font=table_fnt) # डार्क रेड
+            d.text((x_positions[4], y_offset), time_disp, fill=row_text_color, font=table_fnt)
+            d.text((x_positions[5], y_offset), f"{meta['points']:+.2f}", fill='#000000', font=table_fnt)
             
-            # प्रत्येक पंक्ति के नीचे विभाजक रेखा
-            d.line([(40, y_offset + 30), (810, y_offset + 30)], fill='#d4ac0d', width=1)
+            # प्रत्येक पंक्ति के नीचे हल्की विभाजक रेखा
+            d.line([(40, y_offset + 32), (810, y_offset + 32)], fill='#d4ac0d', width=1)
             y_offset += 42
             
         # इन-मेमोरी बाइट्स स्ट्रीम कन्वर्शन
