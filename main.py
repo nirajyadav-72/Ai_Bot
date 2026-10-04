@@ -3142,7 +3142,6 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logging.error(f"Error in track_poll_answers: {e}")
 
 # 🎖️ result leaderboard 
-# 🎖️ result leaderboard (GOLDEN IMAGE + ORIGINAL TEXT LEADERBOARD BOTH COMBINED)
 async def compile_group_leaderboard(chat_id, context):
     try:
         game = GROUP_GAMES.get(chat_id)
@@ -3262,7 +3261,7 @@ async def compile_group_leaderboard(chat_id, context):
         image_stream.seek(0)
         
         # ====================================================================
-        # 📝 2. ORIGINAL TEXT LEADERBOARD BUILDER (पहले जैसा टेक्स्ट फॉर्मेट)
+        # 📝 2. ORIGINAL TEXT LEADERBOARD BUILDER
         # ====================================================================
         header_text = f"🏁 <b>The quiz '{html.escape(quiz_title)}' has finished!</b>\n"
         header_text += f"📉 <b>Negative Marking Applied: -{db_neg_multiplier} per wrong answer</b>\n\n"
@@ -3271,24 +3270,23 @@ async def compile_group_leaderboard(chat_id, context):
         subheader_text += f"👥 <b>Total Participants: {len(final_scores)}</b>\n"
         subheader_text += f"━━━━━━━━━━━━━━━━━━━━━\n\n"
         
-        # पुराना टेक्स्ट रिज़ल्ट फॉर्मेट (एकदम मूल लेआउट)
         text_leaderboard = ""
         
         roasts_topper = [
-            "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? टॉपर बनने का इरादा प्रमाणित है!",
-            "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? या फिर अंतर्यामी हो!",
+            "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? टॉपर बनने का इरादा प्रबल है। 🎓",
+            "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? या फिर अंतर्याष्ट्रीय गणितज्ञ हो? 🧠",
         ]
         roasts_middle = [
-            "[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए, थोड़ा जमीन पर आते तो नहीं?",
-            "[सिर्फ मुस्कान] चेहरे पर मुस्कान तो पूरी है, पर मार्कशीट देखकर रोना आ जाए तो क्या करें?",
+            "[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए, थोड़ा जमीन पर आते तो न..! 🐦",
+            "[सिर्फ मुस्कान] चेहरे पर मुस्कान तो पूरी है, पर मार्कशीट देखकर रोना आ जाए! 😊",
         ]
         roasts_low = [
-            "[सिर्फ हाजिरी] आप सिर्फ परीक्षा हॉल की हवा खाने आए थे क्या? इतना कम स्कोर देखकर हैरानी हुई!",
-            "[मार्कशीट का विलेन] घरवाले अगर यह मार्कशीट देख लें, तो इनाम में सिर्फ फ्लॉप कॉलर ही मिलेगा!",
+            "[सिर्फ हाजिरी] आप सिर्फ परीक्षा हॉल की हवा खाने आए थे क्या? इतना कम स्कोर तो... 😅",
+            "[मार्कशीट का विलेन] घरवाले अगर यह मार्कशीट देख लें, तो इनाम में सिर्फ फ्लॉपी! 📋",
         ]
         roasts_minus = [
-            "[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। अगली बार थोड़ा प्रयास करना!",
-            "[कर्जदार खिलाड़ी] हंसना तो दूर की बात है, आप तो परीक्षक से भी उधार में नंबर माँग रहे हैं!",
+            "[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। अगली बार थोड़ा सोचना। 🤦",
+            "[कर्जदार खिलाड़ी] हंसना तो दूर की बात है, आप तो परीक्षक से भी उधार में नंबर माँग रहे हो! 💸",
         ]
 
         for idx, (uid, meta) in enumerate(sorted_scores, 1):
@@ -3317,7 +3315,6 @@ async def compile_group_leaderboard(chat_id, context):
                 
             rank_icon = "🥇." if idx == 1 else "🥈." if idx == 2 else "🥉." if idx == 3 else f"{idx}."
             
-            # पुराना टेक्स्ट बॉडी स्ट्रक्चर दोबारा जोड़ा गया
             text_leaderboard += f"{rank_icon} <b>{clean_username}</b>\n"
             text_leaderboard += f"   ➻ <b>Right:</b> {score}\n"
             text_leaderboard += f"   ➻ <b>Wrong:</b> {wrong_count}\n"
@@ -3328,26 +3325,63 @@ async def compile_group_leaderboard(chat_id, context):
         
         footer_text = "\n🏆 <b>Congratulations to all participants!</b>"
         
-        # दोनों को आपस में मर्ज (Combine) करना
+        # ✅ COMBINED MESSAGE
         full_caption_message = header_text + subheader_text + text_leaderboard + footer_text
         
-        # रिस्टार्ट बटन
+        # ✅ CONDITIONAL LOGIC: Image + Caption vs Text Only
+        MAX_PHOTO_CAPTION_LEN = 900  # Telegram photo caption safe limit
+        MAX_TEXT_LEN = 4096  # Telegram text message limit
+        
         share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
         kb = [[{"text": "Start Again ✨", "url": share_url, "style": "success"}]]
         
-        # 🚀 फाइनल फोटो + पूरा पुराना टेक्स्ट रिज़ल्ट एक साथ भेजना
-        await context.bot.send_photo(
-            chat_id=chat_id,
-            photo=image_stream,
-            caption=full_caption_message,
-            reply_markup=InlineKeyboardMarkup(kb),
-            parse_mode="HTML"
-        )
+        # ====================================================================
+        # 🔥 CONDITION: Agar text bahut lamba hai to image na bhejo
+        # ====================================================================
+        if len(full_caption_message) > MAX_PHOTO_CAPTION_LEN:
+            # ✅ TEXT-ONLY MODE (IMAGE SKIP)
+            logging.info(f"Leaderboard text {len(full_caption_message)} chars > {MAX_PHOTO_CAPTION_LEN} - using text-only mode")
+            
+            text_to_send = full_caption_message
+            
+            if len(text_to_send) > MAX_TEXT_LEN:
+                # ✅ CHUNKED MODE: Split into multiple messages
+                logging.info(f"Text {len(text_to_send)} chars > {MAX_TEXT_LEN} - splitting into chunks")
+                
+                for i in range(0, len(text_to_send), MAX_TEXT_LEN):
+                    chunk = text_to_send[i:i + MAX_TEXT_LEN]
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=chunk,
+                        parse_mode="HTML"
+                    )
+                    await asyncio.sleep(0.5)  # Rate limiting
+            else:
+                # ✅ SINGLE MESSAGE MODE
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=text_to_send,
+                    reply_markup=InlineKeyboardMarkup(kb),
+                    parse_mode="HTML"
+                )
+        
+        else:
+            # ✅ NORMAL MODE: Image + Caption (jab text chhota ho)
+            logging.info(f"Leaderboard text {len(full_caption_message)} chars <= {MAX_PHOTO_CAPTION_LEN} - using image mode")
+            
+            await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=image_stream,
+                caption=full_caption_message,
+                reply_markup=InlineKeyboardMarkup(kb),
+                parse_mode="HTML"
+            )
         
         GROUP_GAMES.pop(chat_id, None)
+        
     except Exception as e:
         logging.error(f"Error in compile_group_leaderboard: {e}", exc_info=True)
-
+        
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         user_id = update.message.from_user.id if update.message else update.callback_query.from_user.id
