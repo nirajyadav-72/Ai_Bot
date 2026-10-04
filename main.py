@@ -25,6 +25,8 @@ from telegram.error import NetworkError
 from telegram.request import HTTPXRequest
 from google import genai
 from html import escape as html_escape
+from PIL import Image, ImageDraw, ImageFont
+import io
 
 TIME_RE = re.compile(r'^\d{1,2}:\d{2}$')
 # Enable Logging
