@@ -3223,7 +3223,7 @@ async def compile_group_leaderboard(chat_id, context):
             title_fnt = sub_title_fnt = table_fnt = ImageFont.load_default()
 
         # इमेज के मुख्य टाइटल्स
-        d.text((40, 20), f"👑 QUIZ LEADERBOARD: {quiz_title.upper()}", fill='#1a1a24', font=title_fnt)
+        d.text((40, 20), f"Quiz  ➻  {quiz_title.upper()}  |  Onwer  ➻  NIRAJ", fill='#1a1a24', font=title_fnt)
         d.text((40, 52), f"Total Questions: {total_questions_answered}   |   Negative Marking: -{db_neg_multiplier}", fill='#2c3e50', font=sub_title_fnt)
         
         # टेबल लाइन्स और हेडर
@@ -3269,7 +3269,7 @@ async def compile_group_leaderboard(chat_id, context):
         
         subheader_text = f"📋 <b>{total_questions_answered} questions answered</b>\n"
         subheader_text += f"👥 <b>Total Participants: {len(final_scores)}</b>\n"
-        subheader_text += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        subheader_text += f"━━━━━━━━━━━━━━━━━━━━━\n\n"
         
         # पुराना टेक्स्ट रिज़ल्ट फॉर्मेट (एकदम मूल लेआउट)
         text_leaderboard = ""
