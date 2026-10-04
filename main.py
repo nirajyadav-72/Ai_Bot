@@ -3142,10 +3142,6 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logging.error(f"Error in track_poll_answers: {e}")
 
 # 🎖️ result leaderboard 
-from PIL import Image, ImageDraw, ImageFont
-import io
-import os
-
 # 🎖️ result leaderboard (100% FIX FOR HINDI TEXT IN TERMUX WITH DYNAMIC FONT)
 async def compile_group_leaderboard(chat_id, context):
     try:
