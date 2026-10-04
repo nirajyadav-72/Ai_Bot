@@ -3142,7 +3142,7 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logging.error(f"Error in track_poll_answers: {e}")
 
 # 🎖️ result leaderboard 
-# 🎖️ result leaderboard (100% FIX FOR HINDI TEXT IN TERMUX WITH DYNAMIC FONT)
+# 🎖️ result leaderboard (GOLDEN IMAGE + ORIGINAL TEXT LEADERBOARD BOTH COMBINED)
 async def compile_group_leaderboard(chat_id, context):
     try:
         game = GROUP_GAMES.get(chat_id)
@@ -3205,49 +3205,40 @@ async def compile_group_leaderboard(chat_id, context):
         
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:12]
         
-        # --- 🖼️ DYNAMIC GRAPHIC GOLDEN CANVAS GENERATOR ---
+        # ====================================================================
+        # 🖼️ 1. DYNAMIC GRAPHIC GOLDEN CANVAS GENERATOR (IMAGE)
+        # ====================================================================
         img = Image.new('RGB', (850, 600), color='#f1c40f')
         d = ImageDraw.Draw(img)
         
-        # 🛠️ HINDI TTF FONT LOADING LOGIC (टर्मक्स वातावरण के लिए)
         font_path = "hindi_font.ttf"
         if os.path.exists(font_path):
             try:
-                # हिंदी अक्षरों को बड़ा और साफ़ दिखाने के लिए साइज़ सेट किया
                 title_fnt = ImageFont.truetype(font_path, 24)
                 sub_title_fnt = ImageFont.truetype(font_path, 16)
                 table_fnt = ImageFont.truetype(font_path, 18)
-                logging.info("✅ Hindi TTF Font loaded successfully in Termux.")
-            except Exception as fe:
-                logging.error(f"Error loading TTF font: {fe}")
+            except Exception:
                 title_fnt = sub_title_fnt = table_fnt = ImageFont.load_default()
         else:
-            logging.warning("⚠️ hindi_font.ttf not found! Falling back to default font.")
             title_fnt = sub_title_fnt = table_fnt = ImageFont.load_default()
 
-        # मुख्य टाइटल्स ड्रा करना
+        # इमेज के मुख्य टाइटल्स
         d.text((40, 20), f"👑 QUIZ LEADERBOARD: {quiz_title.upper()}", fill='#1a1a24', font=title_fnt)
         d.text((40, 52), f"Total Questions: {total_questions_answered}   |   Negative Marking: -{db_neg_multiplier}", fill='#2c3e50', font=sub_title_fnt)
         
-        # टेबल का ऊपरी मुख्य बॉर्डर
+        # टेबल लाइन्स और हेडर
         d.line([(40, 85), (810, 85)], fill='#1a1a24', width=4)
-        
-        # हेडर कॉलम्स का नया पोजीशन मैप
         headers = ["Rank", "Participant Name", "Correct", "Wrong", "Total Time", "Score"]
-        x_positions = [40, 110, 390, 500, 610, 740]
+        x_positions = [40, 110, 360, 470, 570, 720]
         
         for h, x in zip(headers, x_positions):
             d.text((x, 95), h, fill='#1a1a24', font=table_fnt)
             
-        # हेडर के नीचे की विभाजक रेखा
         d.line([(40, 130), (810, 130)], fill='#1a1a24', width=3)
         
-        # रो की स्पेसिंग को बढ़ाकर 42 पिक्सल किया गया है ताकि हिंदी की मात्राएं न कटें
         y_offset = 150
         for idx, (uid, meta) in enumerate(sorted_scores, 1):
             user_display_name = game["joined_users"].get(uid, "Player")
-            
-            # यहाँ हम नाम में से केवल अनचाहे सिम्बल्स हटा रहे हैं, हिंदी टेक्स्ट सुरक्षित रहेगा
             clean_name = re.sub(r'[^\w\s\d\u0900-\u097F]', '', user_display_name)[:16].strip()
             if not clean_name:
                 clean_name = f"Player {idx}"
@@ -3256,52 +3247,95 @@ async def compile_group_leaderboard(chat_id, context):
             t_sec = int(meta["total_time"])
             time_disp = f"{t_sec}s" if t_sec < 60 else f"{t_sec//60}m {t_sec%60}s"
             
-            row_text_color = '#1a1a24'
-            
-            # रो डेटा को हिंदी फॉन्ट के साथ इमेज पर ड्रा करना
-            d.text((x_positions[0], y_offset), rank_label, fill=row_text_color, font=table_fnt)
-            d.text((x_positions[1], y_offset), clean_name, fill=row_text_color, font=table_fnt)
-            d.text((x_positions[2], y_offset), str(meta["score"]), fill='#1b5e20', font=table_fnt) # डार्क ग्रीन
-            d.text((x_positions[3], y_offset), str(meta["wrong"]), fill='#b71c1c', font=table_fnt) # डार्क रेड
-            d.text((x_positions[4], y_offset), time_disp, fill=row_text_color, font=table_fnt)
+            d.text((x_positions[0], y_offset), rank_label, fill='#1a1a24', font=table_fnt)
+            d.text((x_positions[1], y_offset), clean_name, fill='#1a1a24', font=table_fnt)
+            d.text((x_positions[2], y_offset), str(meta["score"]), fill='#1b5e20', font=table_fnt)
+            d.text((x_positions[3], y_offset), str(meta["wrong"]), fill='#b71c1c', font=table_fnt)
+            d.text((x_positions[4], y_offset), time_disp, fill='#1a1a24', font=table_fnt)
             d.text((x_positions[5], y_offset), f"{meta['points']:+.2f}", fill='#000000', font=table_fnt)
             
-            # प्रत्येक पंक्ति के नीचे हल्की विभाजक रेखा
             d.line([(40, y_offset + 32), (810, y_offset + 32)], fill='#d4ac0d', width=1)
             y_offset += 42
             
-        # इन-मेमोरी बाइट्स स्ट्रीम कन्वर्शन
         image_stream = io.BytesIO()
         img.save(image_stream, format='PNG')
         image_stream.seek(0)
         
-        # --- 💬 बकैती डायलॉग्स कैप्शन ---
+        # ====================================================================
+        # 📝 2. ORIGINAL TEXT LEADERBOARD BUILDER (पहले जैसा टेक्स्ट फॉर्मेट)
+        # ====================================================================
         header_text = f"🏁 <b>The quiz '{html.escape(quiz_title)}' has finished!</b>\n"
-        header_text += f"👥 <b>Total Active Players: {len(final_scores)}</b>\n"
-        header_text += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        header_text += f"📉 <b>Negative Marking Applied: -{db_neg_multiplier} per wrong answer</b>\n\n"
         
-        roast_section = "💬 <b>Bakaiti & Full Dialogues</b>\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        roasts_topper = ["[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? 👑", "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? ⚡"]
-        roasts_minus = ["[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। 📉", "[दिवालिया] स्कोर देखकर बैंक वाले भी लोन देने से मना कर देंगे! 🏦"]
-        roasts_normal = ["[बस मुस्कुराना] तुम्हारी मुस्कान ही तुम्हारी सबसे बड़ी जीत है! 🌻", "[दर्शक दीर्घा] तुम क्विज़ खेलने नहीं, सिर्फ तालियाँ बजाने आए थे! 🔔"]
+        subheader_text = f"📋 <b>{total_questions_answered} questions answered</b>\n"
+        subheader_text += f"👥 <b>Total Participants: {len(final_scores)}</b>\n"
+        subheader_text += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         
-        for idx, (uid, meta) in enumerate(sorted_scores[:4], 1):
-            user_display_name = game["joined_users"].get(uid, "Player")
-            pts = meta["points"]
+        # पुराना टेक्स्ट रिज़ल्ट फॉर्मेट (एकदम मूल लेआउट)
+        text_leaderboard = ""
+        
+        roasts_topper = [
+            "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? टॉपर बनने का इरादा प्रमाणित है!",
+            "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? या फिर अंतर्यामी हो!",
+        ]
+        roasts_middle = [
+            "[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए, थोड़ा जमीन पर आते तो नहीं?",
+            "[सिर्फ मुस्कान] चेहरे पर मुस्कान तो पूरी है, पर मार्कशीट देखकर रोना आ जाए तो क्या करें?",
+        ]
+        roasts_low = [
+            "[सिर्फ हाजिरी] आप सिर्फ परीक्षा हॉल की हवा खाने आए थे क्या? इतना कम स्कोर देखकर हैरानी हुई!",
+            "[मार्कशीट का विलेन] घरवाले अगर यह मार्कशीट देख लें, तो इनाम में सिर्फ फ्लॉप कॉलर ही मिलेगा!",
+        ]
+        roasts_minus = [
+            "[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। अगली बार थोड़ा प्रयास करना!",
+            "[कर्जदार खिलाड़ी] हंसना तो दूर की बात है, आप तो परीक्षक से भी उधार में नंबर माँग रहे हैं!",
+        ]
+
+        for idx, (uid, meta) in enumerate(sorted_scores, 1):
+            user_display_name = game["joined_users"].get(uid, "Unknown User")
             
-            if idx == 1: roast = random.choice(roasts_topper)
-            elif pts < 0: roast = random.choice(roasts_minus)
-            else: roast = random.choice(roasts_normal)
+            if str(user_display_name).startswith("@"):
+                clean_username = user_display_name
+            else:
+                clean_username = escape_markdown(user_display_name)
+                
+            score = meta["score"]
+            wrong_count = meta["wrong"]
+            points = meta["points"]
+            total_time = format_time(meta["total_time"])
             
-            rank_icon = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
-            roast_section += f"{rank_icon} <b>{html.escape(user_display_name)}</b>\n   <code>{roast}</code>\n  ┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈\n"
+            percentage = (points / total_questions_answered * 100) if total_questions_answered > 0 else 0.0
             
+            if idx == 1:
+                roast_msg = random.choice(roasts_topper)
+            elif points < 0:
+                roast_msg = random.choice(roasts_minus)
+            elif percentage < 25:
+                roast_msg = random.choice(roasts_low)
+            else:
+                roast_msg = random.choice(roasts_middle)
+                
+            rank_icon = "🥇." if idx == 1 else "🥈." if idx == 2 else "🥉." if idx == 3 else f"{idx}."
+            
+            # पुराना टेक्स्ट बॉडी स्ट्रक्चर दोबारा जोड़ा गया
+            text_leaderboard += f"{rank_icon} <b>{clean_username}</b>\n"
+            text_leaderboard += f"   ➻ <b>Right:</b> {score}\n"
+            text_leaderboard += f"   ➻ <b>Wrong:</b> {wrong_count}\n"
+            text_leaderboard += f"   ➻ <b>Total Time Taken:</b> {total_time}\n"
+            text_leaderboard += f"   <blockquote><b>Final Score: {points:.2f} Points</b></blockquote>\n"
+            text_leaderboard += f"   <blockquote><b>{roast_msg}</b></blockquote>\n"
+            text_leaderboard += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
+        
         footer_text = "\n🏆 <b>Congratulations to all participants!</b>"
-        full_caption_message = header_text + roast_section + footer_text
         
+        # दोनों को आपस में मर्ज (Combine) करना
+        full_caption_message = header_text + subheader_text + text_leaderboard + footer_text
+        
+        # रिस्टार्ट बटन
         share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
         kb = [[{"text": "Start Again ✨", "url": share_url, "style": "success"}]]
         
+        # 🚀 फाइनल फोटो + पूरा पुराना टेक्स्ट रिज़ल्ट एक साथ भेजना
         await context.bot.send_photo(
             chat_id=chat_id,
             photo=image_stream,
