@@ -3300,7 +3300,7 @@ async def compile_group_leaderboard(chat_id, context):
         footer = "\n🏆 <b>Congratulations to all participants!</b>"
         full_message = header + subheader + table_text + leaderboard_dialogues + footer
         
-        share_url = f"https://t.me{bot_username}?startgroup=quiz_{game['quiz_id']}"
+        share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
         raw_button = {
             "text": "Start Again ✨",
             "url": share_url,
