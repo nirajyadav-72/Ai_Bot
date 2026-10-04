@@ -3223,7 +3223,7 @@ async def compile_group_leaderboard(chat_id, context):
             title_fnt = sub_title_fnt = table_fnt = ImageFont.load_default()
 
         # इमेज के मुख्य टाइटल्स
-        d.text((40, 20), f"Quiz  ➻  {quiz_title.upper()}  |  Onwer  ➻  NIRAJ", fill='#1a1a24', font=title_fnt)
+        d.text((40, 20), f"Genrated by => @Ai_QuesBot |  Onwer  =>  NIRAJ", fill='#1a1a24', font=title_fnt)
         d.text((40, 52), f"Total Questions: {total_questions_answered}   |   Negative Marking: -{db_neg_multiplier}", fill='#2c3e50', font=sub_title_fnt)
         
         # टेबल लाइन्स और हेडर
