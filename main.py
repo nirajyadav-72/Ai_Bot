@@ -3143,7 +3143,7 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
 from PIL import Image, ImageDraw, ImageFont
 import io
 
-# 🎖️ result leaderboard (FIXED: 100% ACCURATE IMAGE GENERATOR FOR TERMUX)
+# 🎖️ result leaderboard (100% GUARANTEED GRAPHIC IMAGE GENERATOR FOR TERMUX)
 async def compile_group_leaderboard(chat_id, context):
     try:
         game = GROUP_GAMES.get(chat_id)
@@ -3170,8 +3170,13 @@ async def compile_group_leaderboard(chat_id, context):
             options = json.loads(options_json)
             try:
                 correct_idx = int(correct_ans)
-            except:
-                correct_idx = 0
+                if correct_idx < 0 or correct_idx >= len(options):
+                    correct_idx = 0
+            except (ValueError, TypeError):
+                try:
+                    correct_idx = options.index(str(correct_ans))
+                except ValueError:
+                    correct_idx = 0
             correct_answers[idx] = correct_idx
         
         final_scores = {}
@@ -3182,78 +3187,88 @@ async def compile_group_leaderboard(chat_id, context):
             score = 0
             wrong = 0
             total_time = 0.0
+            
             for question_idx, answer_data in user_answers.items():
-                if answer_data["selected"] == correct_answers.get(question_idx, -1):
+                selected_idx = answer_data["selected"]
+                correct_idx = correct_answers.get(question_idx, -1)
+                
+                if selected_idx == correct_idx:
                     score += 1
                     start_time = game["question_start_times"].get(question_idx, answer_data["timestamp"])
                     if isinstance(start_time, datetime):
-                        total_time += max(0, (answer_data["timestamp"] - start_time).total_seconds())
+                        elapsed = (answer_data["timestamp"] - start_time).total_seconds()
+                        total_time += max(0, elapsed)
                 else:
                     wrong += 1
+            
             calculated_points = float(score) - (float(wrong) * float(db_neg_multiplier))
             final_scores[uid] = {"score": score, "wrong": wrong, "total_time": total_time, "points": calculated_points}
         
-        sorted_scores = sorted(final_scores.items(), key=lambda item: (-item["points"], item["total_time"]))[:20]
+        # ✅ FIX: Tuple indexing [1]["points"] logic implemented to completely resolve Termux crash
+        sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:15]
         
-        # --- 🖼️ DYNAMIC GRAPHIC IMAGERY TABLE GENERATOR ---
-        # 850x550 पिक्सल का एक प्रीमियम डार्क बैकग्राउंड कैनवास बनाना
-        img = Image.new('RGB', (850, 550), color='#1a1a24')
+        # --- 🖼️ GRAPHICAL TABLE CANVAS GENERATOR ---
+        # 850 चौड़ाई और 550 ऊंचाई का एक प्रीमियम डार्क मोड थीम कैनवास बनाना
+        img = Image.new('RGB', (850, 550), color='#1e1e2e')
         d = ImageDraw.Draw(img)
         
-        # डिफ़ॉल्ट फॉन्ट लोडिंग (टर्मक्स में क्रैश से बचने के लिए सेफ फॉन्ट हैंडलिंग)
+        # फॉन्ट हैंडलिंग (टर्मक्स वातावरण के लिए सेफ फालबैक)
         try:
             fnt = ImageFont.load_default()
         except:
             fnt = None
             
-        # हेडर टाइटल जोड़ना
-        d.text((30, 20), f"📊 Leaderboard: {quiz_title}", fill='#ffffff')
-        d.text((30, 45), f"Total Questions: {total_questions_answered} | Negative Marking: -{db_neg_multiplier}", fill='#8e8ea0')
+        # कैनवास के ऊपर हेडर ड्रा करना
+        d.text((40, 25), f"📊 QUIZ LEADERBOARD: {quiz_title}", fill='#ffffff')
+        d.text((40, 50), f"Questions Answered: {total_questions_answered}  |  Negative Marking: -{db_neg_multiplier}", fill='#a6adc8')
         
-        # परफेक्ट बॉर्डर वाली टेबल लाइन्स ड्रा करना
-        d.line([(30, 75), (820, 75)], fill='#323246', width=2)
+        # टेबल का मुख्य ऊपरी बॉर्डर (Border Line)
+        d.line([(40, 85), (810, 85)], fill='#45475a', width=2)
         
-        # टेबल के मुख्य कॉलम हेडर
+        # हेडर कॉलम्स की सटीक X-अक्ष स्थितियां (Perfect Alignment Map)
         headers = ["Rank", "Participant Name", "Right ✅", "Wrong ❌", "Total Time", "Score"]
-        x_positions = [30, 90, 360, 480, 600, 720]
+        x_positions = [40, 110, 390, 500, 610, 730]
         
         for h, x in zip(headers, x_positions):
-            d.text((x, 85), h, fill='#b5b5c3')
+            d.text((x, 95), h, fill='#cdd6f4')
             
-        d.line([(30, 115), (820, 115)], fill='#323246', width=1)
+        # हेडर के नीचे की विभाजक रेखा
+        d.line([(40, 125), (810, 125)], fill='#45475a', width=1)
         
-        y_offset = 135
+        y_offset = 145
         for idx, (uid, meta) in enumerate(sorted_scores, 1):
             user_display_name = game["joined_users"].get(uid, "Player")
-            clean_name = re.sub(r'[^\w\s\d]', '', user_display_name)[:18].strip()
+            
+            # नाम से इमोजी हटाना ताकि इमेज फॉन्ट रेंडरिंग क्रैश न हो
+            clean_name = re.sub(r'[^\w\s\d]', '', user_display_name)[:16].strip()
             if not clean_name:
-                clean_name = "Player"
+                clean_name = f"Player {idx}"
                 
             rank_label = f"#{idx}"
             t_sec = int(meta["total_time"])
             time_disp = f"{t_sec}s" if t_sec < 60 else f"{t_sec//60}m {t_sec%60}s"
             
-            # विज़ुअल कलर थीमिंग (टॉपर के लिए चमकीला रंग, बाकी के लिए साफ़ सफ़ेद)
-            row_color = '#ffd700' if idx == 1 else '#00ff7f' if idx == 2 else '#ffffff'
+            # विज़ुअल थीम कलर्स (टॉपर के लिए गोल्ड रंग, बाकी के लिए सॉफ्ट सफ़ेद)
+            row_color = '#f9e2af' if idx == 1 else '#a6e3a1' if idx == 2 else '#ffffff'
             
-            # टेबल की हर एक रो (Row) में डेटा ड्रा करना
+            # टेबल सेल्स में डेटा ड्रा करना
             d.text((x_positions[0], y_offset), rank_label, fill=row_color)
             d.text((x_positions[1], y_offset), clean_name, fill=row_color)
-            d.text((x_positions[2], y_offset), str(meta["score"]), fill='#00ff7f')
-            d.text((x_positions[3], y_offset), str(meta["wrong"]), fill='#ff4d4d')
-            d.text((x_positions[4], y_offset), time_disp, fill='#ffffff')
-            d.text((x_positions[5], y_offset), f"{meta['points']:+.2f}", fill='#ffd700')
+            d.text((x_positions[2], y_offset), str(meta["score"]), fill='#a6e3a1')
+            d.text((x_positions[3], y_offset), str(meta["wrong"]), fill='#f38ba8')
+            d.text((x_positions[4], y_offset), time_disp, fill='#cdd6f4')
+            d.text((x_positions[5], y_offset), f"{meta['points']:+.2f}", fill='#f9e2af')
             
-            # रो के नीचे एक हल्की विभाजक रेखा खींचना
-            d.line([(30, y_offset + 25), (820, y_offset + 25)], fill='#222232', width=1)
+            # हर एक रो के नीचे एक बारीक हॉरिजॉन्टल डिवाइडर लाइन
+            d.line([(40, y_offset + 25), (810, y_offset + 25)], fill='#313244', width=1)
             y_offset += 35
             
-        # इमेज ऑब्जेक्ट को इन-मेमोरी बाइट्स स्ट्रीम में कनवर्ट करना
+        # इमेज ऑब्जेक्ट को इन-मेमोरी बाइट्स स्ट्रीम में सेव करना (बिना फाइल स्टोर किए फास्ट ट्रांसफर)
         image_stream = io.BytesIO()
         img.save(image_stream, format='PNG')
         image_stream.seek(0)
         
-        # --- 💬 बकैती डायलॉग्स और टेक्स्ट बॉडी ---
+        # --- 💬 बकैती डायलॉग्स और कैप्शन लेआउट ---
         header_text = f"🏁 <b>The quiz '{html.escape(quiz_title)}' has finished!</b>\n"
         header_text += f"👥 <b>Total Active Players: {len(final_scores)}</b>\n"
         header_text += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -3277,11 +3292,11 @@ async def compile_group_leaderboard(chat_id, context):
         footer_text = "\n🏆 <b>Congratulations to all participants!</b>"
         full_caption_message = header_text + roast_section + footer_text
         
-        # रिस्टार्ट बटन
+        # रीस्टार्ट बटन
         share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
         kb = [[{"text": "Start Again ✨", "url": share_url, "style": "success"}]]
         
-        # ग्रुप में फाइनल फोटो रिजल्ट सेंड करना
+        # टेलीग्राम ग्रुप में फोटो तालिका और कैप्शन सेंड करना
         await context.bot.send_photo(
             chat_id=chat_id,
             photo=image_stream,
