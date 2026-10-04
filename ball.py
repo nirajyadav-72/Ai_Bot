@@ -3142,6 +3142,7 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logging.error(f"Error in track_poll_answers: {e}")
 
 # 🎖️ result leaderboard 
+# 🎖️ result leaderboard (FIXED: TOP 20 USERS IN GOLDEN IMAGE CHART)
 async def compile_group_leaderboard(chat_id, context):
     try:
         game = GROUP_GAMES.get(chat_id)
@@ -3202,12 +3203,14 @@ async def compile_group_leaderboard(chat_id, context):
             calculated_points = float(score) - (float(wrong) * float(db_neg_multiplier))
             final_scores[uid] = {"score": score, "wrong": wrong, "total_time": total_time, "points": calculated_points}
         
-        sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:12]
+        # ✅ TOP 20 USERS SELECTED FOR IMAGE CHART AND TEXT LIST
+        sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:20]
         
         # ====================================================================
-        # 🖼️ 1. DYNAMIC GRAPHIC GOLDEN CANVAS GENERATOR (IMAGE)
+        # 🖼️ MESSAGE 1: DYNAMIC GRAPHIC GOLDEN CANVAS GENERATOR (IMAGE ONLY)
         # ====================================================================
-        img = Image.new('RGB', (850, 600), color='#f1c40f')
+        # 🚀 20 प्लेयर्स को फिट करने के लिए कैनवास की ऊंचाई बढ़ाकर 920px की गई है
+        img = Image.new('RGB', (850, 920), color='#f1c40f')
         d = ImageDraw.Draw(img)
         
         font_path = "hindi_font.ttf"
@@ -3221,23 +3224,26 @@ async def compile_group_leaderboard(chat_id, context):
         else:
             title_fnt = sub_title_fnt = table_fnt = ImageFont.load_default()
 
-        # इमेज के मुख्य टाइटल्स
-        d.text((40, 20), f"Genrated by => @Ai_QuesBot |  Onwer  =>  NIRAJ", fill='#1a1a24', font=title_fnt)
+        # इमेज पर मुख्य हेडर टाइटल्स
+        d.text((40, 20), f"QUIZ LEADERBOARD: {quiz_title.upper()}", fill='#1a1a24', font=title_fnt)
         d.text((40, 52), f"Total Questions: {total_questions_answered}   |   Negative Marking: -{db_neg_multiplier}", fill='#2c3e50', font=sub_title_fnt)
         
-        # टेबल लाइन्स और हेडर
+        # मुख्य तालिका बॉर्डर रेखा
         d.line([(40, 85), (810, 85)], fill='#1a1a24', width=4)
         headers = ["Rank", "Participant Name", "Correct", "Wrong", "Total Time", "Score"]
-        x_positions = [40, 110, 360, 470, 570, 720]
+        x_positions = [40, 110, 390, 490, 590, 720]
         
         for h, x in zip(headers, x_positions):
             d.text((x, 95), h, fill='#1a1a24', font=table_fnt)
             
         d.line([(40, 130), (810, 130)], fill='#1a1a24', width=3)
         
-        y_offset = 150
+        # डेटा पंक्तियाँ (Row Grid Rendering)
+        y_offset = 145
         for idx, (uid, meta) in enumerate(sorted_scores, 1):
             user_display_name = game["joined_users"].get(uid, "Player")
+            
+            # हिंदी और अंग्रेजी दोनों टेक्स्ट को सुरक्षित रखना
             clean_name = re.sub(r'[^\w\s\d\u0900-\u097F]', '', user_display_name)[:16].strip()
             if not clean_name:
                 clean_name = f"Player {idx}"
@@ -3246,6 +3252,7 @@ async def compile_group_leaderboard(chat_id, context):
             t_sec = int(meta["total_time"])
             time_disp = f"{t_sec}s" if t_sec < 60 else f"{t_sec//60}m {t_sec%60}s"
             
+            # रो डेटा रेंडर करना
             d.text((x_positions[0], y_offset), rank_label, fill='#1a1a24', font=table_fnt)
             d.text((x_positions[1], y_offset), clean_name, fill='#1a1a24', font=table_fnt)
             d.text((x_positions[2], y_offset), str(meta["score"]), fill='#1b5e20', font=table_fnt)
@@ -3253,41 +3260,33 @@ async def compile_group_leaderboard(chat_id, context):
             d.text((x_positions[4], y_offset), time_disp, fill='#1a1a24', font=table_fnt)
             d.text((x_positions[5], y_offset), f"{meta['points']:+.2f}", fill='#000000', font=table_fnt)
             
-            d.line([(40, y_offset + 32), (810, y_offset + 32)], fill='#d4ac0d', width=1)
-            y_offset += 42
+            # बारीक हॉरिजॉन्टल डिवाइडर रेखा (दूरी 36px सेट की ताकि स्पेसिंग बनी रहे)
+            d.line([(40, y_offset + 28), (810, y_offset + 28)], fill='#d4ac0d', width=1)
+            y_offset += 36
             
         image_stream = io.BytesIO()
         img.save(image_stream, format='PNG')
         image_stream.seek(0)
         
+        # 🚀 1. सबसे पहले केवल सुनहरी इमेज सेंड करें
+        await context.bot.send_photo(
+            chat_id=chat_id,
+            photo=image_stream
+        )
+
         # ====================================================================
-        # 📝 2. ORIGINAL TEXT LEADERBOARD BUILDER
+        # 📝 MESSAGE 2: ORIGINAL TEXT LEADERBOARD WITH DIALOGUES (TEXT ONLY)
         # ====================================================================
         header_text = f"🏁 <b>The quiz '{html.escape(quiz_title)}' has finished!</b>\n"
-        header_text += f"📉 <b>Negative Marking Applied: -{db_neg_multiplier} per wrong answer</b>\n\n"
-        
-        subheader_text = f"📋 <b>{total_questions_answered} questions answered</b>\n"
-        subheader_text += f"👥 <b>Total Participants: {len(final_scores)}</b>\n"
-        subheader_text += f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+        header_text += f"📉 <b>Negative Marking Applied: -{db_neg_multiplier} per wrong answer</b>\n"
+        header_text += f"📋 <b>{total_questions_answered} questions answered | Total Participants: {len(final_scores)}</b>\n"
+        header_text += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         
         text_leaderboard = ""
-        
-        roasts_topper = [
-            "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? टॉपर बनने का इरादा प्रबल है। 🎓",
-            "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? या फिर अंतर्याष्ट्रीय गणितज्ञ हो? 🧠",
-        ]
-        roasts_middle = [
-            "[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए, थोड़ा जमीन पर आते तो न..! 🐦",
-            "[सिर्फ मुस्कान] चेहरे पर मुस्कान तो पूरी है, पर मार्कशीट देखकर रोना आ जाए! 😊",
-        ]
-        roasts_low = [
-            "[सिर्फ हाजिरी] आप सिर्फ परीक्षा हॉल की हवा खाने आए थे क्या? इतना कम स्कोर तो... 😅",
-            "[मार्कशीट का विलेन] घरवाले अगर यह मार्कशीट देख लें, तो इनाम में सिर्फ फ्लॉपी! 📋",
-        ]
-        roasts_minus = [
-            "[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। अगली बार थोड़ा सोचना। 🤦",
-            "[कर्जदार खिलाड़ी] हंसना तो दूर की बात है, आप तो परीक्षक से भी उधार में नंबर माँग रहे हो! 💸",
-        ]
+        roasts_topper = ["[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? 👑", "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? ⚡"]
+        roasts_middle = ["[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए, थोड़ा जमीन पर आते तो नहीं?", "[सिर्फ मुस्कान] चेहरे पर मुस्कान तो पूरी है, पर मार्कशीट देखकर रोना आ जाए! 🌻"]
+        roasts_low = ["[सिर्फ हाजिरी] आप सिर्फ परीक्षा हॉल की हवा खाने आए थे क्या? 🥶", "[मार्कशीट का विलेन] घरवाले अगर यह मार्कशीट देख लें, तो इनाम में सिर्फ फ्लॉप कॉलर ही मिलेगा!"]
+        roasts_minus = ["[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। 📉", "[कर्जदार खिलाड़ी] आप तो परीक्षक से भी उधार में नंबर माँग रहे हैं! 💸"]
 
         for idx, (uid, meta) in enumerate(sorted_scores, 1):
             user_display_name = game["joined_users"].get(uid, "Unknown User")
@@ -3304,84 +3303,37 @@ async def compile_group_leaderboard(chat_id, context):
             
             percentage = (points / total_questions_answered * 100) if total_questions_answered > 0 else 0.0
             
-            if idx == 1:
-                roast_msg = random.choice(roasts_topper)
-            elif points < 0:
-                roast_msg = random.choice(roasts_minus)
-            elif percentage < 25:
-                roast_msg = random.choice(roasts_low)
-            else:
-                roast_msg = random.choice(roasts_middle)
+            if idx == 1: roast_msg = random.choice(roasts_topper)
+            elif points < 0: roast_msg = random.choice(roasts_minus)
+            elif percentage < 25: roast_msg = random.choice(roasts_low)
+            else: roast_msg = random.choice(roasts_middle)
                 
             rank_icon = "🥇." if idx == 1 else "🥈." if idx == 2 else "🥉." if idx == 3 else f"{idx}."
             
             text_leaderboard += f"{rank_icon} <b>{clean_username}</b>\n"
-            text_leaderboard += f"   ➻ <b>Right:</b> {score}\n"
-            text_leaderboard += f"   ➻ <b>Wrong:</b> {wrong_count}\n"
-            text_leaderboard += f"   ➻ <b>Total Time Taken:</b> {total_time}\n"
-            text_leaderboard += f"   <blockquote><b>Final Score: {points:.2f} Points</b></blockquote>\n"
-            text_leaderboard += f"   <blockquote><b>{roast_msg}</b></blockquote>\n"
+            text_leaderboard += f"   ➻ <b>Right:</b> {score} | <b>Wrong:</b> {wrong_count} | <b>Time:</b> {total_time}\n"
+            text_leaderboard += f"   <blockquote><b>Final Score: {points:.2f} Points</b>\n<i>{roast_msg}</i></blockquote>\n"
             text_leaderboard += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
         
         footer_text = "\n🏆 <b>Congratulations to all participants!</b>"
+        full_text_message = header_text + text_leaderboard + footer_text
         
-        # ✅ COMBINED MESSAGE
-        full_caption_message = header_text + subheader_text + text_leaderboard + footer_text
-        
-        # ✅ CONDITIONAL LOGIC: Image + Caption vs Text Only
-        MAX_PHOTO_CAPTION_LEN = 900  # Telegram photo caption safe limit
-        MAX_TEXT_LEN = 4096  # Telegram text message limit
-        
+        # रिस्टार्ट बटन
         share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
         kb = [[{"text": "Start Again ✨", "url": share_url, "style": "success"}]]
         
-        # ====================================================================
-        # 🔥 CONDITION: Agar text bahut lamba hai to image na bhejo
-        # ====================================================================
-        if len(full_caption_message) > MAX_PHOTO_CAPTION_LEN:
-            # ✅ TEXT-ONLY MODE (IMAGE SKIP)
-            logging.info(f"Leaderboard text {len(full_caption_message)} chars > {MAX_PHOTO_CAPTION_LEN} - using text-only mode")
-            
-            text_to_send = full_caption_message
-            
-            if len(text_to_send) > MAX_TEXT_LEN:
-                # ✅ CHUNKED MODE: Split into multiple messages
-                logging.info(f"Text {len(text_to_send)} chars > {MAX_TEXT_LEN} - splitting into chunks")
-                
-                for i in range(0, len(text_to_send), MAX_TEXT_LEN):
-                    chunk = text_to_send[i:i + MAX_TEXT_LEN]
-                    await context.bot.send_message(
-                        chat_id=chat_id,
-                        text=chunk,
-                        parse_mode="HTML"
-                    )
-                    await asyncio.sleep(0.5)  # Rate limiting
-            else:
-                # ✅ SINGLE MESSAGE MODE
-                await context.bot.send_message(
-                    chat_id=chat_id,
-                    text=text_to_send,
-                    reply_markup=InlineKeyboardMarkup(kb),
-                    parse_mode="HTML"
-                )
-        
-        else:
-            # ✅ NORMAL MODE: Image + Caption (jab text chhota ho)
-            logging.info(f"Leaderboard text {len(full_caption_message)} chars <= {MAX_PHOTO_CAPTION_LEN} - using image mode")
-            
-            await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=image_stream,
-                caption=full_caption_message,
-                reply_markup=InlineKeyboardMarkup(kb),
-                parse_mode="HTML"
-            )
+        # 🚀 2. अब पूरा पुराना टेक्स्ट रिज़ल्ट स्वतंत्र मैसेज में सेंड करें
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=full_text_message,
+            reply_markup=InlineKeyboardMarkup(kb),
+            parse_mode="HTML"
+        )
         
         GROUP_GAMES.pop(chat_id, None)
-        
     except Exception as e:
         logging.error(f"Error in compile_group_leaderboard: {e}", exc_info=True)
-        
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         user_id = update.message.from_user.id if update.message else update.callback_query.from_user.id
