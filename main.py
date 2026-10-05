@@ -4735,6 +4735,90 @@ async def stop_autorun_list_command(
             exc_info=True
 )
 
+async def ask_ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Answers any user query in detail using Gemini AI with Real-Time Date/Time context"""
+    try:
+        message = update.message
+        if not message:
+            return
+
+        # यूज़र की सुरक्षा जाँच
+        if not is_authorized(update):
+            await message.reply_text("❌ <b>Sorry!</b> Yah command keval authorized users hi use kar sakte hain.", parse_mode="HTML")
+            return
+
+        # चेक करें कि सवाल भेजा गया है या नहीं
+        if not context.args:
+            await message.reply_text(
+                "💡 <b>Ask AI Command Help:</b>\n\n"
+                "Aapko jo bhi puchna hai, command ke sath likhein.\n"
+                "👉 <b>Example:</b> <code>/ask Aaj ka current affairs kya hai?</code>",
+                parse_mode="HTML"
+            )
+            return
+
+        user_query = " ".join(context.args)
+
+        if not ai_client:
+            await message.reply_text("⚠️ <b>AI Client Error:</b> Gemini API key missing.", parse_mode="HTML")
+            return
+
+        processing_msg = await message.reply_text(
+            "🤖 <b>AI is thinking...</b>\n🔎 Fetching accurate real-time details...",
+            parse_mode="HTML"
+        )
+
+        # 🇮🇳 LIVE TIMESTAMP LOGIC (IST)
+        # आपके कोड के ऊपर पहले से IST = timezone(timedelta(hours=5, minutes=30)) डिफाइंड है
+        now_ist = datetime.now(tz=IST)
+        current_date_str = now_ist.strftime("%A, %d %B %Y")  # Example: Monday, 05 October 2026
+        current_time_str = now_ist.strftime("%I:%M %p")      # Example: 02:18 PM
+
+        # 🔥 SYSTEM PROMPT WITH LIVE CONTEXT
+        prompt = f"""You are an expert AI assistant with real-time awareness.
+        
+CRITICAL REAL-TIME CONTEXT:
+- Current Time: {current_time_str} (IST)
+- Current Date/Day: {current_date_str}
+- Current Year: {now_ist.year}
+
+Use this exact timing context to answer the user's query accurately. If they ask about "today", "yesterday", "current events", "latest news", or "who is the current X", evaluate your answer strictly based on the date provided above ({current_date_str}). 
+
+Structure your response beautifully using paragraphs or bullet points where appropriate.
+
+User Query: {user_query}"""
+
+        try:
+            response = await asyncio.to_thread(
+                ai_client.interactions.create,
+                model='gemini-3.5-flash-lite',
+                input=prompt,
+            )
+
+            if not response or not response.output_text:
+                await processing_msg.edit_text("⚠️ AI ne koi response generate nahi kiya.")
+                return
+
+            ai_response = response.output_text.strip()
+            safe_response = html_escape(ai_response)
+
+            await processing_msg.delete()
+            
+            await message.reply_text(
+                f"🧠 <b>AI Detailed Response:</b>\n\n{safe_response}",
+                parse_mode="HTML"
+            )
+
+        except Exception as ai_err:
+            logging.error(f"Error calling Gemini in ask_ai_command: {ai_err}")
+            if "429" in str(ai_err) or "too_many_requests" in str(ai_err):
+                await processing_msg.edit_text("⚠️ <b>API Limit Exceeded:</b> Please try again later.", parse_mode="HTML")
+            else:
+                await processing_msg.edit_text("❌ AI response fetch karne me error aa gaya.")
+
+    except Exception as e:
+        logging.error(f"Critical error in ask_ai_command: {e}", exc_info=True)
+
 # ⚡ send message to support group (only use owner)
 async def send_to_support_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Owner-only: In private chat reply to a message and copy it (with buttons if any) to SUPPORT_GROUP_ID."""
@@ -4925,6 +5009,7 @@ async def main():
         app.add_handler(CommandHandler("stopautorun", stopautorun_command))
         app.add_handler(CommandHandler("autorunlist", autorun_list_command))
         app.add_handler(CommandHandler("stopautorunlist", stop_autorun_list_command))
+        app.add_handler(CommandHandler("ask", ask_ai_command))
         
         app.add_handler(PollAnswerHandler(track_poll_answers))
         app.add_handler(InlineQueryHandler(inline_query_handler))
