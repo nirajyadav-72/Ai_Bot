@@ -4736,13 +4736,13 @@ async def stop_autorun_list_command(
 )
 
 async def ask_ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Answers any user query in detail using Gemini AI with Real-Time Date/Time context"""
+    """Answers any user query in detail using Gemini AI with Real-Time Date/Time context ONLY in Hindi"""
     try:
         message = update.message
         if not message:
             return
 
-        # यूज़र की सुरक्षा जाँच
+        # यूज़र की सुरक्षा जाँच (Authorization Check)
         if not is_authorized(update):
             await message.reply_text("❌ <b>Sorry!</b> Yah command keval authorized users hi use kar sakte hain.", parse_mode="HTML")
             return
@@ -4769,12 +4769,11 @@ async def ask_ai_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         # 🇮🇳 LIVE TIMESTAMP LOGIC (IST)
-        # आपके कोड के ऊपर पहले से IST = timezone(timedelta(hours=5, minutes=30)) डिफाइंड है
         now_ist = datetime.now(tz=IST)
         current_date_str = now_ist.strftime("%A, %d %B %Y")  # Example: Monday, 05 October 2026
-        current_time_str = now_ist.strftime("%I:%M %p")      # Example: 02:18 PM
+        current_time_str = now_ist.strftime("%I:%M %p")      # Example: 02:42 PM
 
-        # 🔥 SYSTEM PROMPT WITH LIVE CONTEXT
+        # 🔥 SYSTEM PROMPT FOR STRICT HINDI & TELEGRAM HTML FORMAT
         prompt = f"""You are an expert AI assistant with real-time awareness.
         
 CRITICAL REAL-TIME CONTEXT:
@@ -4782,9 +4781,17 @@ CRITICAL REAL-TIME CONTEXT:
 - Current Date/Day: {current_date_str}
 - Current Year: {now_ist.year}
 
-Use this exact timing context to answer the user's query accurately. If they ask about "today", "yesterday", "current events", "latest news", or "who is the current X", evaluate your answer strictly based on the date provided above ({current_date_str}). 
+⚠️ LANGUAGE RULE:
+You MUST write your entire response ONLY in Hindi language (हिंदी भाषा). Even if the user query is written in English or Hinglish, your explanation, points, and summary must be completely in Hindi.
 
-Structure your response beautifully using paragraphs or bullet points where appropriate.
+⚠️ CRITICAL TELEGRAM HTML FORMATTING RULES:
+1. DO NOT use markdown like **, ***, ###, or __ anywhere in your response. 
+2. To make text BOLD, use HTML tags like <b>text here</b>. (e.g., use <b>1. मुख्य समाचार</b> instead of ### **1. मुख्य समाचार**)
+3. To make text ITALIC, use <i>text here</i>.
+4. For separating sections, use a simple line like "━━━━━━" and blank lines.
+5. Bullet points should look like this: • Your point here.
+
+Ensure your entire output strictly complies with Telegram HTML parsing mode. Do not leave any loose markdown symbols or stars (**).
 
 User Query: {user_query}"""
 
@@ -4800,12 +4807,13 @@ User Query: {user_query}"""
                 return
 
             ai_response = response.output_text.strip()
-            safe_response = html_escape(ai_response)
 
+            # लोडिंग मैसेज डिलीट करें
             await processing_msg.delete()
             
+            # बिना एस्केप किए डायरेक्ट HTML रिस्पांस सेंड करें
             await message.reply_text(
-                f"🧠 <b>AI Detailed Response:</b>\n\n{safe_response}",
+                f"🧠 <b>AI Detailed Response:</b>\n\n{ai_response}",
                 parse_mode="HTML"
             )
 
