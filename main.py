@@ -3162,22 +3162,18 @@ async def compile_group_leaderboard(chat_id, context):
         total_questions_answered = len(questions)
         correct_answers = {}
 
-        # Convert all correct answers into integer index
-        for idx, (q_text, options_json, correct_ans) in enumerate(questions):
+        for idx, (_, options_json, correct_ans) in enumerate(questions):
             options = json.loads(options_json)
 
             try:
                 correct_idx = int(correct_ans)
                 if correct_idx < 0 or correct_idx >= len(options):
-                    logging.warning(f"Q{idx}: Invalid index {correct_idx}, using 0")
                     correct_idx = 0
             except (ValueError, TypeError):
                 try:
                     correct_idx = options.index(str(correct_ans))
-                    logging.info(f"Q{idx}: Converted string '{correct_ans}' to index {correct_idx}")
                 except ValueError:
                     correct_idx = 0
-                    logging.warning(f"Q{idx}: Could not find '{correct_ans}', using 0")
 
             correct_answers[idx] = correct_idx
 
@@ -3211,62 +3207,54 @@ async def compile_group_leaderboard(chat_id, context):
                 "points": calculated_points
             }
 
-        # Sort by points desc, then total time asc
-        sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:50]
+        sorted_scores = sorted(
+            final_scores.items(),
+            key=lambda item: (-item[1]["points"], item[1]["total_time"])
+        )[:50]
 
-        # Roast messages
+        # Roast lines
         roasts_topper = [
-            "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? टॉपर बनने का इरादा प्रमाणित हुआ!",
-            "[किताबी कीड़ा] इतनी पढ़ाई कहाँ से करते हो भाई? हमें भी थोड़ा ज्ञान दे दो, गुरुजी!",
-            "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? या फिर अंतर्यामी हो?",
-            "[वैज्ञानिक] इतना दिमाग लाते कहाँ से हो भाई? नासा (NASA) वाले ढूंढ रहे हैं तुम्हें।",
-            "[रट्टू तोता] लगता है आज सुबह नाश्ते में पूरी किताब ही चबा कर खा गए थे।"
+            "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या?",
+            "[किताबी कीड़ा] इतनी पढ़ाई कहाँ से करते हो भाई?",
+            "[गूगल का दामाद] गूगल से सीधा कनेक्शन है क्या तुम्हारा?",
+            "[वैज्ञानिक] इतना दिमाग लाते कहाँ से हो भाई?",
+            "[रट्टू तोता] लगता है नाश्ते में पूरी किताब खा गए थे।"
         ]
-
         roasts_middle = [
-            "[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए।",
-            "[समीक्षा बाबू] दूसरों की आलोचना में तो अव्वल हो।",
-            "[त्रिशंकु खिलाड़ी] ना ऊपर पहुँच पाए, ना नीचे सुकून।",
-            "[सेफ राइडर] बस सुरक्षित रहने की कला आती है।",
-            "[मिस कॉल] नंबर कट गए आखिरी वक्त में।"
+            "[उड़ता परिंदा] नाम की तरह बस हवा में उड़ते रहे।",
+            "[समीक्षा बाबू] दूसरों की आलोचना तो अच्छी है।",
+            "[त्रिशंकु खिलाड़ी] बिना मंजिल के बीच में अटक गए।",
+            "[सेफ राइडर] सुरक्षित राइडर, पर अंक कम आए।",
+            "[मिस कॉल] आखिरी वक्त में नंबर कट गए।"
         ]
-
         roasts_low = [
-            "[सिर्फ हाजिरी] परीक्षा हॉल की हवा खाने आए थे?",
-            "[पूजा की थाली] केवल श्रद्धा से काम नहीं चलता।",
-            "[आंसू की बूंद] नंबर देखकर आंसू आ गए।",
-            "[सिर्फ मुस्कान] बाहर हँसी अंदर रोना।",
-            "[मिस्टर गुमनाम] नाम के आगे टैग काम नहीं आता।",
-            "[दर्शक दीर्घा] तुम तो दूसरों को देखते रहे।",
-            "[अंगूठा छाप] हैकर जैसे उँगलियाँ पर नंबर नहीं।",
-            "[धूप सेकने वाले] सिर्फ समय बर्बाद किया।",
-            "[मार्कशीट का विलेन] घरवाले को शर्म आएगी।"
+            "[सिर्फ हाजिरी] सिर्फ हाजिरी भर की परीक्षा थी क्या?",
+            "[पूजा की थाली] श्रद्धा से नहीं, ज्ञान से काम चलता है।",
+            "[आंसू की बूंद] नंबर देखकर आंखों में आंसू आए।",
+            "[सिर्फ मुस्कान] चेहरे पर हँसी, पर अंक नहीं।",
+            "[मिस्टर गुमनाम] नाम के आगे टैग नहीं, अंक भी नहीं।"
         ]
-
         roasts_minus = [
-            "[कर्जदार खिलाड़ी] परीक्षक से उधार माँग रहे हो?",
-            "[माइनस मास्टर] माइनस मार्किंग तुम्हारे लिए ही बनी।",
-            "[दिवालिया] बैंक वाले लोन देने से मना करेंगे।",
-            "[दानवीर कर्ण] नंबर परीक्षक को दान कर दिए।",
-            "[ब्लैक होल] नंबर गायब हो जाते हैं।"
+            "[कर्जदार खिलाड़ी] माइनस मार्किंग आपके लिए ही बनती है।",
+            "[माइनस मास्टर] अंक नहीं, ऋण बढ़ा है।",
+            "[दिवालिया] बैंक वाले भी लोन देने से मना करेंगे।",
+            "[दानवीर कर्ण] गलत जवाबों में सारे अंक दे दिए।",
+            "[ब्लैक होल] नंबर सीधे गायब हो गए।"
         ]
 
-        # Fixed-width table styling (Telegram supports this in <pre> block)
-        leaderboard_rows = []
-        header_line = "Rank │ Player       │ R  W │ Time │ Score"
-        leaderboard_rows.append(header_line)
-        leaderboard_rows.append("─────┼──────────────┼─────┼──────┼──────")
+        # Fixed-width columns so each user is exactly one line
+        # No wrap, no jagged lines
+        table_rows = []
+        header = "Rank │ Player        │ R  W │ Time  │ Score"
+        table_rows.append(header)
+        table_rows.append("─────┼──────────────┼─────┼───────┼───────")
 
         roast_lines = []
         for idx, (uid, meta) in enumerate(sorted_scores, 1):
             user_display_name = game["joined_users"].get(uid, "Unknown")
-
-            # Clean name
             name = str(user_display_name).replace("@", "")
             if len(name) > 12:
                 name = name[:11] + "…"
-
-            # Keep fixed width so table alignment remains stable
             name = name.ljust(12)
 
             score = meta["score"]
@@ -3285,20 +3273,18 @@ async def compile_group_leaderboard(chat_id, context):
             else:
                 roast_msg = random.choice(roasts_middle)
 
-            row = f"{idx:<4} │ {name} │ {score:>2} {wrong_count:>2} │ {total_time:>6} │ {points:>6.1f}"
-            leaderboard_rows.append(row)
+            row = f"{idx:<4} │ {name} │ {score:>2} {wrong_count:>2} │ {total_time:>6} │ {points:>7.1f}"
+            table_rows.append(row)
 
             roast_lines.append(f"<b>{idx}. {roast_msg}</b>")
 
-        leaderboard_table = "<pre>\n" + "\n".join(leaderboard_rows) + "\n</pre>"
+        leaderboard_table = "<pre>\n" + "\n".join(table_rows) + "\n</pre>"
 
-        # Normal text parts
         header_text = (
             f"🏁 <b>Quiz '{escape_markdown(quiz_title)}' Finished!</b>\n"
             f"📉 <b>Negative: -{db_neg_multiplier}/wrong</b> | "
             f"<b>Total Q: {total_questions_answered}</b>\n"
-            f"👥 <b>Participants: {len(final_scores)}</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👥 <b>Participants: {len(final_scores)}</b>\n\n"
         )
 
         roast_section = "<b>🔥 Roast Lines:</b>\n" + "\n".join(roast_lines[:5])
@@ -3308,7 +3294,7 @@ async def compile_group_leaderboard(chat_id, context):
 
         share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
         raw_button = {
-            "text": "Start Again ✨",
+            "text": "🎮 Start Again",
             "url": share_url,
             "style": "success"
         }
