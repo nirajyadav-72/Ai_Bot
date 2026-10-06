@@ -3160,7 +3160,7 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
         if not game or "user_answers" not in game:
             return
 
-        # 🎯 नया बदलाव: नया लाइव रिज़ल्ट भेजने से ठीक पहले पिछले वाले लाइव रिज़ल्ट मैसेज को डिलीट करें
+        # 🎯 नया लाइव रिज़ल्ट भेजने से ठीक पहले पिछले वाले लाइव रिज़ल्ट मैसेज को डिलीट करें
         if "last_mid_leaderboard_id" in game and game["last_mid_leaderboard_id"]:
             try:
                 await context.bot.delete_message(chat_id=chat_id, message_id=game["last_mid_leaderboard_id"])
@@ -3179,8 +3179,6 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
 
         # सभी यूज़र्स के लाइव स्कोर और उनकी स्पीड की गणना करें
         final_scores = {}
-        fastest_record = {"uid": None, "time": float('inf')} # सबसे तेज़ खिलाड़ी ट्रैक करने के लिए
-        
         for uid in game["user_answers"].keys():
             final_scores[uid] = {"score": 0, "wrong": 0, "total_time": 0.0, "points": 0.0}
 
@@ -3188,9 +3186,6 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
             score = 0
             wrong = 0
             total_time = 0.0
-            
-            # वर्तमान राउंड (जैसे सवाल 5, 10, 15) की सबसे तेज़ स्पीड देखने के लिए इंडेक्स
-            current_q_idx = current_q_num - 1
             
             for question_idx, answer_data in user_answers.items():
                 start_time = game["question_start_times"].get(question_idx, answer_data["timestamp"])
@@ -3201,18 +3196,13 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
                 if answer_data["selected"] == answer_data["correct_idx"]:
                     score += 1
                     total_time += elapsed_seconds
-                    
-                    # अगर खिलाड़ी ने इस अंतिम सवाल का सही जवाब दिया है और वह सबसे तेज़ है
-                    if question_idx == current_q_idx and elapsed_seconds < fastest_record["time"]:
-                        fastest_record["time"] = elapsed_seconds
-                        fastest_record["uid"] = uid
                 else:
                     wrong += 1
             
             calculated_points = float(score) - (float(wrong) * float(db_neg_multiplier))
             final_scores[uid] = {"score": score, "wrong": wrong, "total_time": total_time, "points": calculated_points}
 
-        # स्कोर के आधार पर टॉप 5 यूज़र्स को सॉर्ट करें
+        # स्कोर के आधार पर टॉप 5 यूज़र्स को सॉर्ट करें (हाई स्कोर पहले, कम टाइम पहले)
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:5]
 
         if not sorted_scores:
@@ -3221,7 +3211,7 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
         # जॉइन किए हुए कुल प्लेयर्स की संख्या
         total_joined_players = len(game.get("joined_users", {}))
 
-        # लाइव रिज़ल्ट का मैसेज फ़ॉर्मेट (बिना क्विज़ टाइटल के)
+        # लाइव रिज़ल्ट का मैसेज फ़ॉर्मेट
         text = f"📊 <b>LIVE RESULT: Top 5 Players</b>\n"
         text += f"👥 <b>Total Joined Players:</b> {total_joined_players}\n"
         text += f"📝 <b>Progress:</b> Completed {current_q_num} out of {total_questions} questions\n"
@@ -3236,20 +3226,22 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
             
             rank_icon = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
             
-            # 📊 नाम के आगे Right, Wrong और Percentage शो करने वाली मुख्य लाइन
-            text += f"{rank_icon} <b>{clean_username}</b> ➻ <b>{meta['points']:.2f} Pts</b>\n"
+            # नाम के आगे Right, Wrong और Percentage शो करने वाली मुख्य लाइन
+            text += f"{rank_icon} <b>{clean_username}</b> ➻ <b>{meta['points']:.2f} Points</b>\n"
             text += f"   └── (✅ Right: {meta['score']} | ❌ Wrong: {meta['wrong']} | 📈 {score_percentage:.2f}%)\n\n"
 
         text += f"━━━━━━━━━━━━━━━━━\n"
         
-        # ⚡ सबसे तेज़ खिलाड़ी का नाम नीचे डिस्प्ले करें
-        if fastest_record["uid"]:
-            fastest_name = game["joined_users"].get(fastest_record["uid"], "Player")
-            clean_fastest_name = fastest_name if str(fastest_name).startswith("@") else escape_markdown(fastest_name)
-            text += f"⚡ <b>सबसे तेज (Fastest Answer):</b> {clean_fastest_name} ({fastest_record['time']:.2f}s)\n"
-        else:
-            text += f"⚡ <b>सबसे तेज (Fastest Answer):</b> No correct answers this round!\n"
+        # 🎯 नया बदलाव: पहले नंबर (Rank 1) वाले खिलाड़ी का नाम निकालें और नीचे सेट करें
+        rank_1_uid = sorted_scores[0][0]
+        rank_1_meta = sorted_scores[0][1]
+        rank_1_name = game["joined_users"].get(rank_1_uid, "Player")
+        clean_rank_1_name = rank_1_name if str(rank_1_name).startswith("@") else escape_markdown(rank_1_name)
+        
+        # कुल सवालों को हल करने में लिया गया कुल समय (Total Time Taken)
+        rank_1_total_time = rank_1_meta["total_time"]
 
+        text += f"⚡ <b>सबसे तेज (Fastest Leader):</b> {clean_rank_1_name} (Total Time: {rank_1_total_time:.2f}s)\n"
         text += f"\n🎮 <i>Game is running continuously without any pause!</i>"
 
         # ग्रुप में लाइव रिज़ल्ट सेंड करें और नई Message ID को ट्रैक करें
