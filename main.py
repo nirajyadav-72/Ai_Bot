@@ -3241,7 +3241,7 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
         # कुल सवालों को हल करने में लिया गया कुल समय (Total Time Taken)
         rank_1_total_time = rank_1_meta["total_time"]
 
-        text += f"⚡ <b>सबसे तेज (Fastest Leader):</b> {clean_rank_1_name} (Total Time: {rank_1_total_time:.2f}s)\n"
+        text += f"⚡ <b>सबसे तेज (Fastest Leader):</b> {clean_rank_1_name} ({rank_1_total_time:.2f}sec)\n"
         text += f"\n🎮 <i>Game is running continuously without any pause!</i>"
 
         # ग्रुप में लाइव रिज़ल्ट सेंड करें और नई Message ID को ट्रैक करें
