@@ -2905,17 +2905,15 @@ async def send_next_group_poll(chat_id, context):
         questions = cursor.fetchall()
         conn.close()
         
-        # 🎯 AUTOMATIC DELETION: Delete the old mid-game leaderboard if it exists before sending a new poll
-        if "last_mid_leaderboard_id" in game and game["last_mid_leaderboard_id"]:
-            try:
-                await context.bot.delete_message(chat_id=chat_id, message_id=game["last_mid_leaderboard_id"])
-                game["last_mid_leaderboard_id"] = None
-                logging.info(f"🗑️ Old mid-game leaderboard deleted in chat {chat_id}")
-            except Exception as delete_err:
-                logging.warning(f"Could not delete old mid-game leaderboard: {delete_err}")
-        
         # Check if all questions completed
         if game["current_q"] >= len(questions):
+            # 🎯 सुरक्षा लॉक: फ़ाइनल रिज़ल्ट घोषित करने से पहले अगर कोई आखिरी लाइव रिज़ल्ट चैट में बचा है तो उसे डिलीट करें
+            if "last_mid_leaderboard_id" in game and game["last_mid_leaderboard_id"]:
+                try:
+                    await context.bot.delete_message(chat_id=chat_id, message_id=game["last_mid_leaderboard_id"])
+                except Exception:
+                    pass
+            
             await compile_group_leaderboard(chat_id, context)
             GROUP_GAMES.pop(chat_id, None)
             return
@@ -3096,12 +3094,11 @@ async def send_next_group_poll(chat_id, context):
         current_q_num = game["current_q"]
         total_q_count = len(questions)
 
-        # 🎯 SEQUENCE CONDITION: If mid-game milestones hit (Q5, Q10...), pause and show the live chart
+        # 🎯 SEQUENCE CONDITION: हर 5वें सवाल के बाद बिना रुके बैकग्राउंड में लाइव रिजल्ट ट्रिगर करेगा
         if current_q_num < total_q_count and current_q_num % 5 == 0:
             await send_mid_game_leaderboard(chat_id, context, current_q_num, total_q_count)
-            await asyncio.sleep(5)  # 5-second observation buffer window for chat participants
 
-        # Send next question
+        # Send next question immediately
         if chat_id in GROUP_GAMES and not game.get("quiz_paused"):
             asyncio.create_task(send_next_group_poll(chat_id, context))
             
@@ -3157,11 +3154,20 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
         logging.error(f"Error in track_poll_answers: {e}")
 
 async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_questions):
-    """게म के बीच में हर 5 सवाल के बाद Live Top 5 Result दिखाने के लिए फ़ंक्शन"""
+    """गेम के बीच में हर 5 सवाल के बाद Live Top 5 Result दिखाने के लिए फ़ंक्शन"""
     try:
         game = GROUP_GAMES.get(chat_id)
         if not game or "user_answers" not in game:
             return
+
+        # 🎯 नया बदलाव: नया लाइव रिज़ल्ट भेजने से ठीक पहले पिछले वाले लाइव रिज़ल्ट मैसेज को डिलीट करें
+        if "last_mid_leaderboard_id" in game and game["last_mid_leaderboard_id"]:
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=game["last_mid_leaderboard_id"])
+                game["last_mid_leaderboard_id"] = None
+                logging.info(f"🗑️ Previous mid-game leaderboard deleted in chat {chat_id}")
+            except Exception as delete_err:
+                logging.warning(f"Could not delete previous mid-game leaderboard: {delete_err}")
 
         # 1. क्विज़ का टाइटल और नेगेटिव मार्किंग की वैल्यू निकालें
         with sqlite3.connect(DB_FILE) as conn:
@@ -3213,9 +3219,9 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
             rank_icon = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
             text += f"{rank_icon} <b>{clean_username}</b> ➻ <b>{meta['points']:.2f} Pts</b> (R: {meta['score']} | W: {meta['wrong']})\n"
 
-        text += f"\n⏳ <i>Next question is loading automatically...</i>"
+        text += f"\n🎮 <i>Game is running continuously without any pause!</i>"
 
-        # ग्रुप में लाइव रिज़ल्ट सेंड करें और उसे मेमोरी में ट्रैक करें
+        # ग्रुप में लाइव रिज़ल्ट सेंड करें और नई Message ID को ट्रैक करें
         mid_result_msg = await context.bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
         game["last_mid_leaderboard_id"] = mid_result_msg.message_id
         
