@@ -3169,17 +3169,18 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
             except Exception as delete_err:
                 logging.warning(f"Could not delete previous mid-game leaderboard: {delete_err}")
 
-        # 1. क्विज़ का टाइटल और नेगेटिव मार्किंग की वैल्यू निकालें
+        # क्विज़ की नेगेटिव मार्किंग की वैल्यू निकालें
         with sqlite3.connect(DB_FILE) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT title, negative_value FROM quizzes WHERE quiz_id = ?", (game["quiz_id"],))
+            cursor.execute("SELECT negative_value FROM quizzes WHERE quiz_id = ?", (game["quiz_id"],))
             quiz_data = cursor.fetchone()
         
-        quiz_title = quiz_data[0] if quiz_data else "Quiz"
-        db_neg_multiplier = quiz_data[1] if (quiz_data and len(quiz_data) > 1) else 0.0
+        db_neg_multiplier = quiz_data[0] if (quiz_data and len(quiz_data) > 0) else 0.0
 
-        # 2. सभी यूज़र्स के लाइव स्कोर की गणना करें
+        # सभी यूज़र्स के लाइव स्कोर और उनकी स्पीड की गणना करें
         final_scores = {}
+        fastest_record = {"uid": None, "time": float('inf')} # सबसे तेज़ खिलाड़ी ट्रैक करने के लिए
+        
         for uid in game["user_answers"].keys():
             final_scores[uid] = {"score": 0, "wrong": 0, "total_time": 0.0, "points": 0.0}
 
@@ -3188,27 +3189,41 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
             wrong = 0
             total_time = 0.0
             
+            # वर्तमान राउंड (जैसे सवाल 5, 10, 15) की सबसे तेज़ स्पीड देखने के लिए इंडेक्स
+            current_q_idx = current_q_num - 1
+            
             for question_idx, answer_data in user_answers.items():
+                start_time = game["question_start_times"].get(question_idx, answer_data["timestamp"])
+                elapsed_seconds = 0.0
+                if isinstance(start_time, datetime):
+                    elapsed_seconds = max(0, (answer_data["timestamp"] - start_time).total_seconds())
+
                 if answer_data["selected"] == answer_data["correct_idx"]:
                     score += 1
-                    start_time = game["question_start_times"].get(question_idx, answer_data["timestamp"])
-                    if isinstance(start_time, datetime):
-                        total_time += max(0, (answer_data["timestamp"] - start_time).total_seconds())
+                    total_time += elapsed_seconds
+                    
+                    # अगर खिलाड़ी ने इस अंतिम सवाल का सही जवाब दिया है और वह सबसे तेज़ है
+                    if question_idx == current_q_idx and elapsed_seconds < fastest_record["time"]:
+                        fastest_record["time"] = elapsed_seconds
+                        fastest_record["uid"] = uid
                 else:
                     wrong += 1
             
             calculated_points = float(score) - (float(wrong) * float(db_neg_multiplier))
             final_scores[uid] = {"score": score, "wrong": wrong, "total_time": total_time, "points": calculated_points}
 
-        # 3. स्कोर के आधार पर टॉप 5 यूज़र्स को सॉर्ट करें
+        # स्कोर के आधार पर टॉप 5 यूज़र्स को सॉर्ट करें
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:5]
 
         if not sorted_scores:
             return  # अगर अभी तक किसी ने जवाब नहीं दिया, तो मैसेज न भेजें
 
-        # 4. लाइव रिज़ल्ट का मैसेज फॉर्मेट करें
+        # जॉइन किए हुए कुल प्लेयर्स की संख्या
+        total_joined_players = len(game.get("joined_users", {}))
+
+        # लाइव रिज़ल्ट का मैसेज फ़ॉर्मेट (बिना क्विज़ टाइटल के)
         text = f"📊 <b>LIVE RESULT: Top 5 Players</b>\n"
-        text += f"🏆 <b>Quiz:</b> {escape_markdown(quiz_title)}\n"
+        text += f"👥 <b>Total Joined Players:</b> {total_joined_players}\n"
         text += f"📝 <b>Progress:</b> Completed {current_q_num} out of {total_questions} questions\n"
         text += f"━━━━━━━━━━━━━━━━━\n\n"
 
@@ -3216,8 +3231,24 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
             user_display_name = game["joined_users"].get(uid, "Unknown User")
             clean_username = user_display_name if str(user_display_name).startswith("@") else escape_markdown(user_display_name)
             
+            # % की गणना: (सही जवाब / अभी तक के कुल सवाल) * 100 
+            score_percentage = (meta["score"] / current_q_num) * 100 if current_q_num > 0 else 0.0
+            
             rank_icon = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
-            text += f"{rank_icon} <b>{clean_username}</b> ➻ <b>{meta['points']:.2f} Pts</b> (R: {meta['score']} | W: {meta['wrong']})\n"
+            
+            # 📊 नाम के आगे Right, Wrong और Percentage शो करने वाली मुख्य लाइन
+            text += f"{rank_icon} <b>{clean_username}</b> ➻ <b>{meta['points']:.2f} Pts</b>\n"
+            text += f"   └── (✅ Right: {meta['score']} | ❌ Wrong: {meta['wrong']} | 📈 {score_percentage:.2f}%)\n\n"
+
+        text += f"━━━━━━━━━━━━━━━━━\n"
+        
+        # ⚡ सबसे तेज़ खिलाड़ी का नाम नीचे डिस्प्ले करें
+        if fastest_record["uid"]:
+            fastest_name = game["joined_users"].get(fastest_record["uid"], "Player")
+            clean_fastest_name = fastest_name if str(fastest_name).startswith("@") else escape_markdown(fastest_name)
+            text += f"⚡ <b>सबसे तेज (Fastest Answer):</b> {clean_fastest_name} ({fastest_record['time']:.2f}s)\n"
+        else:
+            text += f"⚡ <b>सबसे तेज (Fastest Answer):</b> No correct answers this round!\n"
 
         text += f"\n🎮 <i>Game is running continuously without any pause!</i>"
 
@@ -3226,7 +3257,7 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
         game["last_mid_leaderboard_id"] = mid_result_msg.message_id
         
     except Exception as e:
-        logging.error(f"Error in send_mid_game_leaderboard: {e}")
+        logging.error(f"Error in send_mid_game_leaderboard: {e}", exc_info=True)
 
 # 🎖️ result leaderboard 
 async def compile_group_leaderboard(chat_id, context):
