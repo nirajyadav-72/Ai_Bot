@@ -3218,69 +3218,69 @@ async def compile_group_leaderboard(chat_id, context):
         # Dynamic Sorting: Pehle high score (Descending), fir kam time (Ascending)
         sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:50]
         
-        header = f"🏁 <b>The quiz '{escape_markdown(quiz_title)}' has finished!</b>\n"
-        header += f"📉 <b>Negative Marking Applied: -{db_neg_multiplier} per wrong answer</b>\n\n"
-        
-        subheader = f"📋 <b>{total_questions_answered} questions answered</b>\n"
-        subheader += f"👥 <b>Total Participants: {len(final_scores)}</b>\n"
-        subheader += f"━━━━━━━━━━━━━━━━━\n\n"
-        
         # 🎭 डायलॉग्स पूल (बिना किसी फिक्स नाम के - रैंडमली इस्तेमाल के लिए)
         roasts_topper = [
-            "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? टॉपर बनने का इरादा प्रमाणित है!",
+            "[टॉपर भाई] भाई तुमने तो सीधे किताब ही रट मारी थी क्या? टॉपर बनने का इरादा प्रमाणित हुआ!",
             "[किताबी कीड़ा] इतनी पढ़ाई कहाँ से करते हो भाई? हमें भी थोड़ा ज्ञान दे दो, गुरुजी!",
             "[गूगल का दामाद] भाई गूगल से सीधा कनेक्शन है क्या तुम्हारा? या फिर अंतर्यामी हो?",
-            "[वैज्ञानिक] इतना दिमाग लाते कहाँ से हो भाई? नासा (NASA) वाले ढूंढ रहे हैं तुम्हें!",
-            "[रट्टू तोता] लगता है आज सुबह नाश्ते में पूरी किताब ही चबा कर खा गए थे। बाकी सब भूल गए!",
+            "[वैज्ञानिक] इतना दिमाग लाते कहाँ से हो भाई? नासा (NASA) वाले ढूंढ रहे हैं तुम्हें।",
+            "[रट्टू तोता] लगता है आज सुबह नाश्ते में पूरी किताब ही चबा कर खा गए थे। बाकी सवाल सीधे मेमोरी से निकल गए!"
         ]
         
         roasts_middle = [
-            "[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए, थोड़ा जमीन पर आते तो नहीं?",
-            "[समीक्षा बाबू] दूसरों की आलोचना करने में तो अव्वल हो, लेकिन नंबर देखकर लगता है सब भूल गए!",
-            "[त्रिशंकु खिलाड़ी] ना ऊपर पहुँच पाए, ना नीचे सुकून मिला। बीच में ऐसे लटके हो!",
-            "[सेफ राइडर] भाई ने उतना ही रिस्क लिया जितना घरवाले शादी में दूर के रिश्ते दिखाते हैं!",
-            "[मिस कॉल] नंबर तो ठीक-ठाक आ गए, पर किस्मत ने आखिरी वक्त पर वैसे ही कट कर दिया!",
+            "[उड़ता परिंदा] नाम की तरह बस हवा में ही उड़ते रह गए, थोड़ा जमीन पर आते तो न?",
+            "[समीक्षा बाबू] दूसरों की आलोचना करने में तो अव्वल हो, लेकिन नंबर देखकर लग रहा है।",
+            "[त्रिशंकु खिलाड़ी] ना ऊपर पहुँच पाए, ना नीचे सुकून मिला। बीच में ऐसे लटके हो।",
+            "[सेफ राइडर] भाई ने उतना ही रिस्क लिया जितना घरवाले शादी में दूर के रिश्ते के लिए देते हैं।",
+            "[मिस कॉल] नंबर तो ठीक-ठाक आ गए, पर किस्मत ने आखिरी वक्त पर वैसे ही कट कर दिया।"
         ]
         
         roasts_low = [
-            "[सिर्फ हाजिरी] आप सिर्फ परीक्षा हॉल की हवा खाने आए थे क्या? इतना कम स्कोर देखकर हैरानी हुई!",
-            "[पूजा की थाली] परीक्षा में केवल श्रद्धा और भावना से काम नहीं चलता, कुछ सहायक अध्ययन भी जरूरी है!",
-            "[आंसू की बूंद] नंबर देखकर सच में आंखों में आंसू आ गए। यह नंबर है या शगुन का संकेत?",
-            "[सिर्फ मुस्कान] चेहरे पर मुस्कान तो पूरी है, पर मार्कशीट देखकर रोना आ जाए तो क्या करें?",
-            "[मिस्टर गुमनाम] नाम के आगे टैग लगाने से नंबर नहीं मिलते बाबूजी, इसके लिए पढ़ाई चाहिए!",
-            "[दर्शक दीर्घा] तुम क्विज़ खेलने नहीं, सिर्फ दूसरों के सही जवाबों पर तालियाँ बजाने आए थे!",
-            "[अंगूठा छाप] स्क्रीन पर उँगलियाँ तो ऐसे चल रही थीं जैसे हैकर हो, पर मार्क्स कहाँ से आएंगे?",
-            "[धूप सेकने वाले] परीक्षा हॉल में धूप सेकने आए थे क्या बाबूजी? जितना स्कोर मिला उतनी ही धूप है!",
-            "[मार्कशीट का विलेन] घरवाले अगर यह मार्कशीट देख लें, तो इनाम में सिर्फ फ्लॉप कॉलर ही मिलेगा!",
+            "[सिर्फ हाजिरी] आप सिर्फ परीक्षा हॉल की हवा खाने आए थे क्या? इतना कम स्कोर देखकर लगता है।",
+            "[पूजा की थाली] परीक्षा में केवल श्रद्धा और भावना से काम नहीं चलता, कुछ सहायक जानकारी भी चाहिए।",
+            "[आंसू की बूंद] नंबर देखकर सच में आंखों में आंसू आ गए। यह नंबर है या शगुन का परिणाम?",
+            "[सिर्फ मुस्कान] चेहरे पर मुस्कान तो पूरी है, पर मार्कशीट देखकर रोना आ जाएगा भाई।",
+            "[मिस्टर गुमनाम] नाम के आगे टैग लगाने से नंबर नहीं मिलते बाबूजी, इसके लिए मेहनत करनी पड़ती है।",
+            "[दर्शक दीर्घा] तुम क्विज़ खेलने नहीं, सिर्फ दूसरों के सही जवाबों पर तालियाँ बजाने आए थे।",
+            "[अंगूठा छाप] स्क्रीन पर उँगलियाँ तो ऐसे चल रही थीं जैसे हैकर हो, पर मार्कशीट कुछ और ही कहानी बताती है।",
+            "[धूप सेकने वाले] परीक्षा हॉल में धूप सेकने आए थे क्या बाबूजी? जितना स्कोर मिला है उतनी धूप भी नहीं।",
+            "[मार्कशीट का विलेन] घरवाले अगर यह मार्कशीट देख लें, तो इनाम में सिर्फ फ्लॉप हिट सिनेमा का टिकट देंगे।"
         ]
         
         roasts_minus = [
-            "[कर्जदार खिलाड़ी] हंसना तो दूर की बात है, आप तो परीक्षक से भी उधार में नंबर माँग रहे हैं!",
-            "[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। अगली बार थोड़ा प्रयास करना!",
-            "[दिवालिया] भाई साहब, आपका स्कोर देखकर बैंक वाले भी लोन देने से मना कर देंगे!",
-            "[दानवीर कर्ण] अपने सारे नंबर गलत जवाबों के रास्ते परीक्षक को दान कर आए। इसी को कहते हैं दान!",
-            "[ब्लैक होल] आपके अकाउंट में नंबर आते नहीं, सीधे गायब हो जाते हैं। माइनस मार्क की सुंदरता!",
+            "[कर्जदार खिलाड़ी] हंसना तो दूर की बात है, आप तो परीक्षक से भी उधार में नंबर माँग रहे हैं।",
+            "[माइनस मास्टर] भाई साहब! माइनस मार्किंग आपके लिए ही बनी थी। अगली बार थोड़ा ध्यान दें।",
+            "[दिवालिया] भाई साहब, आपका स्कोर देखकर बैंक वाले भी लोन देने से मना कर देंगे।",
+            "[दानवीर कर्ण] अपने सारे नंबर गलत जवाबों के रास्ते परीक्षक को दान कर आए। इसे परोपकार कहते हैं।",
+            "[ब्लैक होल] आपके अकाउंट में नंबर आते नहीं, सीधे गायब हो जाते हैं। माइनस मार्किंग की वजह से।"
         ]
 
-        leaderboard = ""
+        # Build table rows for users only
+        leaderboard_rows = []
+        header_line = f"{'Rank':<4} {'Player':<16} {'R':>4} {'W':>4} {'Time':>8} {'Pts':>8}"
+        leaderboard_rows.append(header_line)
+        leaderboard_rows.append("-" * len(header_line))
+
+        roast_lines = []
         for idx, (uid, meta) in enumerate(sorted_scores, 1):
             user_display_name = game["joined_users"].get(uid, "Unknown User")
-            
-            # 🌟 FIX: Agar name @ se shuru hota hai (username hai), toh escape nahi karenge taaki link valid rahe
+
             if str(user_display_name).startswith("@"):
-                clean_username = user_display_name  # Keep pure clickable username
+                safe_name = str(user_display_name)
             else:
-                clean_username = escape_markdown(user_display_name) # Safe escape for normal names
-                
+                safe_name = html.escape(str(user_display_name))
+
+            # Truncate long names to fit table
+            if len(safe_name) > 16:
+                safe_name = safe_name[:15] + "…"
+
             score = meta["score"]
             wrong_count = meta["wrong"]
             points = meta["points"]
             total_time = format_time(meta["total_time"])
-            
-            # रोस्ट लॉजिक के लिए स्कोर परसेंटेज निकालना
+
             percentage = (points / total_questions_answered * 100) if total_questions_answered > 0 else 0.0
-            
-            # 🔥 फिक्स रोस्ट सिलेक्शन: रैंक 1 को हमेशा टॉपर का सम्मान मिलेगा
+
             if idx == 1:
                 roast_msg = random.choice(roasts_topper)
             elif points < 0:
@@ -3289,34 +3289,40 @@ async def compile_group_leaderboard(chat_id, context):
                 roast_msg = random.choice(roasts_low)
             else:
                 roast_msg = random.choice(roasts_middle)
-                
-            rank_icon = "🥇." if idx == 1 else "🥈." if idx == 2 else "🥉." if idx == 3 else f"{idx}."
-            
-            # Clean layout print without invalid characters or slashes
-            leaderboard += f"{rank_icon} <b>{clean_username}</b>\n"
-            leaderboard += f"   ➻ <b>Right:</b> {score}\n"
-            leaderboard += f"   ➻ <b>Wrong:</b> {wrong_count}\n"
-            leaderboard += f"   ➻ <b>Total Time Taken:</b> {total_time}\n"
-            leaderboard += f"   <blockquote><b>Final Score: {points:.2f} Points</b></blockquote>\n"
-            leaderboard += f"   <blockquote><b>{roast_msg}</b></blockquote>\n"
-            leaderboard += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
+
+            # Add row to table
+            leaderboard_rows.append(
+                f"{idx:<4} {safe_name:<16} {score:>4} {wrong_count:>4} {total_time:>8} {points:>8.2f}"
+            )
+            roast_lines.append(f"<b>{idx}. {roast_msg}</b>")
+
+        # Build final message
+        leaderboard_table = "<pre>\n" + "\n".join(leaderboard_rows) + "\n</pre>"
         
-        footer = "\n🏆 <b>Congratulations to all participants!</b>"
-        full_message = header + subheader + leaderboard + footer
+        # Normal text sections
+        header_text = f"🏁 <b>The quiz '{escape_markdown(quiz_title)}' has finished!</b>\n"
+        header_text += f"📉 <b>Negative Marking Applied: -{db_neg_multiplier} per wrong answer</b>\n\n"
         
-        # 🌟 FIX: Library wrapper ko bypass karke raw dictionary payload bheja taaki crash na ho
+        subheader_text = f"📋 <b>{total_questions_answered} questions answered</b>\n"
+        subheader_text += f"👥 <b>Total Participants: {len(final_scores)}</b>\n"
+        subheader_text += f"━━━━━━━━━━━━━━━━━\n\n"
+        
+        roast_section = "<b>🔥 Roast Lines:</b>\n" + "\n".join(roast_lines[:5])
+        
+        footer_text = "\n\n🏆 <b>Congratulations to all participants!</b>"
+        
+        # Combine everything
+        full_message = header_text + subheader_text + leaderboard_table + "\n\n" + roast_section + footer_text
+        
+        # Send message
         share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
-        
-        # Raw structure format dictionary injection
         raw_button = {
             "text": "Start Again ✨",
             "url": share_url,
-            "style": "success"  # Hara (Green) rang lagane ke liye. Neela chahiye toh "primary" likhein
+            "style": "success"
         }
-        
-        # InlineKeyboardMarkup constructor manually object structures feed kar lega
         kb = [[raw_button]]
-        
+
         await context.bot.send_message(
             chat_id=chat_id, 
             text=full_message, 
@@ -3326,7 +3332,7 @@ async def compile_group_leaderboard(chat_id, context):
         GROUP_GAMES.pop(chat_id, None)
     except Exception as e:
         logging.error(f"Error in compile_group_leaderboard: {e}")
-                 
+        
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         user_id = update.message.from_user.id if update.message else update.callback_query.from_user.id
