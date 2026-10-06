@@ -2905,6 +2905,15 @@ async def send_next_group_poll(chat_id, context):
         questions = cursor.fetchall()
         conn.close()
         
+        # 🎯 AUTOMATIC DELETION: Delete the old mid-game leaderboard if it exists before sending a new poll
+        if "last_mid_leaderboard_id" in game and game["last_mid_leaderboard_id"]:
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=game["last_mid_leaderboard_id"])
+                game["last_mid_leaderboard_id"] = None
+                logging.info(f"🗑️ Old mid-game leaderboard deleted in chat {chat_id}")
+            except Exception as delete_err:
+                logging.warning(f"Could not delete old mid-game leaderboard: {delete_err}")
+        
         # Check if all questions completed
         if game["current_q"] >= len(questions):
             await compile_group_leaderboard(chat_id, context)
@@ -2997,7 +3006,7 @@ async def send_next_group_poll(chat_id, context):
                     options=poll_options, 
                     type="quiz", 
                     correct_option_id=correct_idx,
-                    explanation=clean_explanation, # अब यह 200 कैरेक्टर से बड़ा होने पर अपने आप None हो जाएगा
+                    explanation=clean_explanation, 
                     is_anonymous=False,
                     open_period=raw_timer
                 )
@@ -3082,8 +3091,16 @@ async def send_next_group_poll(chat_id, context):
         else:
             game["consecutive_no_answers"] = 0
         
+        # Increment question index counter
         game["current_q"] += 1
-        
+        current_q_num = game["current_q"]
+        total_q_count = len(questions)
+
+        # 🎯 SEQUENCE CONDITION: If mid-game milestones hit (Q5, Q10...), pause and show the live chart
+        if current_q_num < total_q_count and current_q_num % 5 == 0:
+            await send_mid_game_leaderboard(chat_id, context, current_q_num, total_q_count)
+            await asyncio.sleep(5)  # 5-second observation buffer window for chat participants
+
         # Send next question
         if chat_id in GROUP_GAMES and not game.get("quiz_paused"):
             asyncio.create_task(send_next_group_poll(chat_id, context))
@@ -3138,6 +3155,72 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 
     except Exception as e:
         logging.error(f"Error in track_poll_answers: {e}")
+
+async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_questions):
+    """게म के बीच में हर 5 सवाल के बाद Live Top 5 Result दिखाने के लिए फ़ंक्शन"""
+    try:
+        game = GROUP_GAMES.get(chat_id)
+        if not game or "user_answers" not in game:
+            return
+
+        # 1. क्विज़ का टाइटल और नेगेटिव मार्किंग की वैल्यू निकालें
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT title, negative_value FROM quizzes WHERE quiz_id = ?", (game["quiz_id"],))
+            quiz_data = cursor.fetchone()
+        
+        quiz_title = quiz_data[0] if quiz_data else "Quiz"
+        db_neg_multiplier = quiz_data[1] if (quiz_data and len(quiz_data) > 1) else 0.0
+
+        # 2. सभी यूज़र्स के लाइव स्कोर की गणना करें
+        final_scores = {}
+        for uid in game["user_answers"].keys():
+            final_scores[uid] = {"score": 0, "wrong": 0, "total_time": 0.0, "points": 0.0}
+
+        for uid, user_answers in game["user_answers"].items():
+            score = 0
+            wrong = 0
+            total_time = 0.0
+            
+            for question_idx, answer_data in user_answers.items():
+                if answer_data["selected"] == answer_data["correct_idx"]:
+                    score += 1
+                    start_time = game["question_start_times"].get(question_idx, answer_data["timestamp"])
+                    if isinstance(start_time, datetime):
+                        total_time += max(0, (answer_data["timestamp"] - start_time).total_seconds())
+                else:
+                    wrong += 1
+            
+            calculated_points = float(score) - (float(wrong) * float(db_neg_multiplier))
+            final_scores[uid] = {"score": score, "wrong": wrong, "total_time": total_time, "points": calculated_points}
+
+        # 3. स्कोर के आधार पर टॉप 5 यूज़र्स को सॉर्ट करें
+        sorted_scores = sorted(final_scores.items(), key=lambda item: (-item[1]["points"], item[1]["total_time"]))[:5]
+
+        if not sorted_scores:
+            return  # अगर अभी तक किसी ने जवाब नहीं दिया, तो मैसेज न भेजें
+
+        # 4. लाइव रिज़ल्ट का मैसेज फॉर्मेट करें
+        text = f"📊 <b>LIVE RESULT: Top 5 Players</b>\n"
+        text += f"🏆 <b>Quiz:</b> {escape_markdown(quiz_title)}\n"
+        text += f"📝 <b>Progress:</b> Completed {current_q_num} out of {total_questions} questions\n"
+        text += f"━━━━━━━━━━━━━━━━━\n\n"
+
+        for idx, (uid, meta) in enumerate(sorted_scores, 1):
+            user_display_name = game["joined_users"].get(uid, "Unknown User")
+            clean_username = user_display_name if str(user_display_name).startswith("@") else escape_markdown(user_display_name)
+            
+            rank_icon = "🥇" if idx == 1 else "🥈" if idx == 2 else "🥉" if idx == 3 else f"{idx}."
+            text += f"{rank_icon} <b>{clean_username}</b> ➻ <b>{meta['points']:.2f} Pts</b> (R: {meta['score']} | W: {meta['wrong']})\n"
+
+        text += f"\n⏳ <i>Next question is loading automatically...</i>"
+
+        # ग्रुप में लाइव रिज़ल्ट सेंड करें और उसे मेमोरी में ट्रैक करें
+        mid_result_msg = await context.bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML")
+        game["last_mid_leaderboard_id"] = mid_result_msg.message_id
+        
+    except Exception as e:
+        logging.error(f"Error in send_mid_game_leaderboard: {e}")
 
 # 🎖️ result leaderboard 
 async def compile_group_leaderboard(chat_id, context):
