@@ -390,38 +390,7 @@ CRITICAL RULES:
         return None
         
 # --- BOT ROUTINES & HANDLERS ---
-async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    chat_type = update.message.chat.type
-    
-    allowed_ids = get_allowed_ids()
-    
-    # 1. ग्रुप आईडी सुरक्षा जाँच (sirf group ke liye)
-    if chat_type in ["group", "supergroup"]:
-        if SUPPORT_GROUP_ID and chat_id != SUPPORT_GROUP_ID:
-            await update.message.reply_text("❌ <b>Security Error:</b> Yah command is group me allowed nahi hai.", parse_mode="HTML")
-            return ConversationHandler.END
-            
-    # 2. यूज़र सुरक्षा जाँच (Group aur Private Chat dono ke liye)
-    if user_id != OWNER_ID and user_id not in allowed_ids:
-        await update.message.reply_text("❌ <b>Sorry!</b> Yah command keval authorized users hi use kar sakte hain.", parse_mode="HTML")
-        return ConversationHandler.END
 
-    # बॉट DM या सही ग्रुप में सिर्फ अलाउड यूज़र ही यहाँ तक पहुँच पाएंगे
-    context.user_data.clear()
-    
-    reply_keyboard = [['Current Affairs 2026 📰']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-    
-    await update.message.reply_text(
-        "<blockquote>🤖 <b>Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n"
-        "<blockquote>📝 <b>Step 1:</b> Send me the Topic or Subject for the quiz.</blockquote>\n"
-        "(Example: Ancient History, Modern History, Hindi, Geography...)",
-        parse_mode="HTML",
-        reply_markup=markup
-    )
-    return TOPIC
 
 async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return TOPIC
