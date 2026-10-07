@@ -462,9 +462,33 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
     elif selected_sub == "sub_history":
         sub_title = "History (इतिहास)"
         topics_keyboard = [
-            [InlineKeyboardButton("🏺 Ancient History", callback_data="set_topic_Ancient History")],
-            [InlineKeyboardButton("🏰 Medieval History", callback_data="set_topic_Medieval History")],
-            [InlineKeyboardButton("⚔️ Modern Indian History", callback_data="set_topic_Modern Indian History")]
+            # 🏺 प्राचीन भारत (Ancient India)
+            [InlineKeyboardButton("🏺 सिंधु घाटी सभ्यता", callback_data="set_topic_Indus Valley Civilization"),
+             InlineKeyboardButton("📖 वैदिक काल", callback_data="set_topic_Vedic Period History")],
+            [InlineKeyboardButton("🕉️ बौद्ध और जैन धर्म", callback_data="set_topic_Buddhism and Jainism"),
+             InlineKeyboardButton("👑 16 महाजनपद", callback_data="set_topic_16 Mahajanapadas")],
+            [InlineKeyboardButton("🦁 मौर्य साम्राज्य", callback_data="set_topic_Mauryan Empire"),
+             InlineKeyboardButton("📀 गुप्त साम्राज्य (स्वर्ण युग)", callback_data="set_topic_Gupta Empire History")],
+             
+            # ⚔️ मध्यकालीन भारत (Medieval India)
+            [InlineKeyboardButton("🕌 दिल्ली सल्तनत", callback_data="set_topic_Delhi Sultanate Dynasty"),
+             InlineKeyboardButton("🏯 मुगल साम्राज्य", callback_data="set_topic_Mughal Empire History")],
+            [InlineKeyboardButton("🚩 मराठा और विजयनगर", callback_data="set_topic_Maratha and Vijayanagara Empire"),
+             InlineKeyboardButton("✨ भक्ति और सूफी आंदोलन", callback_data="set_topic_Bhakti and Sufi Movement")],
+             
+            # 🇮🇳 आधुनिक भारत (Modern India)
+            [InlineKeyboardButton("🚢 यूरोपीय शक्तियों का आगमन", callback_data="set_topic_Arrival of European Powers in India"),
+             InlineKeyboardButton("💥 1857 का विद्रोह", callback_data="set_topic_Revolt of 1857 Indian History")],
+            [InlineKeyboardButton("🎯 भारतीय राष्ट्रीय कांग्रेस", callback_data="set_topic_Indian National Congress INC History"),
+             InlineKeyboardButton("🚶 गांधीवादी युग और आंदोलन", callback_data="set_topic_Mahatma Gandhi and Freedom Movements")],
+            [InlineKeyboardButton("✊ क्रांतिकारी आंदोलन", callback_data="set_topic_Indian Revolutionary Freedom Fighters"),
+             InlineKeyboardButton("📅 भारत का विभाजन और स्वतंत्रता", callback_data="set_topic_Indian Independence and Partition 1947")],
+             
+            # 🌍 विश्व इतिहास (World History)
+            [InlineKeyboardButton("⚙️ औद्योगिक क्रांति", callback_data="set_topic_Industrial Revolution World History"),
+             InlineKeyboardButton("🗼 फ्रांस और रूस की क्रांति", callback_data="set_topic_French and Russian Revolutions")],
+            [InlineKeyboardButton("⚔️ प्रथम और द्वितीय विश्व युद्ध", callback_data="set_topic_World War 1 and World War 2 History"),
+             InlineKeyboardButton("❄️ शीतयुद्ध का दौर", callback_data="set_topic_Cold War Era Geopolitics")]
         ]
     elif selected_sub == "sub_polity":
         sub_title = "Polity (राजव्यवस्था)"
