@@ -423,7 +423,7 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         [InlineKeyboardButton("🌍 Geography (भूगोल)", callback_data="sub_geography"),
          InlineKeyboardButton("🧬 General Science (विज्ञान)", callback_data="sub_science")],
         [InlineKeyboardButton("🗣️ Languages & Grammar", callback_data="sub_languages")],
-        [InlineKeyboardButton("❌ Cancel Setup", callback_data="autoquiz_cancel_nav")]
+        [InlineKeyboardButton("Cancel", callback_data="autoquiz_cancel_nav")]
     ])
     
     welcome_text = (
@@ -570,17 +570,31 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
     elif selected_sub == "sub_languages":
         sub_title = "Languages & Grammar"
         topics_keyboard = [
-            [InlineKeyboardButton("🗣️ Hindi Grammar (हिंदी व्याकरण)", callback_data="set_topic_Hindi Grammar")],
-            [InlineKeyboardButton("🇬🇧 English Grammar", callback_data="set_topic_English Grammar")]
-        ]
+            # 🗣️ हिंदी व्याकरण (Hindi Grammar)
+            [InlineKeyboardButton("📝 वर्णमाला, वर्तनी व संधि", callback_data="set_topic_Hindi Grammar Varnamala and Sandhi"),
+             InlineKeyboardButton("🔤 शब्द भेद (संज्ञा, सर्वनाम, क्रिया)", callback_data="set_topic_Hindi Grammar Sangya Sarvnam Kriya Avyay")],
+            [InlineKeyboardButton("🔄 समास, उपसर्ग व प्रत्यय", callback_data="set_topic_Hindi Grammar Samas Upsarg Pratyay"),
+             InlineKeyboardButton("📖 विलोम, पर्यायवाची व अनेकार्थी", callback_data="set_topic_Hindi Vocabulary Vilom Paryayvachi")],
+            [InlineKeyboardButton("✍️ लिंग, वचन, कारक व काल", callback_data="set_topic_Hindi Grammar Ling Vachan Karak Kaal"),
+             InlineKeyboardButton("🎭 मुहावरे, लोकोक्तियां व रस-छंद", callback_data="set_topic_Hindi Muhavare Lokoktiyan Ras Chhand Alankar")],
+             
+            # 🇬🇧 English Grammar
+            [InlineKeyboardButton("🇬🇧 Parts of Speech (Noun, Verb...)", callback_data="set_topic_English Grammar Parts of Speech"),
+             InlineKeyboardButton("⏳ Tenses & Conditionals", callback_data="set_topic_English Grammar Tenses and Sentence Structure")],
+            [InlineKeyboardButton("🔄 Active & Passive Voice", callback_data="set_topic_English Grammar Active and Passive Voice"),
+             InlineKeyboardButton("💬 Direct & Indirect Speech", callback_data="set_topic_English Grammar Direct and Indirect Narration")],
+            [InlineKeyboardButton("❌ Subject-Verb Agreement", callback_data="set_topic_English Grammar Subject Verb Agreement Errors"),
+             InlineKeyboardButton("📖 Synonyms, Antonyms & Idioms", callback_data="set_topic_English Vocabulary Synonyms Antonyms One Word Substitution")],
+            [InlineKeyboardButton("🧩 Prepositions & Articles", callback_data="set_topic_English Grammar Prepositions and Articles")]
+       ]
 
     # Har topic sub-menu me ek '🔙 Back' aur '❌ Cancel' ka option common rahega
     topics_keyboard.append([InlineKeyboardButton("🔙 Back to Subjects", callback_data="back_to_subjects_nav")])
-    topics_keyboard.append([InlineKeyboardButton("❌ Cancel Setup", callback_data="autoquiz_cancel_nav")])
+    topics_keyboard.append([InlineKeyboardButton("Cancel", callback_data="autoquiz_cancel_nav")])
     
     updated_text = (
         f"<blockquote>📂 Subject: <b>{sub_title}</b></blockquote>\n\n"
-        "🎯 <b>Niche diye gaye topics me se koi ek select karein:</b>"
+        "🎯 <b>topics me se koi ek select karein:</b>"
     )
     
     await query.edit_message_text(text=updated_text, reply_markup=InlineKeyboardMarkup(topics_keyboard), parse_mode="HTML")
