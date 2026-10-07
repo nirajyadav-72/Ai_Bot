@@ -493,10 +493,31 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
     elif selected_sub == "sub_polity":
         sub_title = "Polity (राजव्यवस्था)"
         topics_keyboard = [
-            [InlineKeyboardButton("📖 Indian Constitution", callback_data="set_topic_Indian Constitution")],
-            [InlineKeyboardButton("🏛️ Parliament & Judiciary", callback_data="set_topic_Indian Parliament and Judiciary")],
-            [InlineKeyboardButton("👑 Fundamental Rights", callback_data="set_topic_Fundamental Rights and Duties")]
-        ]
+            # 📖 संविधान का निर्माण और विशेषताएं
+            [InlineKeyboardButton("📖 संविधान का निर्माण व स्रोत", callback_data="set_topic_Making and Sources of Indian Constitution"),
+             InlineKeyboardButton("📜 संविधान की प्रस्तावना व अनुसूचियां", callback_data="set_topic_Preamble and Schedules of Indian Constitution")],
+            [InlineKeyboardButton("🇮🇳 संघ और उसका राज्यक्षेत्र", callback_data="set_topic_Union and its Territory and Citizenship")],
+             
+            # 📑 मौलिक अधिकार, कर्तव्य और नीति निदेशक तत्व
+            [InlineKeyboardButton("👑 मौलिक अधिकार (Rights)", callback_data="set_topic_Fundamental Rights of India"),
+             InlineKeyboardButton("🎯 नीति निदेशक तत्व व कर्तव्य", callback_data="set_topic_Directive Principles of State Policy and Fundamental Duties")],
+             
+            # 🏛️ केंद्रीय कार्यपालिका और विधायिका (Union Government)
+            [InlineKeyboardButton("👤 राष्ट्रपति, उपराष्ट्रपति व PM", callback_data="set_topic_President Vice President and Prime Minister of India"),
+             InlineKeyboardButton("🏛️ भारतीय संसद (लोकसभा-राज्यसभा)", callback_data="set_topic_Indian Parliament Lok Sabha and Rajya Sabha")],
+            [InlineKeyboardButton("⚖️ सर्वोच्च न्यायालय (Supreme Court)", callback_data="set_topic_Supreme Court of India and Judicial Review")],
+             
+            # 🏢 राज्य सरकार और स्थानीय स्वशासन (State & Local Government)
+            [InlineKeyboardButton(" राज्यपाल, CM व विधानमंडल", callback_data="set_topic_Governor Chief Minister and State Legislature"),
+             InlineKeyboardButton(" उच्च न्यायालय (High Court)", callback_data="set_topic_High Court and Subordinate Courts in India")],
+            [InlineKeyboardButton("🏡 पंचायती राज व नगर पालिकाएं", callback_data="set_topic_Panchayati Raj and Local Self Government")],
+             
+            # ⚙️ संवैधानिक निकाय और अन्य महत्वपूर्ण विषय
+            [InlineKeyboardButton("🗳️ निर्वाचन आयोग व चुनाव सुधार", callback_data="set_topic_Election Commission of India and Electoral Reforms"),
+             InlineKeyboardButton("💼 UPSC, CAG और नीति आयोग", callback_data="set_topic_Constitutional and Non Constitutional Bodies CAG NITI Aayog")],
+            [InlineKeyboardButton("🛠️ प्रमुख संवैधानिक संशोधन", callback_data="set_topic_Important Constitutional Amendments of India"),
+             InlineKeyboardButton("🚨 आपातकालीन प्रावधान (Emergency)", callback_data="set_topic_Emergency Provisions in Indian Constitution")]
+       ]
     elif selected_sub == "sub_geography":
         sub_title = "Geography (भूगोल)"
         topics_keyboard = [
@@ -521,7 +542,7 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
              InlineKeyboardButton("🌋 पृथ्वी की संरचना व ज्वालामुखी", callback_data="set_topic_Interior of Earth Volcanoes and Earthquakes")],
             [InlineKeyboardButton("🌀 वायुमंडल, पवनें व चक्रवात", callback_data="set_topic_Atmosphere Structure Winds and Cyclones"),
              InlineKeyboardButton("🌊 महासागरीय धाराएं व ज्वार", callback_data="set_topic_Ocean Currents and Tides")]
-      ]
+       ]
     elif selected_sub == "sub_science":
         sub_title = "General Science"
         topics_keyboard = [
