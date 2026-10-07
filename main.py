@@ -485,7 +485,7 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
              InlineKeyboardButton("शीतयुद्ध का दौर", callback_data="set_topic_Cold War Era Geopolitics")]
         ]
     elif selected_sub == "sub_polity":
-        sub_title = "Polity (राजव्यवस्था)"
+        sub_title = "Polity राजव्यवस्था"
         topics_keyboard = [
             [InlineKeyboardButton("संविधान का निर्माण व स्रोत", callback_data="set_topic_Making and Sources of Indian Constitution"),
              InlineKeyboardButton("प्रस्तावना व अनुसूचियां", callback_data="set_topic_Preamble and Schedules of Indian Constitution")],
