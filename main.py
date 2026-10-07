@@ -418,10 +418,10 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # 🏛️ LEVEL 1: MAIN SUBJECT BUTTONS 🏛️
     main_subject_keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("📰 Current Affairs & GK 📰", callback_data="sub_current_gk")],
-        [InlineKeyboardButton("📜 History (इतिहास)", callback_data="sub_history"),
-         InlineKeyboardButton("⚖️ Polity (राजव्यवस्था)", callback_data="sub_polity")],
-        [InlineKeyboardButton("🌍 Geography (भूगोल)", callback_data="sub_geography"),
-         InlineKeyboardButton("🧬 General Science (विज्ञान)", callback_data="sub_science")],
+        [InlineKeyboardButton("📜 History (इतिहास)", callback_data="sub_history")],
+        [InlineKeyboardButton("⚖️ Polity (राजव्यवस्था)", callback_data="sub_polity")],
+        [InlineKeyboardButton("🌍 Geography (भूगोल)", callback_data="sub_geography")],
+        [InlineKeyboardButton("🧬 General Science (विज्ञान)", callback_data="sub_science")],
         [InlineKeyboardButton("🗣️ Languages & Grammar", callback_data="sub_languages")],
         [InlineKeyboardButton("Cancel", callback_data="autoquiz_cancel_nav")]
     ])
