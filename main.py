@@ -546,10 +546,27 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
     elif selected_sub == "sub_science":
         sub_title = "General Science"
         topics_keyboard = [
-            [InlineKeyboardButton("🧬 Biology (जीव विज्ञान)", callback_data="set_topic_Biology")],
-            [InlineKeyboardButton("🧪 Chemistry (रसायन विज्ञान)", callback_data="set_topic_Chemistry")],
-            [InlineKeyboardButton("🧲 Physics (भौतिक विज्ञान)", callback_data="set_topic_Physics")]
-        ]
+            # 🧬 जीव विज्ञान (Biology)
+            [InlineKeyboardButton("🧬 कोशिका विज्ञान (Cell Biology)", callback_data="set_topic_Cell Structure and Functions Biology"),
+             InlineKeyboardButton("🩻 मानव शरीर के तंत्र (Systems)", callback_data="set_topic_Human Anatomy and Body Systems")],
+            [InlineKeyboardButton("🍎 पोषण, विटामिन और रोग", callback_data="set_topic_Human Nutrition Vitamins and Diseases"),
+             InlineKeyboardButton("🌿 पादप जगत (Plant Kingdom)", callback_data="set_topic_Plant Anatomy Physiology and Kingdom")],
+            [InlineKeyboardButton("🧬 आनुवंशिकी व जैव विकास", callback_data="set_topic_Genetics and Biological Evolution")],
+             
+            # 🧪 रसायन विज्ञान (Chemistry)
+            [InlineKeyboardButton("🧪 पदार्थ की अवस्थाएं व परमाणु", callback_data="set_topic_Matter States and Atomic Structure Chemistry"),
+             InlineKeyboardButton("📊 आवर्त सारणी (Periodic Table)", callback_data="set_topic_Periodic Table and Elements Properties")],
+            [InlineKeyboardButton("⚗️ अम्ल, क्षारक और लवण", callback_data="set_topic_Acids Bases Salts and pH Scale"),
+             InlineKeyboardButton("💎 धातु, अधातु व मिश्रधातु", callback_data="set_topic_Metals NonMetals and Alloys Chemistry")],
+            [InlineKeyboardButton("🔥 कार्बनिक रसायन व ईंधन", callback_data="set_topic_Organic Chemistry Carbon and Fuels")],
+             
+            # 🧲 भौतिक विज्ञान (Physics)
+            [InlineKeyboardButton("📏 मात्रक, गति और बल", callback_data="set_topic_Units Measurements Motion and Force Physics"),
+             InlineKeyboardButton("⚡ कार्य, ऊर्जा और शक्ति", callback_data="set_topic_Work Energy and Power Physics")],
+            [InlineKeyboardButton("💡 प्रकाश व ध्वनि (Light/Sound)", callback_data="set_topic_Light Optics Sound and Waves Physics"),
+             InlineKeyboardButton("🔌 विद्युत व चुंबकत्व", callback_data="set_topic_Electricity and Magnetism Physics")],
+            [InlineKeyboardButton("🚀 आधुनिक भौतिकी व अंतरिक्ष", callback_data="set_topic_Modern Physics Nuclear Energy and Space")]
+       ]
     elif selected_sub == "sub_languages":
         sub_title = "Languages & Grammar"
         topics_keyboard = [
