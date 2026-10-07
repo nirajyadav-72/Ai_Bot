@@ -451,7 +451,6 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
     topics_keyboard = []
     sub_title = ""
     
-    # Subjects & Sub-Topics Without Emojis
     if selected_sub == "sub_current_gk":
         sub_title = "Current Affairs & GK"
         topics_keyboard = [
@@ -485,48 +484,29 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
              InlineKeyboardButton("शीतयुद्ध का दौर", callback_data="set_topic_Cold War Era Geopolitics")]
         ]
     elif selected_sub == "sub_polity":
-        sub_title = "Polity राजव्यवस्था"
+        sub_title = "Polity (राजव्यवस्था)"
+        # 🟢 फिक्स: यहाँ callback_data को छोटा (Short) कर दिया गया है ताकि 64-byte limit न टूटे
         topics_keyboard = [
-            [InlineKeyboardButton("संविधान का निर्माण व स्रोत", callback_data="set_topic_Making and Sources of Indian Constitution"),
-             InlineKeyboardButton("प्रस्तावना व अनुसूचियां", callback_data="set_topic_Preamble and Schedules of Indian Constitution")],
-            [InlineKeyboardButton("संघ, राज्यक्षेत्र व नागरिकता", callback_data="set_topic_Union and its Territory and Citizenship"),
-             InlineKeyboardButton("मौलिक अधिकार (Rights)", callback_data="set_topic_Fundamental Rights of India")],
-            [InlineKeyboardButton("नीति निदेशक तत्व व कर्तव्य", callback_data="set_topic_Directive Principles of State Policy and Fundamental Duties"),
-             InlineKeyboardButton("राष्ट्रपति, उपराष्ट्रपति व PM", callback_data="set_topic_President Vice President and Prime Minister of India")],
-            [InlineKeyboardButton("भारतीय संसद (लोक-राज्यसभा)", callback_data="set_topic_Indian Parliament Lok Sabha and Rajya Sabha"),
-             InlineKeyboardButton("सर्वोच्च न्यायालय (Supreme Court)", callback_data="set_topic_Supreme Court of India and Judicial Review")],
-            [InlineKeyboardButton("राज्यपाल, CM व विधानमंडल", callback_data="set_topic_Governor Chief Minister and State Legislature"),
-             InlineKeyboardButton("उच्च न्यायालय (High Court)", callback_data="set_topic_High Court and Subordinate Courts in India")],
-            [InlineKeyboardButton("पंचायती राज व स्थानीय शासन", callback_data="set_topic_Panchayati Raj and Local Self Government"),
-             InlineKeyboardButton("निर्वाचन आयोग व चुनाव सुधार", callback_data="set_topic_Election Commission of India and Electoral Reforms")],
-            [InlineKeyboardButton("UPSC, CAG और नीति आयोग", callback_data="set_topic_Constitutional and Non Constitutional Bodies CAG NITI Aayog"),
-             InlineKeyboardButton("प्रमुख संवैधानिक संशोधन", callback_data="set_topic_Important Constitutional Amendments of India")],
-            [InlineKeyboardButton("आपातकालीन प्रावधान (Emergency)", callback_data="set_topic_Emergency Provisions in Indian Constitution")]
-        ]
-    elif selected_sub == "sub_geography":
-        sub_title = "Geography (भूगोल)"
-        topics_keyboard = [
-            [InlineKeyboardButton("भारत का भौतिक स्वरूप", callback_data="set_topic_Physical Features of India"),
-             InlineKeyboardButton("भारत की नदियां व जलतंत्र", callback_data="set_topic_Indian Rivers and Drainage System")],
-            [InlineKeyboardButton("भारत की जलवायु व मिट्टी", callback_data="set_topic_Indian Climate and Soil Types"),
-             InlineKeyboardButton("वनस्पति व राष्ट्रीय उद्यान", callback_data="set_topic_Natural Vegetation and National Parks of India")],
-            [InlineKeyboardButton("कृषि, फसलें और सिंचाई", callback_data="set_topic_Agriculture and Irrigation in India"),
-             InlineKeyboardButton("प्रमुख बांध व परियोजनाएं", callback_data="set_topic_Major Dams and River Valley Projects in India")],
-            [InlineKeyboardButton("खनिज व ऊर्जा संसाधन", callback_data="set_topic_Minerals and Energy Resources of India"),
-             InlineKeyboardButton("उद्योग, राजमार्ग व बंदरगाह", callback_data="set_topic_Industries Transport and Ports in India")],
-            [InlineKeyboardButton("जनगणना व प्रमुख जनजातियां", callback_data="set_topic_Indian Census and Tribes")],
-            [InlineKeyboardButton("महाद्वीप, पर्वत व मरुस्थल", callback_data="set_topic_Continents Mountains and Deserts of the World"),
-             InlineKeyboardButton("विश्व की नदियां और झीलें", callback_data="set_topic_World Rivers Lakes and Waterfalls")],
-            [InlineKeyboardButton("प्रमुख जलसंधियां व नहरें", callback_data="set_topic_Important Straits and Canals of the World")],
-            [InlineKeyboardButton("सौरमंडल, अक्षांश व देशांतर", callback_data="set_topic_Solar System Latitudes and Longitudes"),
-             InlineKeyboardButton("पृथ्वी की संरचना व ज्वालामुखी", callback_data="set_topic_Interior of Earth Volcanoes and Earthquakes")],
-            [InlineKeyboardButton("वायुमंडल, पवनें व चक्रवात", callback_data="set_topic_Atmosphere Structure Winds and Cyclones"),
-             InlineKeyboardButton("महासागरीय धाराएं व ज्वार", callback_data="set_topic_Ocean Currents and Tides")]
+            [InlineKeyboardButton("संविधान का निर्माण व स्रोत", callback_data="set_topic_pol_1"),
+             InlineKeyboardButton("प्रस्तावना व अनुसूचियां", callback_data="set_topic_pol_2")],
+            [InlineKeyboardButton("संघ, राज्यक्षेत्र व नागरिकता", callback_data="set_topic_pol_3"),
+             InlineKeyboardButton("मौलिक अधिकार (Rights)", callback_data="set_topic_pol_4")],
+            [InlineKeyboardButton("नीति निदेशक तत्व व कर्तव्य", callback_data="set_topic_pol_5"),
+             InlineKeyboardButton("राष्ट्रपति, उपराष्ट्रपति व PM", callback_data="set_topic_pol_6")],
+            [InlineKeyboardButton("भारतीय संसद (लोक-राज्यसभा)", callback_data="set_topic_pol_7"),
+             InlineKeyboardButton("सर्वोच्च न्यायालय (Supreme Court)", callback_data="set_topic_pol_8")],
+            [InlineKeyboardButton("राज्यपाल, CM व विधानमंडल", callback_data="set_topic_pol_9"),
+             InlineKeyboardButton("उच्च न्यायालय (High Court)", callback_data="set_topic_pol_10")],
+            [InlineKeyboardButton("पंचायती राज व स्थानीय शासन", callback_data="set_topic_pol_11"),
+             InlineKeyboardButton("निर्वाचन आयोग व चुनाव सुधार", callback_data="set_topic_pol_12")],
+            [InlineKeyboardButton("UPSC, CAG और नीति आयोग", callback_data="set_topic_pol_13"),
+             InlineKeyboardButton("प्रमुख संवैधानिक संशोधन", callback_data="set_topic_pol_14")],
+            [InlineKeyboardButton("आपातकालीन प्रावधान (Emergency)", callback_data="set_topic_pol_15")]
         ]
     elif selected_sub == "sub_science":
         sub_title = "General Science"
         topics_keyboard = [
-            [InlineKeyboardButton("को cells विज्ञान (Cell Biology)", callback_data="set_topic_Cell Structure and Functions Biology"),
+            [InlineKeyboardButton("कोशिका विज्ञान (Cell Biology)", callback_data="set_topic_Cell Structure and Functions Biology"),
              InlineKeyboardButton("मानव शरीर के तंत्र (Systems)", callback_data="set_topic_Human Anatomy and Body Systems")],
             [InlineKeyboardButton("पोषण, विटामिन और रोग", callback_data="set_topic_Human Nutrition Vitamins and Diseases"),
              InlineKeyboardButton("पादप जगत (Plant Kingdom)", callback_data="set_topic_Plant Anatomy Physiology and Kingdom")],
@@ -544,23 +524,23 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
         ]
     elif selected_sub == "sub_languages":
         sub_title = "Languages & Grammar"
+        # 🟢 फिक्स: यहाँ भी callback_data को छोटा कर दिया गया है
         topics_keyboard = [
-            [InlineKeyboardButton("वर्णमाला, वर्तनी व संधि", callback_data="set_topic_Hindi Grammar Varnamala and Sandhi"),
-             InlineKeyboardButton("शब्द भेद (संज्ञा, सर्वनाम, क्रिया)", callback_data="set_topic_Hindi Grammar Sangya Sarvnam Kriya Avyay")],
-            [InlineKeyboardButton("समास, उपसर्ग व प्रत्यय", callback_data="set_topic_Hindi Grammar Samas Upsarg Pratyay"),
-             InlineKeyboardButton("विलोम, पर्यायवाची व अनेकार्थी", callback_data="set_topic_Hindi Vocabulary Vilom Paryayvachi")],
-            [InlineKeyboardButton("लिंग, वचन, कारक व काल", callback_data="set_topic_Hindi Grammar Ling Vachan Karak Kaal"),
-             InlineKeyboardButton("मुहावरे, लोकोक्तियां व रस-छंद", callback_data="set_topic_Hindi Muhavare Lokoktiyan Ras Chhand Alankar")],
-            [InlineKeyboardButton("Parts of Speech", callback_data="set_topic_English Grammar Parts of Speech"),
-             InlineKeyboardButton("Tenses & Sentence Structure", callback_data="set_topic_English Grammar Tenses and Sentence Structure")],
-            [InlineKeyboardButton("Active & Passive Voice", callback_data="set_topic_English Grammar Active and Passive Voice"),
-             InlineKeyboardButton("Direct & Indirect Speech", callback_data="set_topic_English Grammar Direct and Indirect Narration")],
-            [InlineKeyboardButton("Subject-Verb Agreement", callback_data="set_topic_English Grammar Subject Verb Agreement Errors")],
-            [InlineKeyboardButton("Synonyms, Antonyms & Idioms", callback_data="set_topic_English Vocabulary Synonyms Antonyms One Word Substitution"),
-             InlineKeyboardButton("Prepositions & Articles", callback_data="set_topic_English Grammar Prepositions and Articles")]
+            [InlineKeyboardButton("वर्णमाला, वर्तनी व संधि", callback_data="set_topic_lang_1"),
+             InlineKeyboardButton("शब्द भेद (संज्ञा, सर्वनाम, क्रिया)", callback_data="set_topic_lang_2")],
+            [InlineKeyboardButton("समास, उपसर्ग व प्रत्यय", callback_data="set_topic_lang_3"),
+             InlineKeyboardButton("विलोम, पर्यायवाची व अनेकार्थी", callback_data="set_topic_lang_4")],
+            [InlineKeyboardButton("लिंग, वचन, कारक व काल", callback_data="set_topic_lang_5"),
+             InlineKeyboardButton("मुहावरे, लोकोक्तियां व रस-छंद", callback_data="set_topic_lang_6")],
+            [InlineKeyboardButton("Parts of Speech", callback_data="set_topic_lang_7"),
+             InlineKeyboardButton("Tenses & Sentence Structure", callback_data="set_topic_lang_8")],
+            [InlineKeyboardButton("Active & Passive Voice", callback_data="set_topic_lang_9"),
+             InlineKeyboardButton("Direct & Indirect Speech", callback_data="set_topic_lang_10")],
+            [InlineKeyboardButton("Subject-Verb Agreement", callback_data="set_topic_lang_11")],
+            [InlineKeyboardButton("Synonyms, Antonyms & Idioms", callback_data="set_topic_lang_12"),
+             InlineKeyboardButton("Prepositions & Articles", callback_data="set_topic_lang_13")]
         ]
 
-    # Dynamic Bottom Buttons Injection
     topics_keyboard.append([InlineKeyboardButton("Back to Subjects", callback_data="back_to_subjects_nav")])
     topics_keyboard.append([InlineKeyboardButton("Cancel Setup", callback_data="autoquiz_cancel_nav")])
     
@@ -577,17 +557,54 @@ async def handle_final_topic_selection(update: Update, context: ContextTypes.DEF
     query = update.callback_query
     await query.answer()
     
-    # Prefix 'set_topic_' ko clear karke shuddh text extract karein
     topic_chosen = query.data.replace("set_topic_", "").strip()
+    
+    # 🟢 फिक्स मैपिंग डेटाबेस: शॉर्ट कोड्स को बड़े नाम असाइन करने के लिए
+    topic_map = {
+        # Polity Mapping
+        "pol_1": "Making and Sources of Indian Constitution",
+        "pol_2": "Preamble and Schedules of Indian Constitution",
+        "pol_3": "Union and its Territory and Citizenship",
+        "pol_4": "Fundamental Rights of India",
+        "pol_5": "Directive Principles of State Policy and Fundamental Duties",
+        "pol_6": "President Vice President and Prime Minister of India",
+        "pol_7": "Indian Parliament Lok Sabha and Rajya Sabha",
+        "pol_8": "Supreme Court of India and Judicial Review",
+        "pol_9": "Governor Chief Minister and State Legislature",
+        "pol_10": "High Court and Subordinate Courts in India",
+        "pol_11": "Panchayati Raj and Local Self Government",
+        "pol_12": "Election Commission of India and Electoral Reforms",
+        "pol_13": "Constitutional and Non Constitutional Bodies CAG NITI Aayog",
+        "pol_14": "Important Constitutional Amendments of India",
+        "pol_15": "Emergency Provisions in Indian Constitution",
+        
+        # Languages Mapping
+        "lang_1": "Hindi Grammar Varnamala and Sandhi",
+        "lang_2": "Hindi Grammar Sangya Sarvnam Kriya Avyay",
+        "lang_3": "Hindi Grammar Samas Upsarg Pratyay",
+        "lang_4": "Hindi Vocabulary Vilom Paryayvachi",
+        "lang_5": "Hindi Grammar Ling Vachan Karak Kaal",
+        "lang_6": "Hindi Muhavare Lokoktiyan Ras Chhand Alankar",
+        "lang_7": "English Grammar Parts of Speech",
+        "lang_8": "English Grammar Tenses and Sentence Structure",
+        "lang_9": "English Grammar Active and Passive Voice",
+        "lang_10": "English Grammar Direct and Indirect Narration",
+        "lang_11": "English Grammar Subject Verb Agreement Errors",
+        "lang_12": "English Vocabulary Synonyms Antonyms One Word Substitution",
+        "lang_13": "English Grammar Prepositions and Articles"
+    }
+    
+    # अगर चुना गया कोड हमारी मैपिंग डिक्शनरी में है, तो असली नाम निकालें
+    if topic_chosen in topic_map:
+        topic_chosen = topic_map[topic_chosen]
+        
     context.user_data['topic'] = topic_chosen
     
-    # Inline keybords ko screen se remove karein taaki data clear dikhe
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
         pass
         
-    # Selective Keyboard 2: Question Count Setup
     reply_keyboard = [['10', '20', '50', '70']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
     
