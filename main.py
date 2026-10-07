@@ -565,7 +565,7 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
     topics_keyboard.append([InlineKeyboardButton("❌ Cancel Setup", callback_data="autoquiz_cancel_nav")])
     
     updated_text = (
-        f"<blockquote>📂 Subject: <b>{sub_title}</b></blockquote>\n\n"
+        f"📂 Subject: {sub_title}\n\n"
         "🎯 <b>Niche diye gaye topics me se koi ek select karein:</b>"
     )
     
