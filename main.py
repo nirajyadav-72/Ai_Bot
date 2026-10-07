@@ -492,15 +492,15 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
             [InlineKeyboardButton("👑 मौलिक अधिकार (Rights)", callback_data="set_topic_Fundamental Rights of India"),
              InlineKeyboardButton("🎯 नीति निदेशक तत्व व कर्तव्य", callback_data="set_topic_Directive Principles of State Policy and Fundamental Duties")],
             [InlineKeyboardButton("👤 राष्ट्रपति, उपराष्ट्रपति व PM", callback_data="set_topic_President Vice President and Prime Minister of India"),
-             InlineKeyboardButton("🏛️ भारतीय संसद (लोक-राज्यसभा)", callback_data="set_topic_Indian Parliament Lok Sabha and Sabha")],
+             InlineKeyboardButton("🏛️ भारतीय संसद (लोक-राज्यसभा)", callback_data="set_topic_Indian Parliament Lok Sabha and Rajya Sabha")],
             [InlineKeyboardButton("⚖️ सर्वोच्च न्यायालय (Supreme Court)", callback_data="set_topic_Supreme Court of India and Judicial Review")],
             [InlineKeyboardButton("🏢 राज्यपाल, CM व विधानमंडल", callback_data="set_topic_Governor Chief Minister and State Legislature"),
              InlineKeyboardButton("📋 उच्च न्यायालय (High Court)", callback_data="set_topic_High Court and Subordinate Courts in India")],
-            [InlineKeyboardButton("🏡 पंचायती राज व नगर पालिकाएं", callback_data="set_topic_Panchayati Raj and Local Self Government")],
+            [InlineKeyboardButton("🏡 पंचायती Raj व नगर पालिकाएं", callback_data="set_topic_Panchayati Raj and Local Self Government")],
             [InlineKeyboardButton("🗳️ निर्वाचन आयोग व चुनाव सुधार", callback_data="set_topic_Election Commission of India and Electoral Reforms")],
             [InlineKeyboardButton("💼 UPSC, CAG और नीति आयोग", callback_data="set_topic_Constitutional and Non Constitutional Bodies CAG NITI Aayog")],
-            [InlineKeyboardButton("🛠️ प्रमुख संवैधानिक संशोधन", callback_data="set_topic_Important Constitutional Amendments of India"),
-             InlineKeyboardButton("🚨 आपातकालीन प्रावधान (Emergency)", callback_data="set_topic_Emergency Provisions in Indian Constitution")]
+            [InlineKeyboardButton("🛠️ प्रमुख संवैधानिक संशोधन", callback_data="set_topic_Important Constitutional Amendments of India")],
+            [InlineKeyboardButton("🚨 आपातकालीन प्रावधान (Emergency)", callback_data="set_topic_Emergency Provisions in Indian Constitution")]
         ]
     elif selected_sub == "sub_geography":
         sub_title = "Geography (भूगोल)"
@@ -517,8 +517,8 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
             [InlineKeyboardButton("🗺️ महाद्वीप, पर्वत व मरुस्थल", callback_data="set_topic_Continents Mountains and Deserts of the World"),
              InlineKeyboardButton("🌏 विश्व की नदियां और झीलें", callback_data="set_topic_World Rivers Lakes and Waterfalls")],
             [InlineKeyboardButton("⚓ प्रमुख जलसंधियां व नहरें", callback_data="set_topic_Important Straits and Canals of the World")],
-            [InlineKeyboardButton("☀️ सौरमंडल, अक्षांश व देशांतर", callback_data="set_topic_Solar System Latitudes and Longitudes"),
-             InlineKeyboardButton("🌋 पृथ्वी की संरचना व ज्वालामुखी", callback_data="set_topic_Interior of Earth Volcanoes and Earthquakes")],
+            [InlineKeyboardButton("☀️ सौरमंडल, अक्षांश व देशांतर", callback_data="set_topic_Solar System Latitudes and Longitudes")],
+            [InlineKeyboardButton("🌋 पृथ्वी की संरचना व ज्वालामुखी", callback_data="set_topic_Interior of Earth Volcanoes and Earthquakes")],
             [InlineKeyboardButton("🌀 वायुमंडल, पवनें व चक्रवात", callback_data="set_topic_Atmosphere Structure Winds and Cyclones"),
              InlineKeyboardButton("🌊 महासागरीय धाराएं व ज्वार", callback_data="set_topic_Ocean Currents and Tides")]
         ]
@@ -532,9 +532,9 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
             [InlineKeyboardButton("🧬 आनुवंशिकी व जैव विकास", callback_data="set_topic_Genetics and Biological Evolution")],
             [InlineKeyboardButton("🧪 पदार्थ की अवस्थाएं व परमाणु", callback_data="set_topic_Matter States and Atomic Structure Chemistry"),
              InlineKeyboardButton("📊 आवर्त सारणी (Periodic Table)", callback_data="set_topic_Periodic Table and Elements Properties")],
-            [InlineKeyboardButton("⚗️ अम्ल, क्षारक और लवण", callback_data="set_topic_Acids Bases Salts and pH Scale"),
-             InlineKeyboardButton("💎 धातु, अधातु व मिश्रधातु", callback_data="set_topic_Metals NonMetals and Alloys Chemistry")],
-            [InlineKeyboardButton("🔥 कार्बनिक रसायन व ईंधन", callback_data="set_topic_Organic Chemistry Carbon and Fuels")],
+            [InlineKeyboardButton("⚗️ अम्ल, क्षारक और लवण", callback_data="set_topic_Acids Bases Salts and pH Scale")],
+            [InlineKeyboardButton("💎 धातु, अधातु व मिश्रधातु", callback_data="set_topic_Metals NonMetals and Alloys Chemistry"),
+             InlineKeyboardButton("🔥 कार्बनिक रसायन व ईंधन", callback_data="set_topic_Organic Chemistry Carbon and Fuels")],
             [InlineKeyboardButton("📏 मात्रक, गति और बल", callback_data="set_topic_Units Measurements Motion and Force Physics"),
              InlineKeyboardButton("⚡ कार्य, ऊर्जा और शक्ति", callback_data="set_topic_Work Energy and Power Physics")],
             [InlineKeyboardButton("💡 प्रकाश व ध्वनि (Light/Sound)", callback_data="set_topic_Light Optics Sound and Waves Physics"),
@@ -550,16 +550,16 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
              InlineKeyboardButton("📖 विलोम, पर्यायवाची व अनेकार्थी", callback_data="set_topic_Hindi Vocabulary Vilom Paryayvachi")],
             [InlineKeyboardButton("✍️ लिंग, वचन, कारक व काल", callback_data="set_topic_Hindi Grammar Ling Vachan Karak Kaal"),
              InlineKeyboardButton("🎭 मुहावरे, लोकोक्तियां व रस-छंद", callback_data="set_topic_Hindi Muhavare Lokoktiyan Ras Chhand Alankar")],
-            [InlineKeyboardButton("🇬🇧 Parts of Speech (Noun, Verb...)", callback_data="set_topic_English Grammar Parts of Speech"),
-             InlineKeyboardButton("⏳ Tenses & Conditionals", callback_data="set_topic_English Grammar Tenses and Sentence Structure")],
+            [InlineKeyboardButton("🇬🇧 Parts of Speech (Noun, Verb...)", callback_data="set_topic_English Grammar Parts of Speech")],
+            [InlineKeyboardButton("⏳ Tenses & Conditionals", callback_data="set_topic_English Grammar Tenses and Sentence Structure")],
             [InlineKeyboardButton("🔄 Active & Passive Voice", callback_data="set_topic_English Grammar Active and Passive Voice"),
              InlineKeyboardButton("💬 Direct & Indirect Speech", callback_data="set_topic_English Grammar Direct and Indirect Narration")],
             [InlineKeyboardButton("❌ Subject-Verb Agreement", callback_data="set_topic_English Grammar Subject Verb Agreement Errors")],
-            [InlineKeyboardButton("📖 Synonyms, Antonyms & Idioms", callback_data="set_topic_English Vocabulary Synonyms Antonyms One Word Substitution"),
-             InlineKeyboardButton("🧩 Prepositions & Articles", callback_data="set_topic_English Grammar Prepositions and Articles")]
+            [InlineKeyboardButton("📖 Synonyms, Antonyms & Idioms", callback_data="set_topic_English Vocabulary Synonyms Antonyms One Word Substitution")],
+            [InlineKeyboardButton("🧩 Prepositions & Articles", callback_data="set_topic_English Grammar Prepositions and Articles")]
         ]
 
-    # Har menu ke niche dynamic buttons automatic jodega
+    # Dynamic Bottom Buttons Injection
     topics_keyboard.append([InlineKeyboardButton("🔙 Back to Subjects", callback_data="back_to_subjects_nav")])
     topics_keyboard.append([InlineKeyboardButton("❌ Cancel Setup", callback_data="autoquiz_cancel_nav")])
     
