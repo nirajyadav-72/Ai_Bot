@@ -391,9 +391,10 @@ CRITICAL RULES:
         
 # --- BOT ROUTINES & HANDLERS ---
 async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # Handle both normal message command and callback restarts
-    msg_obj = update.callback_query.message if update.callback_query else update.message
-    user_id = update.callback_query.from_user.id if update.callback_query else update.message.from_user.id
+    # 🔥 FIXED: query वेरिएबल को यहाँ पूरी तरह से सही ढंग से डिफाइन कर दिया गया है
+    query = update.callback_query
+    msg_obj = query.message if query else update.message
+    user_id = query.from_user.id if query else update.message.from_user.id
     chat_id = msg_obj.chat_id
     chat_type = msg_obj.chat.type
     
@@ -410,12 +411,12 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await msg_obj.reply_text("❌ <b>Sorry!</b> Yah command keval authorized users hi use kar sakte hain.", parse_mode="HTML")
         return ConversationHandler.END
 
-    if update.callback_query:
-        await update.callback_query.answer()
+    if query:
+        await query.answer()
 
     context.user_data.clear()
     
-    # 🏛️ LEVEL 1: MAIN SUBJECT BUTTONS 🏛️
+    # 🏛️ LEVEL 1: MAIN SUBJECT BUTTONS
     main_subject_keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("📰 Current Affairs & GK 📰", callback_data="sub_current_gk")],
         [InlineKeyboardButton("📜 History (इतिहास)", callback_data="sub_history"),
@@ -423,7 +424,7 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         [InlineKeyboardButton("🌍 Geography (भूगोल)", callback_data="sub_geography"),
          InlineKeyboardButton("🧬 General Science (विज्ञान)", callback_data="sub_science")],
         [InlineKeyboardButton("🗣️ Languages & Grammar", callback_data="sub_languages")],
-        [InlineKeyboardButton("Cancel", callback_data="autoquiz_cancel_nav")]
+        [InlineKeyboardButton("❌ Cancel Setup", callback_data="autoquiz_cancel_nav")]
     ])
     
     welcome_text = (
@@ -434,10 +435,10 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         "<i>✍️ (Note: Agar aapko list se alag koi naya topic chahiye, toh aap abhi bhi seedhe chat me type karke bhej sakte hain!)</i>"
     )
     
-    if update.callback_query:
+    if query:
         await query.edit_message_text(text=welcome_text, reply_markup=main_subject_keyboard, parse_mode="HTML")
     else:
-        await update.message.reply_text(text=welcome_text, reply_markup=main_subject_keyboard, parse_mode="HTML")
+        await msg_obj.reply_text(text=welcome_text, reply_markup=main_subject_keyboard, parse_mode="HTML")
         
     return TOPIC
 
