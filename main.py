@@ -500,10 +500,28 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
     elif selected_sub == "sub_geography":
         sub_title = "Geography (भूगोल)"
         topics_keyboard = [
-            [InlineKeyboardButton("🇮🇳 Indian Geography", callback_data="set_topic_Indian Geography")],
-            [InlineKeyboardButton("🌋 World Geography", callback_data="set_topic_World Geography")],
-            [InlineKeyboardButton("☀️ Solar System & Climate", callback_data="set_topic_Solar System and Climate")]
-        ]
+            # 🇮🇳 भारत का भूगोल (Indian Geography)
+            [InlineKeyboardButton("🇮🇳 भारत का भौतिक स्वरूप", callback_data="set_topic_Physical Features of India"),
+             InlineKeyboardButton("🌊 भारत की नदियां व जलतंत्र", callback_data="set_topic_Indian Rivers and Drainage System")],
+            [InlineKeyboardButton("🌦️ भारत की जलवायु व मिट्टी", callback_data="set_topic_Indian Climate and Soil Types"),
+             InlineKeyboardButton("🌳 वनस्पति व राष्ट्रीय उद्यान", callback_data="set_topic_Natural Vegetation and National Parks of India")],
+            [InlineKeyboardButton("🌾 कृषि, फसलें और सिंचाई", callback_data="set_topic_Agriculture and Irrigation in India"),
+             InlineKeyboardButton("🏔️ प्रमुख बांध व परियोजनाएं", callback_data="set_topic_Major Dams and River Valley Projects in India")],
+            [InlineKeyboardButton("⛏️ खनिज व ऊर्जा संसाधन", callback_data="set_topic_Minerals and Energy Resources of India"),
+             InlineKeyboardButton("🛣️ उद्योग, राजमार्ग व बंदरगाह", callback_data="set_topic_Industries Transport and Ports in India")],
+            [InlineKeyboardButton("👥 जनगणना व प्रमुख जनजातियां", callback_data="set_topic_Indian Census and Tribes")],
+             
+            # 🌍 विश्व का भूगोल (World Geography)
+            [InlineKeyboardButton("🗺️ महाद्वीप, पर्वत व मरुस्थल", callback_data="set_topic_Continents Mountains and Deserts of the World"),
+             InlineKeyboardButton("🌏 विश्व की नदियां और झीलें", callback_data="set_topic_World Rivers Lakes and Waterfalls")],
+            [InlineKeyboardButton("⚓ प्रमुख जलसंधियां व नहरें", callback_data="set_topic_Important Straits and Canals of the World")],
+             
+            # ☀️ भौतिक व सामान्य भूगोल (Physical Geography)
+            [InlineKeyboardButton("🌌 सौरमंडल, अक्षांश व देशांतर", callback_data="set_topic_Solar System Latitudes and Longitudes"),
+             InlineKeyboardButton("🌋 पृथ्वी की संरचना व ज्वालामुखी", callback_data="set_topic_Interior of Earth Volcanoes and Earthquakes")],
+            [InlineKeyboardButton("🌀 वायुमंडल, पवनें व चक्रवात", callback_data="set_topic_Atmosphere Structure Winds and Cyclones"),
+             InlineKeyboardButton("🌊 महासागरीय धाराएं व ज्वार", callback_data="set_topic_Ocean Currents and Tides")]
+      ]
     elif selected_sub == "sub_science":
         sub_title = "General Science"
         topics_keyboard = [
