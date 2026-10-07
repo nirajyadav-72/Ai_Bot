@@ -391,37 +391,159 @@ CRITICAL RULES:
         
 # --- BOT ROUTINES & HANDLERS ---
 async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    chat_type = update.message.chat.type
+    # Handle both normal message command and callback restarts
+    msg_obj = update.callback_query.message if update.callback_query else update.message
+    user_id = update.callback_query.from_user.id if update.callback_query else update.message.from_user.id
+    chat_id = msg_obj.chat_id
+    chat_type = msg_obj.chat.type
     
     allowed_ids = get_allowed_ids()
     
     # 1. ग्रुप आईडी सुरक्षा जाँच (sirf group ke liye)
     if chat_type in ["group", "supergroup"]:
         if SUPPORT_GROUP_ID and chat_id != SUPPORT_GROUP_ID:
-            await update.message.reply_text("❌ <b>Security Error:</b> Yah command is group me allowed nahi hai.", parse_mode="HTML")
+            await msg_obj.reply_text("❌ <b>Security Error:</b> Yah command is group me allowed nahi hai.", parse_mode="HTML")
             return ConversationHandler.END
             
     # 2. यूज़र सुरक्षा जाँच (Group aur Private Chat dono ke liye)
     if user_id != OWNER_ID and user_id not in allowed_ids:
-        await update.message.reply_text("❌ <b>Sorry!</b> Yah command keval authorized users hi use kar sakte hain.", parse_mode="HTML")
+        await msg_obj.reply_text("❌ <b>Sorry!</b> Yah command keval authorized users hi use kar sakte hain.", parse_mode="HTML")
         return ConversationHandler.END
 
-    # बॉट DM या सही ग्रुप में सिर्फ अलाउड यूज़र ही यहाँ तक पहुँच पाएंगे
+    if update.callback_query:
+        await update.callback_query.answer()
+
     context.user_data.clear()
     
-    reply_keyboard = [['Current Affairs 2026 📰']]
+    # 🏛️ LEVEL 1: MAIN SUBJECT BUTTONS 🏛️
+    main_subject_keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📰 Current Affairs & GK 📰", callback_data="sub_current_gk")],
+        [InlineKeyboardButton("📜 History (इतिहास)", callback_data="sub_history"),
+         InlineKeyboardButton("⚖️ Polity (राजव्यवस्था)", callback_data="sub_polity")],
+        [InlineKeyboardButton("🌍 Geography (भूगोल)", callback_data="sub_geography"),
+         InlineKeyboardButton("🧬 General Science (विज्ञान)", callback_data="sub_science")],
+        [InlineKeyboardButton("🗣️ Languages & Grammar", callback_data="sub_languages")],
+        [InlineKeyboardButton("❌ Cancel Setup", callback_data="autoquiz_cancel_nav")]
+    ])
+    
+    welcome_text = (
+        "<blockquote>🤖 <b>Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n"
+        "<blockquote>📚 <b>Step 1 — Select Subject:</b></blockquote>\n"
+        "Niche diye gaye buttons me se apna main <b>Subject</b> chunein, "
+        "jiske baad uske specific topics open honge.\n\n"
+        "<i>✍️ (Note: Agar aapko list se alag koi naya topic chahiye, toh aap abhi bhi seedhe chat me type karke bhej sakte hain!)</i>"
+    )
+    
+    if update.callback_query:
+        await query.edit_message_text(text=welcome_text, reply_markup=main_subject_keyboard, parse_mode="HTML")
+    else:
+        await update.message.reply_text(text=welcome_text, reply_markup=main_subject_keyboard, parse_mode="HTML")
+        
+    return TOPIC
+
+async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handles subject button clicks and updates keyboard with specific topics"""
+    query = update.callback_query
+    await query.answer()
+    
+    selected_sub = query.data
+    topics_keyboard = []
+    sub_title = ""
+    
+    # 🗺️ CONFIGURATION MAP: Sabhi subjects ke specific topics ke buttons
+    if selected_sub == "sub_current_gk":
+        sub_title = "Current Affairs & GK"
+        topics_keyboard = [
+            [InlineKeyboardButton("📰 Current Affairs 2026", callback_data="set_topic_Current Affairs 2026")],
+            [InlineKeyboardButton("🌐 International News", callback_data="set_topic_International Current Affairs")],
+            [InlineKeyboardButton("🏆 Sports & Awards", callback_data="set_topic_Sports and Awards 2026")],
+            [InlineKeyboardButton("💡 Static GK", callback_data="set_topic_Static General Knowledge")]
+        ]
+    elif selected_sub == "sub_history":
+        sub_title = "History (इतिहास)"
+        topics_keyboard = [
+            [InlineKeyboardButton("🏺 Ancient History", callback_data="set_topic_Ancient History")],
+            [InlineKeyboardButton("🏰 Medieval History", callback_data="set_topic_Medieval History")],
+            [InlineKeyboardButton("⚔️ Modern Indian History", callback_data="set_topic_Modern Indian History")]
+        ]
+    elif selected_sub == "sub_polity":
+        sub_title = "Polity (राजव्यवस्था)"
+        topics_keyboard = [
+            [InlineKeyboardButton("📖 Indian Constitution", callback_data="set_topic_Indian Constitution")],
+            [InlineKeyboardButton("🏛️ Parliament & Judiciary", callback_data="set_topic_Indian Parliament and Judiciary")],
+            [InlineKeyboardButton("👑 Fundamental Rights", callback_data="set_topic_Fundamental Rights and Duties")]
+        ]
+    elif selected_sub == "sub_geography":
+        sub_title = "Geography (भूगोल)"
+        topics_keyboard = [
+            [InlineKeyboardButton("🇮🇳 Indian Geography", callback_data="set_topic_Indian Geography")],
+            [InlineKeyboardButton("🌋 World Geography", callback_data="set_topic_World Geography")],
+            [InlineKeyboardButton("☀️ Solar System & Climate", callback_data="set_topic_Solar System and Climate")]
+        ]
+    elif selected_sub == "sub_science":
+        sub_title = "General Science"
+        topics_keyboard = [
+            [InlineKeyboardButton("🧬 Biology (जीव विज्ञान)", callback_data="set_topic_Biology")],
+            [InlineKeyboardButton("🧪 Chemistry (रसायन विज्ञान)", callback_data="set_topic_Chemistry")],
+            [InlineKeyboardButton("🧲 Physics (भौतिक विज्ञान)", callback_data="set_topic_Physics")]
+        ]
+    elif selected_sub == "sub_languages":
+        sub_title = "Languages & Grammar"
+        topics_keyboard = [
+            [InlineKeyboardButton("🗣️ Hindi Grammar (हिंदी व्याकरण)", callback_data="set_topic_Hindi Grammar")],
+            [InlineKeyboardButton("🇬🇧 English Grammar", callback_data="set_topic_English Grammar")]
+        ]
+
+    # Har topic sub-menu me ek '🔙 Back' aur '❌ Cancel' ka option common rahega
+    topics_keyboard.append([InlineKeyboardButton("🔙 Back to Subjects", callback_data="back_to_subjects_nav")])
+    topics_keyboard.append([InlineKeyboardButton("❌ Cancel Setup", callback_data="autoquiz_cancel_nav")])
+    
+    updated_text = (
+        f"<blockquote>📂 Subject: <b>{sub_title}</b></blockquote>\n\n"
+        "🎯 <b>Niche diye gaye topics me se koi ek select karein:</b>"
+    )
+    
+    await query.edit_message_text(text=updated_text, reply_markup=InlineKeyboardMarkup(topics_keyboard), parse_mode="HTML")
+    return TOPIC
+
+async def handle_final_topic_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Triggered when user clicks a specific topic button. Saves it and routes to Q_COUNT"""
+    query = update.callback_query
+    await query.answer()
+    
+    # Prefix 'set_topic_' ko clear karke shuddh text extract karein
+    topic_chosen = query.data.replace("set_topic_", "").strip()
+    context.user_data['topic'] = topic_chosen
+    
+    # Inline keybords ko screen se remove karein taaki data clear dikhe
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+        
+    # Selective Keyboard 2: Question Count Setup
+    reply_keyboard = [['10', '20', '50', '70']]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
     
-    await update.message.reply_text(
-        "<blockquote>🤖 <b>Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n"
-        "<blockquote>📝 <b>Step 1:</b> Send me the Topic or Subject for the quiz.</blockquote>\n"
-        "(Example: Ancient History, Modern History, Hindi, Geography...)",
+    await query.message.reply_text(
+        f"<blockquote>✅ Topic Saved: <b>{context.user_data['topic']}</b></blockquote>\n\n"
+        "<blockquote>🔢 <b>Step 2:</b> How many questions do you want?</blockquote>",
         parse_mode="HTML",
         reply_markup=markup
     )
-    return TOPIC
+    return Q_COUNT
+
+async def handle_cancel_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handles explicit cancel clicks inside the navigation menu"""
+    query = update.callback_query
+    await query.answer("Setup abandoned.")
+    context.user_data.clear()
+    try:
+        await query.message.delete()
+    except Exception:
+        pass
+    await query.message.reply_text("❌ AI Quiz creation setup abandoned.")
+    return ConversationHandler.END
 
 async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return TOPIC
