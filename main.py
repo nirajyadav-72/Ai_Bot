@@ -423,8 +423,7 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
          InlineKeyboardButton("✨ Polity (राजव्यवस्था)", callback_data="sub_polity")],
         [InlineKeyboardButton("🌍 Geography (भूगोल)", callback_data="sub_geography"),
          InlineKeyboardButton("🧬 General Science (विज्ञान)", callback_data="sub_science")],
-        [InlineKeyboardButton("🤖 Languages & Grammar", callback_data="sub_languages")],
-        [InlineKeyboardButton("❌ Cancel Setup", callback_data="autoquiz_cancel_nav")]
+        [InlineKeyboardButton("🤖 Languages & Grammar", callback_data="sub_languages")]
     ])
     
     welcome_text = (
@@ -579,7 +578,6 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
         ]
 
     topics_keyboard.append([InlineKeyboardButton("Back to Subjects", callback_data="back_to_subjects_nav")])
-    topics_keyboard.append([InlineKeyboardButton("Cancel Setup", callback_data="autoquiz_cancel_nav")])
     
     updated_text = (
         f"<blockquote>📂 Subject: <b>{sub_title}</b></blockquote>\n\n"
@@ -652,18 +650,6 @@ async def handle_final_topic_selection(update: Update, context: ContextTypes.DEF
         reply_markup=markup
     )
     return Q_COUNT
-
-async def handle_cancel_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles explicit cancel clicks inside the navigation menu"""
-    query = update.callback_query
-    await query.answer("Setup abandoned.")
-    context.user_data.clear()
-    try:
-        await query.message.delete()
-    except Exception:
-        pass
-    await query.message.reply_text("AI Quiz Generate function stoped.\n\naapne cancel kar diya hai.")
-    return ConversationHandler.END
 
 async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return TOPIC
