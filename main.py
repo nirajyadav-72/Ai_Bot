@@ -636,7 +636,7 @@ async def handle_cancel_navigation(update: Update, context: ContextTypes.DEFAULT
         await query.message.delete()
     except Exception:
         pass
-    await query.message.reply_text("❌ AI Quiz creation setup abandoned.")
+    await query.message.reply_text("AI Quiz Generate function stoped.\n\naapne cancel kar diya hai.")
     return ConversationHandler.END
 
 async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
