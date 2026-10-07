@@ -545,19 +545,19 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
     elif selected_sub == "sub_languages":
         sub_title = "Languages & Grammar"
         topics_keyboard = [
-            [InlineKeyboardButton("📝 वर्णमाला, वर्तनी व संधि", callback_data="set_topic_Hindi Grammar Varnamala and Sandhi"),
-             InlineKeyboardButton("🔤 शब्द भेद (संज्ञा, सर्वनाम, क्रिया)", callback_data="set_topic_Hindi Grammar Sangya Sarvnam Kriya Avyay")],
-            [InlineKeyboardButton("🔄 समास, उपसर्ग व प्रत्यय", callback_data="set_topic_Hindi Grammar Samas Upsarg Pratyay"),
-             InlineKeyboardButton("📖 विलोम, पर्यायवाची व अनेकार्थी", callback_data="set_topic_Hindi Vocabulary Vilom Paryayvachi")],
-            [InlineKeyboardButton("✍️ लिंग, वचन, कारक व काल", callback_data="set_topic_Hindi Grammar Ling Vachan Karak Kaal"),
-             InlineKeyboardButton("🤖 मुहावरे, लोकोक्तियां व रस-छंद", callback_data="set_topic_Hindi Muhavare Lokoktiyan Ras Chhand Alankar")],
-            [InlineKeyboardButton("✨ Parts of Speech (Noun, Verb...)", callback_data="set_topic_English Grammar Parts of Speech")],
-            [InlineKeyboardButton("⏳ Tenses & Conditionals", callback_data="set_topic_English Grammar Tenses and Sentence Structure")],
-            [InlineKeyboardButton("🔄 Active & Passive Voice", callback_data="set_topic_English Grammar Active and Passive Voice"),
-             InlineKeyboardButton("💬 Direct & Indirect Speech", callback_data="set_topic_English Grammar Direct and Indirect Narration")],
-            [InlineKeyboardButton("❌ Subject-Verb Agreement", callback_data="set_topic_English Grammar Subject Verb Agreement Errors")],
-            [InlineKeyboardButton("📖 Synonyms, Antonyms & Idioms", callback_data="set_topic_English Vocabulary Synonyms Antonyms One Word Substitution")],
-            [InlineKeyboardButton("🧩 Prepositions & Articles", callback_data="set_topic_English Grammar Prepositions and Articles")]
+            [InlineKeyboardButton("वर्णमाला, वर्तनी व संधि", callback_data="set_topic_Hindi Grammar Varnamala and Sandhi"),
+             InlineKeyboardButton("शब्द भेद (संज्ञा, सर्वनाम, क्रिया)", callback_data="set_topic_Hindi Grammar Sangya Sarvnam Kriya Avyay")],
+            [InlineKeyboardButton("समास, उपसर्ग व प्रत्यय", callback_data="set_topic_Hindi Grammar Samas Upsarg Pratyay"),
+             InlineKeyboardButton("विलोम, पर्यायवाची व अनेकार्थी", callback_data="set_topic_Hindi Vocabulary Vilom Paryayvachi")],
+            [InlineKeyboardButton("लिंग, वचन, कारक व काल", callback_data="set_topic_Hindi Grammar Ling Vachan Karak Kaal"),
+             InlineKeyboardButton("मुहावरे, लोकोक्तियां व रस-छंद", callback_data="set_topic_Hindi Muhavare Lokoktiyan Ras Chhand Alankar")],
+            [InlineKeyboardButton("Parts of Speech (Noun, Verb...)", callback_data="set_topic_English Grammar Parts of Speech")],
+            [InlineKeyboardButton("Tenses & Conditionals", callback_data="set_topic_English Grammar Tenses and Sentence Structure")],
+            [InlineKeyboardButton("Active & Passive Voice", callback_data="set_topic_English Grammar Active and Passive Voice"),
+             InlineKeyboardButton("Direct & Indirect Speech", callback_data="set_topic_English Grammar Direct and Indirect Narration")],
+            [InlineKeyboardButton("Subject-Verb Agreement", callback_data="set_topic_English Grammar Subject Verb Agreement Errors")],
+            [InlineKeyboardButton("Synonyms, Antonyms & Idioms", callback_data="set_topic_English Vocabulary Synonyms Antonyms One Word Substitution")],
+            [InlineKeyboardButton("Prepositions & Articles", callback_data="set_topic_English Grammar Prepositions and Articles")]
         ]
 
     # Dynamic Bottom Buttons Injection
