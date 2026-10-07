@@ -463,128 +463,128 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
         sub_title = "History (इतिहास)"
         topics_keyboard = [
             # 🏺 प्राचीन भारत (Ancient India)
-            [InlineKeyboardButton("🏺 सिंधु घाटी सभ्यता", callback_data="set_topic_Indus Valley Civilization"),
-             InlineKeyboardButton("📖 वैदिक काल", callback_data="set_topic_Vedic Period History")],
-            [InlineKeyboardButton("🕉️ बौद्ध और जैन धर्म", callback_data="set_topic_Buddhism and Jainism"),
-             InlineKeyboardButton("👑 16 महाजनपद", callback_data="set_topic_16 Mahajanapadas")],
-            [InlineKeyboardButton("🦁 मौर्य साम्राज्य", callback_data="set_topic_Mauryan Empire"),
-             InlineKeyboardButton("📀 गुप्त साम्राज्य (स्वर्ण युग)", callback_data="set_topic_Gupta Empire History")],
+            [InlineKeyboardButton("🏺 सिंधु घाटी सभ्यता", callback_data="set_topic_Indus Valley Civilization")],
+            [InlineKeyboardButton("📖 वैदिक काल", callback_data="set_topic_Vedic Period History")],
+            [InlineKeyboardButton("🕉️ बौद्ध और जैन धर्म", callback_data="set_topic_Buddhism and Jainism")],
+            [InlineKeyboardButton("👑 16 महाजनपद", callback_data="set_topic_16 Mahajanapadas")],
+            [InlineKeyboardButton("🦁 मौर्य साम्राज्य", callback_data="set_topic_Mauryan Empire")],
+            [InlineKeyboardButton("📀 गुप्त साम्राज्य (स्वर्ण युग)", callback_data="set_topic_Gupta Empire History")],
              
             # ⚔️ मध्यकालीन भारत (Medieval India)
-            [InlineKeyboardButton("🕌 दिल्ली सल्तनत", callback_data="set_topic_Delhi Sultanate Dynasty"),
-             InlineKeyboardButton("🏯 मुगल साम्राज्य", callback_data="set_topic_Mughal Empire History")],
-            [InlineKeyboardButton("🚩 मराठा और विजयनगर", callback_data="set_topic_Maratha and Vijayanagara Empire"),
-             InlineKeyboardButton("✨ भक्ति और सूफी आंदोलन", callback_data="set_topic_Bhakti and Sufi Movement")],
+            [InlineKeyboardButton("🕌 दिल्ली सल्तनत", callback_data="set_topic_Delhi Sultanate Dynasty")],
+            [InlineKeyboardButton("🏯 मुगल साम्राज्य", callback_data="set_topic_Mughal Empire History")],
+            [InlineKeyboardButton("🚩 मराठा और विजयनगर", callback_data="set_topic_Maratha and Vijayanagara Empire")],
+            [InlineKeyboardButton("✨ भक्ति और सूफी आंदोलन", callback_data="set_topic_Bhakti and Sufi Movement")],
              
             # 🇮🇳 आधुनिक भारत (Modern India)
-            [InlineKeyboardButton("🚢 यूरोपीय शक्तियों का आगमन", callback_data="set_topic_Arrival of European Powers in India"),
-             InlineKeyboardButton("💥 1857 का विद्रोह", callback_data="set_topic_Revolt of 1857 Indian History")],
-            [InlineKeyboardButton("🎯 भारतीय राष्ट्रीय कांग्रेस", callback_data="set_topic_Indian National Congress INC History"),
-             InlineKeyboardButton("🚶 गांधीवादी युग और आंदोलन", callback_data="set_topic_Mahatma Gandhi and Freedom Movements")],
-            [InlineKeyboardButton("✊ क्रांतिकारी आंदोलन", callback_data="set_topic_Indian Revolutionary Freedom Fighters"),
-             InlineKeyboardButton("📅 भारत का विभाजन और स्वतंत्रता", callback_data="set_topic_Indian Independence and Partition 1947")],
+            [InlineKeyboardButton("🚢 यूरोपीय शक्तियों का आगमन", callback_data="set_topic_Arrival of European Powers in India")],
+            [InlineKeyboardButton("💥 1857 का विद्रोह", callback_data="set_topic_Revolt of 1857 Indian History")],
+            [InlineKeyboardButton("🎯 भारतीय राष्ट्रीय कांग्रेस", callback_data="set_topic_Indian National Congress INC History")],
+            [InlineKeyboardButton("🚶 गांधीवादी युग और आंदोलन", callback_data="set_topic_Mahatma Gandhi and Freedom Movements")],
+            [InlineKeyboardButton("✊ क्रांतिकारी आंदोलन", callback_data="set_topic_Indian Revolutionary Freedom Fighters")],
+            [InlineKeyboardButton("📅 भारत का विभाजन और स्वतंत्रता", callback_data="set_topic_Indian Independence and Partition 1947")],
              
             # 🌍 विश्व इतिहास (World History)
-            [InlineKeyboardButton("⚙️ औद्योगिक क्रांति", callback_data="set_topic_Industrial Revolution World History"),
-             InlineKeyboardButton("🗼 फ्रांस और रूस की क्रांति", callback_data="set_topic_French and Russian Revolutions")],
-            [InlineKeyboardButton("⚔️ प्रथम और द्वितीय विश्व युद्ध", callback_data="set_topic_World War 1 and World War 2 History"),
-             InlineKeyboardButton("❄️ शीतयुद्ध का दौर", callback_data="set_topic_Cold War Era Geopolitics")]
+            [InlineKeyboardButton("⚙️ औद्योगिक क्रांति", callback_data="set_topic_Industrial Revolution World History")],
+            [InlineKeyboardButton("🗼 फ्रांस और रूस की क्रांति", callback_data="set_topic_French and Russian Revolutions")],
+            [InlineKeyboardButton("⚔️ प्रथम और द्वितीय विश्व युद्ध", callback_data="set_topic_World War 1 and World War 2 History")],
+            [InlineKeyboardButton("❄️ शीतयुद्ध का दौर", callback_data="set_topic_Cold War Era Geopolitics")]
         ]
     elif selected_sub == "sub_polity":
         sub_title = "Polity (राजव्यवस्था)"
         topics_keyboard = [
             # 📖 संविधान का निर्माण और विशेषताएं
-            [InlineKeyboardButton("📖 संविधान का निर्माण व स्रोत", callback_data="set_topic_Making and Sources of Indian Constitution"),
-             InlineKeyboardButton("📜 संविधान की प्रस्तावना व अनुसूचियां", callback_data="set_topic_Preamble and Schedules of Indian Constitution")],
+            [InlineKeyboardButton("📖 संविधान का निर्माण व स्रोत", callback_data="set_topic_Making and Sources of Indian Constitution")],
+            [InlineKeyboardButton("📜 संविधान की प्रस्तावना व अनुसूचियां", callback_data="set_topic_Preamble and Schedules of Indian Constitution")],
             [InlineKeyboardButton("🇮🇳 संघ और उसका राज्यक्षेत्र", callback_data="set_topic_Union and its Territory and Citizenship")],
              
             # 📑 मौलिक अधिकार, कर्तव्य और नीति निदेशक तत्व
-            [InlineKeyboardButton("👑 मौलिक अधिकार (Rights)", callback_data="set_topic_Fundamental Rights of India"),
-             InlineKeyboardButton("🎯 नीति निदेशक तत्व व कर्तव्य", callback_data="set_topic_Directive Principles of State Policy and Fundamental Duties")],
+            [InlineKeyboardButton("👑 मौलिक अधिकार (Rights)", callback_data="set_topic_Fundamental Rights of India")],
+            [InlineKeyboardButton("🎯 नीति निदेशक तत्व व कर्तव्य", callback_data="set_topic_Directive Principles of State Policy and Fundamental Duties")],
              
             # 🏛️ केंद्रीय कार्यपालिका और विधायिका (Union Government)
-            [InlineKeyboardButton("👤 राष्ट्रपति, उपराष्ट्रपति व PM", callback_data="set_topic_President Vice President and Prime Minister of India"),
-             InlineKeyboardButton("🏛️ भारतीय संसद (लोकसभा-राज्यसभा)", callback_data="set_topic_Indian Parliament Lok Sabha and Rajya Sabha")],
+            [InlineKeyboardButton("👤 राष्ट्रपति, उपराष्ट्रपति व PM", callback_data="set_topic_President Vice President and Prime Minister of India")],
+            [InlineKeyboardButton("🏛️ भारतीय संसद (लोकसभा-राज्यसभा)", callback_data="set_topic_Indian Parliament Lok Sabha and Rajya Sabha")],
             [InlineKeyboardButton("⚖️ सर्वोच्च न्यायालय (Supreme Court)", callback_data="set_topic_Supreme Court of India and Judicial Review")],
              
             # 🏢 राज्य सरकार और स्थानीय स्वशासन (State & Local Government)
-            [InlineKeyboardButton(" राज्यपाल, CM व विधानमंडल", callback_data="set_topic_Governor Chief Minister and State Legislature"),
-             InlineKeyboardButton(" उच्च न्यायालय (High Court)", callback_data="set_topic_High Court and Subordinate Courts in India")],
+            [InlineKeyboardButton(" राज्यपाल, CM व विधानमंडल", callback_data="set_topic_Governor Chief Minister and State Legislature")],
+            [InlineKeyboardButton(" उच्च न्यायालय (High Court)", callback_data="set_topic_High Court and Subordinate Courts in India")],
             [InlineKeyboardButton("🏡 पंचायती राज व नगर पालिकाएं", callback_data="set_topic_Panchayati Raj and Local Self Government")],
              
             # ⚙️ संवैधानिक निकाय और अन्य महत्वपूर्ण विषय
-            [InlineKeyboardButton("🗳️ निर्वाचन आयोग व चुनाव सुधार", callback_data="set_topic_Election Commission of India and Electoral Reforms"),
-             InlineKeyboardButton("💼 UPSC, CAG और नीति आयोग", callback_data="set_topic_Constitutional and Non Constitutional Bodies CAG NITI Aayog")],
-            [InlineKeyboardButton("🛠️ प्रमुख संवैधानिक संशोधन", callback_data="set_topic_Important Constitutional Amendments of India"),
-             InlineKeyboardButton("🚨 आपातकालीन प्रावधान (Emergency)", callback_data="set_topic_Emergency Provisions in Indian Constitution")]
+            [InlineKeyboardButton("🗳️ निर्वाचन आयोग व चुनाव सुधार", callback_data="set_topic_Election Commission of India and Electoral Reforms")],
+            [InlineKeyboardButton("💼 UPSC, CAG और नीति आयोग", callback_data="set_topic_Constitutional and Non Constitutional Bodies CAG NITI Aayog")],
+            [InlineKeyboardButton("🛠️ प्रमुख संवैधानिक संशोधन", callback_data="set_topic_Important Constitutional Amendments of India")],
+            [InlineKeyboardButton("🚨 आपातकालीन प्रावधान (Emergency)", callback_data="set_topic_Emergency Provisions in Indian Constitution")]
        ]
     elif selected_sub == "sub_geography":
         sub_title = "Geography (भूगोल)"
         topics_keyboard = [
             # 🇮🇳 भारत का भूगोल (Indian Geography)
-            [InlineKeyboardButton("🇮🇳 भारत का भौतिक स्वरूप", callback_data="set_topic_Physical Features of India"),
-             InlineKeyboardButton("🌊 भारत की नदियां व जलतंत्र", callback_data="set_topic_Indian Rivers and Drainage System")],
-            [InlineKeyboardButton("🌦️ भारत की जलवायु व मिट्टी", callback_data="set_topic_Indian Climate and Soil Types"),
-             InlineKeyboardButton("🌳 वनस्पति व राष्ट्रीय उद्यान", callback_data="set_topic_Natural Vegetation and National Parks of India")],
-            [InlineKeyboardButton("🌾 कृषि, फसलें और सिंचाई", callback_data="set_topic_Agriculture and Irrigation in India"),
-             InlineKeyboardButton("🏔️ प्रमुख बांध व परियोजनाएं", callback_data="set_topic_Major Dams and River Valley Projects in India")],
-            [InlineKeyboardButton("⛏️ खनिज व ऊर्जा संसाधन", callback_data="set_topic_Minerals and Energy Resources of India"),
-             InlineKeyboardButton("🛣️ उद्योग, राजमार्ग व बंदरगाह", callback_data="set_topic_Industries Transport and Ports in India")],
+            [InlineKeyboardButton("🇮🇳 भारत का भौतिक स्वरूप", callback_data="set_topic_Physical Features of India")],
+            [InlineKeyboardButton("🌊 भारत की नदियां व जलतंत्र", callback_data="set_topic_Indian Rivers and Drainage System")],
+            [InlineKeyboardButton("🌦️ भारत की जलवायु व मिट्टी", callback_data="set_topic_Indian Climate and Soil Types")],
+            [InlineKeyboardButton("🌳 वनस्पति व राष्ट्रीय उद्यान", callback_data="set_topic_Natural Vegetation and National Parks of India")],
+            [InlineKeyboardButton("🌾 कृषि, फसलें और सिंचाई", callback_data="set_topic_Agriculture and Irrigation in India")],
+            [InlineKeyboardButton("🏔️ प्रमुख बांध व परियोजनाएं", callback_data="set_topic_Major Dams and River Valley Projects in India")],
+            [InlineKeyboardButton("⛏️ खनिज व ऊर्जा संसाधन", callback_data="set_topic_Minerals and Energy Resources of India")],
+            [InlineKeyboardButton("🛣️ उद्योग, राजमार्ग व बंदरगाह", callback_data="set_topic_Industries Transport and Ports in India")],
             [InlineKeyboardButton("👥 जनगणना व प्रमुख जनजातियां", callback_data="set_topic_Indian Census and Tribes")],
              
             # 🌍 विश्व का भूगोल (World Geography)
-            [InlineKeyboardButton("🗺️ महाद्वीप, पर्वत व मरुस्थल", callback_data="set_topic_Continents Mountains and Deserts of the World"),
-             InlineKeyboardButton("🌏 विश्व की नदियां और झीलें", callback_data="set_topic_World Rivers Lakes and Waterfalls")],
+            [InlineKeyboardButton("🗺️ महाद्वीप, पर्वत व मरुस्थल", callback_data="set_topic_Continents Mountains and Deserts of the World")],
+            [InlineKeyboardButton("🌏 विश्व की नदियां और झीलें", callback_data="set_topic_World Rivers Lakes and Waterfalls")],
             [InlineKeyboardButton("⚓ प्रमुख जलसंधियां व नहरें", callback_data="set_topic_Important Straits and Canals of the World")],
              
             # ☀️ भौतिक व सामान्य भूगोल (Physical Geography)
-            [InlineKeyboardButton("🌌 सौरमंडल, अक्षांश व देशांतर", callback_data="set_topic_Solar System Latitudes and Longitudes"),
-             InlineKeyboardButton("🌋 पृथ्वी की संरचना व ज्वालामुखी", callback_data="set_topic_Interior of Earth Volcanoes and Earthquakes")],
-            [InlineKeyboardButton("🌀 वायुमंडल, पवनें व चक्रवात", callback_data="set_topic_Atmosphere Structure Winds and Cyclones"),
-             InlineKeyboardButton("🌊 महासागरीय धाराएं व ज्वार", callback_data="set_topic_Ocean Currents and Tides")]
+            [InlineKeyboardButton("🌌 सौरमंडल, अक्षांश व देशांतर", callback_data="set_topic_Solar System Latitudes and Longitudes")],
+            [InlineKeyboardButton("🌋 पृथ्वी की संरचना व ज्वालामुखी", callback_data="set_topic_Interior of Earth Volcanoes and Earthquakes")],
+            [InlineKeyboardButton("🌀 वायुमंडल, पवनें व चक्रवात", callback_data="set_topic_Atmosphere Structure Winds and Cyclones")],
+            [InlineKeyboardButton("🌊 महासागरीय धाराएं व ज्वार", callback_data="set_topic_Ocean Currents and Tides")]
        ]
     elif selected_sub == "sub_science":
         sub_title = "General Science"
         topics_keyboard = [
             # 🧬 जीव विज्ञान (Biology)
-            [InlineKeyboardButton("🧬 कोशिका विज्ञान (Cell Biology)", callback_data="set_topic_Cell Structure and Functions Biology"),
-             InlineKeyboardButton("🩻 मानव शरीर के तंत्र (Systems)", callback_data="set_topic_Human Anatomy and Body Systems")],
-            [InlineKeyboardButton("🍎 पोषण, विटामिन और रोग", callback_data="set_topic_Human Nutrition Vitamins and Diseases"),
-             InlineKeyboardButton("🌿 पादप जगत (Plant Kingdom)", callback_data="set_topic_Plant Anatomy Physiology and Kingdom")],
+            [InlineKeyboardButton("🧬 कोशिका विज्ञान (Cell Biology)", callback_data="set_topic_Cell Structure and Functions Biology")],
+            [InlineKeyboardButton("🩻 मानव शरीर के तंत्र (Systems)", callback_data="set_topic_Human Anatomy and Body Systems")],
+            [InlineKeyboardButton("🍎 पोषण, विटामिन और रोग", callback_data="set_topic_Human Nutrition Vitamins and Diseases")],
+            [InlineKeyboardButton("🌿 पादप जगत (Plant Kingdom)", callback_data="set_topic_Plant Anatomy Physiology and Kingdom")],
             [InlineKeyboardButton("🧬 आनुवंशिकी व जैव विकास", callback_data="set_topic_Genetics and Biological Evolution")],
              
             # 🧪 रसायन विज्ञान (Chemistry)
-            [InlineKeyboardButton("🧪 पदार्थ की अवस्थाएं व परमाणु", callback_data="set_topic_Matter States and Atomic Structure Chemistry"),
-             InlineKeyboardButton("📊 आवर्त सारणी (Periodic Table)", callback_data="set_topic_Periodic Table and Elements Properties")],
-            [InlineKeyboardButton("⚗️ अम्ल, क्षारक और लवण", callback_data="set_topic_Acids Bases Salts and pH Scale"),
-             InlineKeyboardButton("💎 धातु, अधातु व मिश्रधातु", callback_data="set_topic_Metals NonMetals and Alloys Chemistry")],
+            [InlineKeyboardButton("🧪 पदार्थ की अवस्थाएं व परमाणु", callback_data="set_topic_Matter States and Atomic Structure Chemistry")],
+            [InlineKeyboardButton("📊 आवर्त सारणी (Periodic Table)", callback_data="set_topic_Periodic Table and Elements Properties")],
+            [InlineKeyboardButton("⚗️ अम्ल, क्षारक और लवण", callback_data="set_topic_Acids Bases Salts and pH Scale")],
+            [InlineKeyboardButton("💎 धातु, अधातु व मिश्रधातु", callback_data="set_topic_Metals NonMetals and Alloys Chemistry")],
             [InlineKeyboardButton("🔥 कार्बनिक रसायन व ईंधन", callback_data="set_topic_Organic Chemistry Carbon and Fuels")],
              
             # 🧲 भौतिक विज्ञान (Physics)
-            [InlineKeyboardButton("📏 मात्रक, गति और बल", callback_data="set_topic_Units Measurements Motion and Force Physics"),
-             InlineKeyboardButton("⚡ कार्य, ऊर्जा और शक्ति", callback_data="set_topic_Work Energy and Power Physics")],
-            [InlineKeyboardButton("💡 प्रकाश व ध्वनि (Light/Sound)", callback_data="set_topic_Light Optics Sound and Waves Physics"),
-             InlineKeyboardButton("🔌 विद्युत व चुंबकत्व", callback_data="set_topic_Electricity and Magnetism Physics")],
+            [InlineKeyboardButton("📏 मात्रक, गति और बल", callback_data="set_topic_Units Measurements Motion and Force Physics")],
+            [InlineKeyboardButton("⚡ कार्य, ऊर्जा और शक्ति", callback_data="set_topic_Work Energy and Power Physics")],
+            [InlineKeyboardButton("💡 प्रकाश व ध्वनि (Light/Sound)", callback_data="set_topic_Light Optics Sound and Waves Physics")],
+            [InlineKeyboardButton("🔌 विद्युत व चुंबकत्व", callback_data="set_topic_Electricity and Magnetism Physics")],
             [InlineKeyboardButton("🚀 आधुनिक भौतिकी व अंतरिक्ष", callback_data="set_topic_Modern Physics Nuclear Energy and Space")]
        ]
     elif selected_sub == "sub_languages":
         sub_title = "Languages & Grammar"
         topics_keyboard = [
             # 🗣️ हिंदी व्याकरण (Hindi Grammar)
-            [InlineKeyboardButton("📝 वर्णमाला, वर्तनी व संधि", callback_data="set_topic_Hindi Grammar Varnamala and Sandhi"),
-             InlineKeyboardButton("🔤 शब्द भेद (संज्ञा, सर्वनाम, क्रिया)", callback_data="set_topic_Hindi Grammar Sangya Sarvnam Kriya Avyay")],
-            [InlineKeyboardButton("🔄 समास, उपसर्ग व प्रत्यय", callback_data="set_topic_Hindi Grammar Samas Upsarg Pratyay"),
-             InlineKeyboardButton("📖 विलोम, पर्यायवाची व अनेकार्थी", callback_data="set_topic_Hindi Vocabulary Vilom Paryayvachi")],
-            [InlineKeyboardButton("✍️ लिंग, वचन, कारक व काल", callback_data="set_topic_Hindi Grammar Ling Vachan Karak Kaal"),
-             InlineKeyboardButton("🎭 मुहावरे, लोकोक्तियां व रस-छंद", callback_data="set_topic_Hindi Muhavare Lokoktiyan Ras Chhand Alankar")],
+            [InlineKeyboardButton("📝 वर्णमाला, वर्तनी व संधि", callback_data="set_topic_Hindi Grammar Varnamala and Sandhi")],
+            [InlineKeyboardButton("🔤 शब्द भेद (संज्ञा, सर्वनाम, क्रिया)", callback_data="set_topic_Hindi Grammar Sangya Sarvnam Kriya Avyay")],
+            [InlineKeyboardButton("🔄 समास, उपसर्ग व प्रत्यय", callback_data="set_topic_Hindi Grammar Samas Upsarg Pratyay")],
+            [InlineKeyboardButton("📖 विलोम, पर्यायवाची व अनेकार्थी", callback_data="set_topic_Hindi Vocabulary Vilom Paryayvachi")],
+            [InlineKeyboardButton("✍️ लिंग, वचन, कारक व काल", callback_data="set_topic_Hindi Grammar Ling Vachan Karak Kaal")],
+            [InlineKeyboardButton("🎭 मुहावरे, लोकोक्तियां व रस-छंद", callback_data="set_topic_Hindi Muhavare Lokoktiyan Ras Chhand Alankar")],
              
             # 🇬🇧 English Grammar
-            [InlineKeyboardButton("🇬🇧 Parts of Speech (Noun, Verb...)", callback_data="set_topic_English Grammar Parts of Speech"),
-             InlineKeyboardButton("⏳ Tenses & Conditionals", callback_data="set_topic_English Grammar Tenses and Sentence Structure")],
-            [InlineKeyboardButton("🔄 Active & Passive Voice", callback_data="set_topic_English Grammar Active and Passive Voice"),
-             InlineKeyboardButton("💬 Direct & Indirect Speech", callback_data="set_topic_English Grammar Direct and Indirect Narration")],
-            [InlineKeyboardButton("❌ Subject-Verb Agreement", callback_data="set_topic_English Grammar Subject Verb Agreement Errors"),
-             InlineKeyboardButton("📖 Synonyms, Antonyms & Idioms", callback_data="set_topic_English Vocabulary Synonyms Antonyms One Word Substitution")],
+            [InlineKeyboardButton("🇬🇧 Parts of Speech (Noun, Verb...)", callback_data="set_topic_English Grammar Parts of Speech")],
+            [InlineKeyboardButton("⏳ Tenses & Conditionals", callback_data="set_topic_English Grammar Tenses and Sentence Structure")],
+            [InlineKeyboardButton("🔄 Active & Passive Voice", callback_data="set_topic_English Grammar Active and Passive Voice")],
+            [InlineKeyboardButton("💬 Direct & Indirect Speech", callback_data="set_topic_English Grammar Direct and Indirect Narration")],
+            [InlineKeyboardButton("❌ Subject-Verb Agreement", callback_data="set_topic_English Grammar Subject Verb Agreement Errors")],
+            [InlineKeyboardButton("📖 Synonyms, Antonyms & Idioms", callback_data="set_topic_English Vocabulary Synonyms Antonyms One Word Substitution")],
             [InlineKeyboardButton("🧩 Prepositions & Articles", callback_data="set_topic_English Grammar Prepositions and Articles")]
        ]
 
