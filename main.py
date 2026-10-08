@@ -1191,12 +1191,14 @@ async def repeat_ready_button_color_worker(chat_id: int, message_id: int, quiz_i
 # start handler 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        # Broadcast ke liye Chat ID aur Type database me save karein
         chat_id = update.message.chat.id
         chat_type = update.message.chat.type
 
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
+        # 'private' string check
         is_private = str(chat_type) == "private" or (hasattr(chat_type, "value") and chat_type.value == "private")
         
         if is_private:
@@ -1206,21 +1208,47 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.commit()
         conn.close()
 
+        # 🔥 SMART OLD BUTTONS CLEANUP (PANEL RAHEGA, SIRF BUTTONS GAYAB)
         if not is_private:
             if chat_id in GROUP_GAMES:
                 game = GROUP_GAMES[chat_id]
+                
+                # 1. Purane Welcome Message ke buttons remove karein
                 if "welcome_message_id" in game:
-                    try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=game["welcome_message_id"], reply_markup=None)
-                    except Exception: pass
+                    try:
+                        await context.bot.edit_message_reply_markup(
+                            chat_id=chat_id,
+                            message_id=game["welcome_message_id"],
+                            reply_markup=None
+                        )
+                    except Exception:
+                        pass
+                
+                # 2. Agar koi dynamic ready panel active hai toh uske buttons bhee remove karein
                 if "setup_message_id" in game:
-                    try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=game["setup_message_id"], reply_markup=None)
-                    except Exception: pass
-                if "pause_message_id" in game:
-                    try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=game["pause_message_id"], reply_markup=None)
-                    except Exception: pass
+                    try:
+                        await context.bot.edit_message_reply_markup(
+                            chat_id=chat_id,
+                            message_id=game["setup_message_id"],
+                            reply_markup=None
+                        )
+                    except Exception:
+                        pass
 
+                # 3. Agar koi purana pause message chal raha hai toh uske buttons bhee remove karein
+                if "pause_message_id" in game:
+                    try:
+                        await context.bot.edit_message_reply_markup(
+                            chat_id=chat_id,
+                            message_id=game["pause_message_id"],
+                            reply_markup=None
+                        )
+                    except Exception:
+                        pass
+
+        # ✅ FIXED: context.args deep-linking logic check
         if context.args and len(context.args) > 0:
-            first_arg = context.args[0]
+            first_arg = context.args[0]  
             
             if first_arg.startswith("quiz_"):
                 if not is_private and chat_id in GROUP_GAMES:
@@ -1241,8 +1269,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 cursor = conn.cursor()
                 cursor.execute("SELECT title, description, timer, negative_value FROM quizzes WHERE quiz_id = ?", (quiz_id,))
                 quiz_data = cursor.fetchone()
+                
                 cursor.execute("SELECT COUNT(*) FROM questions WHERE quiz_id = ?", (quiz_id,))
-                total_q = cursor.fetchone()[0]
+                total_q_data = cursor.fetchone()
+                total_q = total_q_data[0] if total_q_data else 0  
                 conn.close()
                 
                 if not quiz_data:
@@ -1253,13 +1283,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 time_disp = f"{timer} sec" if timer < 60 else f"{timer // 60} min"
                 db_neg_val = negative_value if negative_value is not None else 0.0
                 
+                # NEW CHECK: Agar iss group me quiz already chal rahi ho toh naya panel na post karein
                 if not is_private and chat_id in GROUP_GAMES and GROUP_GAMES[chat_id].get("quiz_started"):
                     await update.message.reply_text(
                         "⚠️ A quiz is already running in this group. Please use /stop or wait for the current quiz results before starting a new quiz."
                     )
                     return
 
-                # मूल टेक्स्ट बेस स्ट्रक्चर
                 init_text = (
                     f"<blockquote><ins><b>🎲 Get ready for the quiz!</b></ins></blockquote>\n\n"
                     f"<blockquote>📚 Title: {escape_markdown(title)}</blockquote>\n"
@@ -1271,32 +1301,60 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "The quiz will begin when at least 2 people are ready to play. Send /stop to stop it."
                 )
                 
-                # नीचे लाइव काउंट जोड़ने के लिए शुरुआती लाइन (0 players)
+                # Base panel layout including user count line below panel text
                 live_text = init_text + "\n\n━━━━━━━━━━━━━━━━━\n👥 <b>Ready Players:</b> 0"
                 
-                raw_button = {"text": "I am ready!", "callback_data": f"ready_{quiz_id}", "style": "primary"}
+                raw_button = {
+                    "text": "I am ready!",
+                    "callback_data": f"ready_{quiz_id}",
+                    "style": "primary"  # Initial background loop color variant setup
+                }
+                kb = [[raw_button]]
                 
                 quiz_panel_msg = await update.message.reply_text(
                     live_text, 
-                    reply_markup=InlineKeyboardMarkup([[raw_button]]), 
+                    reply_markup=InlineKeyboardMarkup(kb), 
                     parse_mode="HTML"
                 )
                 
                 if not is_private:
                     if chat_id not in GROUP_GAMES:
                         GROUP_GAMES[chat_id] = {}
+                    
+                    # 🎯 PERFECT UNION: All your original structure keys + our new panel tracking keys merged cleanly!
                     GROUP_GAMES[chat_id].update({
                         "quiz_id": quiz_id,
-                        "setup_message_id": quiz_panel_msg.message_id,
-                        "setup_panel_text": init_text, # मूल टेक्स्ट सुरक्षित रखा
+                        "joined_users": {},
+                        "current_q": 0,
+                        "scores": {},
+                        "poll_map": {},                 # Prevents KeyError!
+                        "start_time": None,
+                        "user_answers": {},
+                        "question_start_times": {},
                         "ready_users": set(),
-                        "quiz_started": False
+                        "quiz_started": False,
+                        "poll_message_ids": {},
+                        "setup_message_id": quiz_panel_msg.message_id,
+                        "setup_panel_text": init_text,  # Stores original text context cleanly
+                        "is_private": False,
+                        "quiz_paused": False,
+                        "consecutive_no_answers": 0,
+                        "previous_panel_message_id": None,
+                        "start_lock": asyncio.Lock()
                     })
-                
+
                 asyncio.create_task(repeat_ready_button_color_worker(chat_id, quiz_panel_msg.message_id, quiz_id, context))
                 return
 
-        # [Welcome Message layout remains exactly same as your code...]
+        # Welcome message text layout se pehle active quiz check
+        if is_private and check_active_quiz_creation(update.message.from_user.id, context):
+            await update.message.reply_text(
+                "⚠️ **You have an unfinished quiz.** Please finish creating your quiz or send /cancel.\n\n"
+                "You cannot start a new quiz or use other commands until you complete this one."
+            )
+            return
+
+        # Welcome message text layout
         welcome_text = (
             "<blockquote><ins>👋 Welcome to Premium Quiz Bot!</ins></blockquote>\n\n"
             "Aap is bot se quizzes bana kar apne dosto ke sath groups me realtime khel sakte hain.\n\n"
@@ -1308,10 +1366,28 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "👉 `/autoquiz` - Naya AI Quiz generate karne ki step-by-step process shuru karein.\n"
             f"<tg-spoiler>📢 Owner Details: ID `{OWNER_ID}`</tg-spoiler>"
         )
-        kb = [[{"text": "🚀 Create New Quiz", "callback_data": "btn_newquiz", "style": "success"}]] if is_private else [[{"text": "✨ Add me in your group", "url": f"https://t.me/{context.bot.username}?startgroup=true", "style": "primary"}]]
-        welcome_msg = await update.message.reply_text(welcome_text, reply_markup=InlineKeyboardMarkup(kb), parse_mode="HTML")
+        
+        if is_private:
+            kb = [
+                [{"text": "🚀 Create New Quiz", "callback_data": "btn_newquiz", "style": "success"}],
+                [{"text": "📚 View My Quizzes", "callback_data": "btn_viewquizzes", "style": "primary"}]
+            ]
+        else:
+            bot_username = context.bot.username
+            add_url = f"https://t.me/{bot_username}?startgroup=true"
+            kb = [
+                [{"text": "✨ Add me in your group", "url": add_url, "style": "primary"}]
+            ]
+        
+        welcome_msg = await update.message.reply_text(
+            welcome_text, 
+            reply_markup=InlineKeyboardMarkup(kb), 
+            parse_mode="HTML"
+        )
+        
         if not is_private:
-            if chat_id not in GROUP_GAMES: GROUP_GAMES[chat_id] = {}
+            if chat_id not in GROUP_GAMES:
+                GROUP_GAMES[chat_id] = {}
             GROUP_GAMES[chat_id]["welcome_message_id"] = welcome_msg.message_id
 
     except Exception as e:
