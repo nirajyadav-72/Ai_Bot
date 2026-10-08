@@ -729,6 +729,10 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     """Handles both custom text title input and Inline callback buttons for title step"""
     if not is_authorized(update): return TITLE
     
+    # 🟢 SAFETY FIX: Ensure 'quiz_build' exists in user_data to prevent KeyError
+    if "quiz_build" not in context.user_data:
+        context.user_data["quiz_build"] = {"title": "", "description": "", "questions": []}
+    
     # Case 1: Agar user ne Inline Button (Yes/No) par click kiya hai
     if update.callback_query:
         query = update.callback_query
@@ -738,6 +742,7 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             # 'Yes' click karne par saved topic ko hi title bana do
             topic_name = context.user_data.get('topic', 'AI Quiz')
             context.user_data['title'] = topic_name
+            context.user_data["quiz_build"]["title"] = topic_name  # Save to dict as well
             
             # Buttons remove karein screen se
             try: await query.edit_message_reply_markup(reply_markup=None)
@@ -774,6 +779,7 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
             return TITLE
             
         context.user_data['title'] = title_text
+        context.user_data["quiz_build"]["title"] = title_text  # Save to dict as well
         
         reply_keyboard = [['Skip ⏭️']]
         markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
