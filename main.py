@@ -1149,6 +1149,51 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("❌ Quiz setup processing setup abandoned.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
     
+async def repeat_ready_button_color_worker(chat_id: int, message_id: int, quiz_id: int, context: ContextTypes.DEFAULT_TYPE):
+    """3-3 सेकंड में 'I am ready!' बटन का स्टाइल Primary और Success में रिपीट करने वाला लूप"""
+    # 0 इंडेक्स पर Primary (नीला) और 1 इंडेक्स पर Success (हरा)
+    styles = ["primary", "success"]
+    idx = 0
+    
+    while True:
+        try:
+            await asyncio.sleep(3) # 3 सेकंड का इंतज़ार
+            
+            # सुरक्षा जाँच: अगर क्विज़ शुरू हो चुकी है, तो बैकग्राउंड लूप को यहीं बंद करें
+            if chat_id in GROUP_GAMES and GROUP_GAMES[chat_id].get("quiz_started"):
+                break
+                
+            # रेडी यूज़र्स की संख्या को लाइव ट्रैक रखें ताकि वो बटन से गायब न हो
+            ready_count = 0
+            if chat_id in GROUP_GAMES and "ready_users" in GROUP_GAMES[chat_id]:
+                ready_count = len(GROUP_GAMES[chat_id]["ready_users"])
+            
+            # संख्या के आधार पर टेक्स्ट सेट करें
+            btn_text = f"I am ready! ({ready_count})" if ready_count > 0 else "I am ready!"
+            
+            # आपके कोड के फॉर्मेट के अनुसार रॉ डिक्शनरी पेलोड
+            raw_button = {
+                "text": btn_text,
+                "callback_data": f"ready_{quiz_id}",
+                "style": styles[idx]  # हर 3 सेकंड में 'primary' <-> 'success' बदलेगा
+            }
+            
+            # टेलीग्राम पर बटन का रंग और स्टाइल अपडेट करें
+            await context.bot.edit_message_reply_markup(
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=InlineKeyboardMarkup([[raw_button]])
+            )
+            
+            # इंडेक्स को 0 और 1 के बीच स्विच करें
+            idx = (idx + 1) % len(styles)
+            
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logging.debug(f"Button repeat color worker encountered an error: {e}")
+            break
+
 # start handler 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -3480,6 +3525,43 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
     except Exception as e:
         logging.error(f"Error in send_mid_game_leaderboard: {e}", exc_info=True)
 
+async def repeat_leaderboard_button_color_worker(chat_id: int, message_id: int, quiz_id: int, context: ContextTypes.DEFAULT_TYPE):
+    """Cycles the Leaderboard 'Start Again' button between success and primary every 3 seconds"""
+    styles = ["primary", "success"]
+    idx = 0
+    bot_username = context.bot.username if context.bot.username else "quiz_bot"
+    share_url = f"https://t.me/{bot_username}?startgroup=quiz_{quiz_id}"
+
+    while True:
+        try:
+            await asyncio.sleep(3) # Wait for 3 seconds
+            
+            # Guard: If a new quiz panel is initiated or running in this chat, kill this old background worker
+            if chat_id in GROUP_GAMES:
+                # If a new quiz structure setup has overridden the previous run, terminate smoothly
+                if GROUP_GAMES[chat_id].get("quiz_id") != quiz_id or GROUP_GAMES[chat_id].get("quiz_started"):
+                    break
+            
+            raw_button = {
+                "text": "Start Again ✨",
+                "url": share_url,
+                "style": styles[idx] # Toggles dynamically every 3 seconds
+            }
+            
+            await context.bot.edit_message_reply_markup(
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=InlineKeyboardMarkup([[raw_button]])
+            )
+            
+            idx = (idx + 1) % len(styles)
+            
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logging.debug(f"Leaderboard flash button worker encountered an error: {e}")
+            break
+
 # 🎖️ result leaderboard 
 async def compile_group_leaderboard(chat_id, context):
     try:
@@ -3642,32 +3724,39 @@ async def compile_group_leaderboard(chat_id, context):
             leaderboard += f"   <b>{roast_msg}</b>\n"
             leaderboard += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
         
+        # Existing configuration keys mapping setup inside your code...
         footer = "\n🏆 Congratulations to all participants!"
         full_message = header + subheader + leaderboard + footer
         
-        # 🌟 FIX: Library wrapper ko bypass karke raw dictionary payload bheja taaki crash na ho
         share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
         
-        # Raw structure format dictionary injection
         raw_button = {
             "text": "Start Again ✨",
             "url": share_url,
-            "style": "success"  # Hara (Green) rang lagane ke liye. Neela chahiye toh "primary" likhein
+            "style": "success"  # Initial start styling container configuration
         }
         
-        # InlineKeyboardMarkup constructor manually object structures feed kar lega
         kb = [[raw_button]]
         
-        await context.bot.send_message(
+        # 🟢 MODIFIED: Store the response inside a message variable
+        leaderboard_msg = await context.bot.send_message(
             chat_id=chat_id, 
             text=full_message, 
             reply_markup=InlineKeyboardMarkup(kb),
             parse_mode="HTML"
         )
+        
+        # Extract the current quiz id value safely before popping state logs
+        current_game_quiz_id = game["quiz_id"]
+        
         GROUP_GAMES.pop(chat_id, None)
+        
+        # 🌟 ADD THIS LINE HERE to trigger the leaderboard blinking routine:
+        asyncio.create_task(repeat_leaderboard_button_color_worker(chat_id, leaderboard_msg.message_id, current_game_quiz_id, context))
+        
     except Exception as e:
         logging.error(f"Error in compile_group_leaderboard: {e}")
-                 
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     try:
         user_id = update.message.from_user.id if update.message else update.callback_query.from_user.id
