@@ -1250,9 +1250,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if "pause_message_id" in game:
                     try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=game["pause_message_id"], reply_markup=None)
                     except Exception: pass
-        # ✅ FIXED: context.args deep-linking logic check
+        # ✅ FIXED: Extracting the first element [0] index to stop the List AttributeError
         if context.args and len(context.args) > 0:
-            first_arg = context.args  
+            first_arg = context.args[0]  # 🛑 मुख्य सुधार: लिस्ट से असली स्ट्रिंग टेक्स्ट को बाहर निकाला!
             
             if first_arg.startswith("quiz_"):
                 if not is_private and chat_id in GROUP_GAMES:
@@ -1268,7 +1268,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
                 
                 try:
-                    quiz_id = int(parts)
+                    quiz_id = int(parts[1]) # 🛑 सुधारे गए पार्ट्स से आईडी पार्स करना
                 except ValueError:
                     await update.message.reply_text("❌ Invalid quiz ID format.")
                     return
@@ -1280,7 +1280,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 cursor.execute("SELECT COUNT(*) FROM questions WHERE quiz_id = ?", (quiz_id,))
                 total_q_data = cursor.fetchone()
-                total_q = total_q_data if total_q_data else 0  
+                total_q = total_q_data[0] if total_q_data else 0  # 🛑 टुपल से सही वैल्यू अनपैक करना
                 conn.close()
                 
                 if not quiz_data:
@@ -1291,7 +1291,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 time_disp = f"{timer} sec" if timer < 60 else f"{timer // 60} min"
                 db_neg_val = negative_value if negative_value is not None else 0.0
                 
-                # 🟢 SYNTAX FIXED: '&&' को हटाकर पाइथन का लीगल 'and' कीवर्ड लगाया गया है
                 if not is_private and chat_id in GROUP_GAMES and GROUP_GAMES[chat_id].get("quiz_started"):
                     await update.message.reply_text(
                         "⚠️ A quiz is already running in this group. Please use /stop or wait for the current quiz results before starting a new quiz."
@@ -1349,7 +1348,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "start_lock": asyncio.Lock()
                     })
 
-                # 🌟 ब्लिंकिंग टास्क के हैंडल को मेमोरी (GROUP_GAMES) में सेव किया ताकि बाद में बंद कर सकें
+                # ब्लिंकिंग टास्क के हैंडल को मेमोरी (GROUP_GAMES) में सेव किया ताकि बाद में बंद कर सकें
                 task_handle = asyncio.create_task(repeat_ready_button_color_worker(chat_id, quiz_panel_msg.message_id, quiz_id, context))
                 if not is_private and chat_id in GROUP_GAMES:
                     GROUP_GAMES[chat_id]["blink_task"] = task_handle
