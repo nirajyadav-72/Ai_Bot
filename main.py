@@ -64,10 +64,17 @@ def get_allowed_ids():
     return allowed_list
 
 def is_authorized(update: Update):
-    """Check if the user is either the Owner or present in Allowed Users list"""
-    user_id = update.message.from_user.id
-    chat_type = update.message.chat.type
-    
+    """Check if the user is either the Owner or present in Allowed Users list (Safe for Messages & Buttons)"""
+    # 🟢 FIXED: Check both message and callback_query safely
+    if update.message:
+        user_id = update.message.from_user.id
+        chat_type = update.message.chat.type
+    elif update.callback_query:
+        user_id = update.callback_query.from_user.id
+        chat_type = update.callback_query.message.chat.type
+    else:
+        return False # Unknown update structure
+        
     allowed_ids = get_allowed_ids()
     
     # अगर ग्रुप चैट है, तो ही सुरक्षा प्रतिबंध लागू होंगे
