@@ -1308,7 +1308,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "The quiz will begin when at least 2 people are ready to play. Send /stop to stop it."
                 )
                 
-                live_text = init_text + "\n\n━━━━━━━━━━━━━━━━━\n👥 <b>Ready Players:</b> 0"
+                live_text = init_text + "\n👥 <b>Ready Players:</b> 0"
                 
                 raw_button = {
                     "text": "I am ready!",
@@ -2961,11 +2961,11 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 base_text = game.get("setup_panel_text")
                 if not base_text:
                     base_text = query.message.text
-                    if "\n\n━━━━━━━━━━━━━━━━━\n👥 Ready Players:" in base_text:
-                        base_text = base_text.split("\n\n━━━━━━━━━━━━━━━━━\n👥 Ready Players:")
+                    if "\n👥 Ready Players:" in base_text:
+                        base_text = base_text.split("\n👥 Ready Players:")
                     game["setup_panel_text"] = base_text
 
-                updated_text = base_text + f"\n\n━━━━━━━━━━━━━━━━━\n👥 <b>Ready Players:</b> {ready_count}"
+                updated_text = base_text + f"\n👥 <b>Ready Players:</b> {ready_count}"
                 
                 await context.bot.edit_message_text(
                     chat_id=chat_id,
@@ -3686,7 +3686,7 @@ async def compile_group_leaderboard(chat_id, context):
             leaderboard += f"   🔹 ┈┈┈┈┈┈|┈┈┈┈┈┈ 🔹\n"
         
         # Existing configuration keys mapping setup inside your code...
-        footer = "\n🏆 Congratulations to all participants!"
+        footer = "\n🏆 <b>Congratulations to all participants!</b>"
         full_message = header + subheader + leaderboard + footer
         
         share_url = f"https://t.me/{bot_username}?startgroup=quiz_{game['quiz_id']}"
