@@ -5303,12 +5303,11 @@ async def main():
             entry_points=[CommandHandler("autoquiz", autoquiz_start)],
             states={
                 TOPIC: [
-                   MessageHandler(filters.TEXT & ~filters.COMMAND, handle_topic),
-                   CallbackQueryHandler(handle_subject_navigation, pattern="^sub_"),
-                   CallbackQueryHandler(handle_final_topic_selection, pattern="^set_topic_"),
-                   CallbackQueryHandler(handle_back_to_subjects, pattern="^back_to_subjects_nav$"),
-                   CallbackQueryHandler(handle_cancel_navigation, pattern="^autoquiz_cancel_nav$")
-                ],
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_topic), # पुराना लॉजिक वैसे ही रहेगा
+                    CallbackQueryHandler(handle_subject_navigation, pattern="^sub_"),
+                    CallbackQueryHandler(handle_final_topic_selection, pattern="^set_topic_"),
+                    CallbackQueryHandler(autoquiz_start, pattern="^back_to_subjects_nav$")
+                 ],
                 Q_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_q_count)],
                 TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_title)],
                 DESCRIPTION: [
