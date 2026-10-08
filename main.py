@@ -5432,8 +5432,14 @@ async def main():
                     CallbackQueryHandler(handle_final_topic_selection, pattern="^set_topic_"),
                     CallbackQueryHandler(autoquiz_start, pattern="^back_to_subjects_nav$")
                  ],
-                Q_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_q_count)],
-                TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_title)],
+                Q_COUNT: [
+                    CallbackQueryHandler(handle_q_count, pattern="^qcnt_"),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_q_count)
+                 ],
+                TITLE: [
+                    CallbackQueryHandler(handle_title, pattern="^title_"),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_title)
+                 ],
                 DESCRIPTION: [
                         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_description),
                         CommandHandler("skip", handle_description)
