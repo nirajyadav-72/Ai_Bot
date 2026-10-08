@@ -1150,32 +1150,27 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
     
 async def repeat_ready_button_color_worker(chat_id: int, message_id: int, quiz_id: int, context: ContextTypes.DEFAULT_TYPE):
-    """बटन का रंग बदलता है, लेकिन जैसे ही कम से कम 1 खिलाड़ी तैयार (Ready Count >= 1) होता है, 
-    यह ब्लिंकिंग फंक्शन खुद को तुरंत बंद कर देता है ताकि क्विज़ स्टार्ट होने पर बटन आसानी से हाइड हो सके।"""
+    """बटन का रंग बदलता है और बाहरी फ़ोर्स क्लोज़ (Cancel) को सुरक्षित रूप से स्वीकार करता है।"""
     styles = ["primary", "success"]
     idx = 0
     
-    while True:
-        try:
+    try:
+        while True:
             await asyncio.sleep(3) # हर 3 सेकंड में रंग बदलेगा
             
-            # सुरक्षा गार्ड 1: अगर क्विज़ शुरू हो चुकी है, तो लूप तुरंत बंद करें
+            # अगर क्विज़ शुरू हो चुकी है, तो लूप बंद करें
             if chat_id in GROUP_GAMES and GROUP_GAMES[chat_id].get("quiz_started"):
                 break
                 
-            # लाइव रेडी यूज़र्स की संख्या निकालें
             ready_count = 0
             if chat_id in GROUP_GAMES and "ready_users" in GROUP_GAMES[chat_id]:
                 if isinstance(GROUP_GAMES[chat_id]["ready_users"], set):
                     ready_count = len(GROUP_GAMES[chat_id]["ready_users"])
             
-            # 🛑 मुख्य सुधार (PROPOSED FEATURE): 
-            # जैसे ही खिलाड़ियों की संख्या 1 या उससे ज़्यादा होगी, रंग बदलने वाला लूप यहीं पर ब्रेक (बंद) हो जाएगा!
+            # अगर कम से कम 1 खिलाड़ी आ गया है, तो ब्लिंकिंग बंद करें
             if ready_count >= 1:
-                logging.info(f"Ready count is {ready_count}. Stopping the color blinking worker loop for chat {chat_id}.")
                 break
             
-            # जब तक कोई खिलाड़ी रेडी नहीं होता (Count = 0), तब तक ही रंग बदलेगा
             raw_button = {
                 "text": "I am ready!",
                 "callback_data": f"ready_{quiz_id}",
@@ -1196,11 +1191,11 @@ async def repeat_ready_button_color_worker(chat_id: int, message_id: int, quiz_i
             
             idx = (idx + 1) % len(styles)
             
-        except asyncio.CancelledError:
-            break
-        except Exception as error:
-            logging.debug(f"Silenced background color worker exception: {error}")
-            break
+    except asyncio.CancelledError:
+        # जब बॉट बाहर से इसे बंद करेगा, तो यह बिना एरर के यहाँ सुरक्षित समाप्त होगा
+        logging.info(f"पुराने मैसेज {message_id} का ब्लिंकिंग टास्क बंद कर दिया गया।")
+    except Exception as error:
+        logging.debug(f"Silenced worker error: {error}")
 
 # start handler 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1222,50 +1217,50 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         conn.commit()
         conn.close()
 
-        # 🔥 SMART OLD BUTTONS CLEANUP (PANEL RAHEGA, SIRF BUTTONS GAYAB)
+        # 🔥 SMART OLD BUTTONS CLEANUP (सुरक्षित अनुक्रम सुधार के साथ)
         if not is_private:
             if chat_id in GROUP_GAMES:
                 game = GROUP_GAMES[chat_id]
                 
                 # 1. Purane Welcome Message ke buttons remove karein
                 if "welcome_message_id" in game:
-                    try:
-                        await context.bot.edit_message_reply_markup(
-                            chat_id=chat_id,
-                            message_id=game["welcome_message_id"],
-                            reply_markup=None
-                        )
-                    except Exception:
-                        pass
+                    try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=game["welcome_message_id"], reply_markup=None)
+                    except Exception: pass
                 
-                # 2. Agar koi dynamic ready panel active hai toh uske buttons bhee remove karein
+                # 2. 🛑 मुख्य सुधार: बटन हाइड करने से पहले पुराने कलर चेंजिंग फंक्शन को क्लोज करें
                 if "setup_message_id" in game:
                     try:
+                        # स्टेप A: पुराने चल रहे ब्लिंकिंग लूप को तुरंत फ़ोर्स क्लोज़ (Cancel) करें
+                        old_blink_task = game.get("blink_task")
+                        if old_blink_task and not old_blink_task.done():
+                            old_blink_task.cancel()
+                            await asyncio.sleep(0.1) # पायथन को लूप बंद करने के लिए 100 मिलीसेकंड का समय दें
+                            logging.info("पुराने पैनल का ब्लिंकिंग फंक्शन सफलतापूर्वक बंद हुआ।")
+
+                        # स्टेप B: अब जब लूप पूरी तरह मर चुका है, तो सुरक्षित रूप से बटन हाइड करें
                         await context.bot.edit_message_reply_markup(
-                            chat_id=chat_id,
-                            message_id=game["setup_message_id"],
+                            chat_id=chat_id, 
+                            message_id=game["setup_message_id"], 
                             reply_markup=None
                         )
-                    except Exception:
-                        pass
+                    except Exception as e: 
+                        logging.debug(f"Handling old panel clearance error: {e}")
 
                 # 3. Agar koi purana pause message chal raha hai toh uske buttons bhee remove karein
                 if "pause_message_id" in game:
-                    try:
-                        await context.bot.edit_message_reply_markup(
-                            chat_id=chat_id,
-                            message_id=game["pause_message_id"],
-                            reply_markup=None
-                        )
-                    except Exception:
-                        pass
+                    try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=game["pause_message_id"], reply_markup=None)
+                    except Exception: pass
 
         # ✅ FIXED: context.args deep-linking logic check
         if context.args and len(context.args) > 0:
-            first_arg = context.args[0]  
+            first_arg = context.args  
             
             if first_arg.startswith("quiz_"):
                 if not is_private and chat_id in GROUP_GAMES:
+                    # यदि मेमोरी पूरी तरह साफ़ कर रहे हैं, तो पुराने टास्क को भी बंद करें
+                    old_task = GROUP_GAMES[chat_id].get("blink_task")
+                    if old_task and not old_task.done():
+                        old_task.cancel()
                     GROUP_GAMES.pop(chat_id, None)
 
                 parts = first_arg.split("_")
@@ -1274,7 +1269,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
                 
                 try:
-                    quiz_id = int(parts[1])
+                    quiz_id = int(parts)
                 except ValueError:
                     await update.message.reply_text("❌ Invalid quiz ID format.")
                     return
@@ -1286,7 +1281,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 cursor.execute("SELECT COUNT(*) FROM questions WHERE quiz_id = ?", (quiz_id,))
                 total_q_data = cursor.fetchone()
-                total_q = total_q_data[0] if total_q_data else 0  
+                total_q = total_q_data if total_q_data else 0  
                 conn.close()
                 
                 if not quiz_data:
@@ -1297,8 +1292,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 time_disp = f"{timer} sec" if timer < 60 else f"{timer // 60} min"
                 db_neg_val = negative_value if negative_value is not None else 0.0
                 
-                # NEW CHECK: Agar iss group me quiz already chal rahi ho toh naya panel na post karein
-                if not is_private and chat_id in GROUP_GAMES and GROUP_GAMES[chat_id].get("quiz_started"):
+                if not is_private && chat_id in GROUP_GAMES and GROUP_GAMES[chat_id].get("quiz_started"):
                     await update.message.reply_text(
                         "⚠️ A quiz is already running in this group. Please use /stop or wait for the current quiz results before starting a new quiz."
                     )
@@ -1315,13 +1309,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "The quiz will begin when at least 2 people are ready to play. Send /stop to stop it."
                 )
                 
-                # Base panel layout including user count line below panel text
                 live_text = init_text + "\n\n━━━━━━━━━━━━━━━━━\n👥 <b>Ready Players:</b> 0"
                 
                 raw_button = {
                     "text": "I am ready!",
                     "callback_data": f"ready_{quiz_id}",
-                    "style": "primary"  # Initial background loop color variant setup
+                    "style": "primary"  
                 }
                 kb = [[raw_button]]
                 
@@ -1335,13 +1328,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if chat_id not in GROUP_GAMES:
                         GROUP_GAMES[chat_id] = {}
                     
-                    # 🎯 PERFECT UNION: All your original structure keys + our new panel tracking keys merged cleanly!
                     GROUP_GAMES[chat_id].update({
                         "quiz_id": quiz_id,
                         "joined_users": {},
                         "current_q": 0,
                         "scores": {},
-                        "poll_map": {},                 # Prevents KeyError!
+                        "poll_map": {},                 
                         "start_time": None,
                         "user_answers": {},
                         "question_start_times": {},
@@ -1349,7 +1341,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "quiz_started": False,
                         "poll_message_ids": {},
                         "setup_message_id": quiz_panel_msg.message_id,
-                        "setup_panel_text": init_text,  # Stores original text context cleanly
+                        "setup_panel_text": init_text,  
                         "is_private": False,
                         "quiz_paused": False,
                         "consecutive_no_answers": 0,
@@ -1357,7 +1349,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "start_lock": asyncio.Lock()
                     })
 
-                asyncio.create_task(repeat_ready_button_color_worker(chat_id, quiz_panel_msg.message_id, quiz_id, context))
+                # 🌟 मुख्य सुधार: ब्लिंकिंग टास्क के हैंडल को मेमोरी (GROUP_GAMES) में सेव किया ताकि बाद में बंद कर सकें
+                task_handle = asyncio.create_task(repeat_ready_button_color_worker(chat_id, quiz_panel_msg.message_id, quiz_id, context))
+                if not is_private and chat_id in GROUP_GAMES:
+                    GROUP_GAMES[chat_id]["blink_task"] = task_handle
                 return
 
         # Welcome message text layout se pehle active quiz check
