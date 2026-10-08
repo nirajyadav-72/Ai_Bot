@@ -1150,7 +1150,8 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
     
 async def repeat_ready_button_color_worker(chat_id: int, message_id: int, quiz_id: int, context: ContextTypes.DEFAULT_TYPE):
-    """सिर्फ बटन का रंग बदलेगा। यूज़र काउंट अब पैनल टेक्स्ट में अपडेट होगा।"""
+    """बटन का रंग बदलता है, लेकिन जैसे ही कम से कम 1 खिलाड़ी तैयार (Ready Count >= 1) होता है, 
+    यह ब्लिंकिंग फंक्शन खुद को तुरंत बंद कर देता है ताकि क्विज़ स्टार्ट होने पर बटन आसानी से हाइड हो सके।"""
     styles = ["primary", "success"]
     idx = 0
     
@@ -1158,14 +1159,27 @@ async def repeat_ready_button_color_worker(chat_id: int, message_id: int, quiz_i
         try:
             await asyncio.sleep(3) # हर 3 सेकंड में रंग बदलेगा
             
-            # अगर क्विज़ शुरू हो चुकी है, तो लूप तुरंत बंद करें
+            # सुरक्षा गार्ड 1: अगर क्विज़ शुरू हो चुकी है, तो लूप तुरंत बंद करें
             if chat_id in GROUP_GAMES and GROUP_GAMES[chat_id].get("quiz_started"):
                 break
+                
+            # लाइव रेडी यूज़र्स की संख्या निकालें
+            ready_count = 0
+            if chat_id in GROUP_GAMES and "ready_users" in GROUP_GAMES[chat_id]:
+                if isinstance(GROUP_GAMES[chat_id]["ready_users"], set):
+                    ready_count = len(GROUP_GAMES[chat_id]["ready_users"])
             
+            # 🛑 मुख्य सुधार (PROPOSED FEATURE): 
+            # जैसे ही खिलाड़ियों की संख्या 1 या उससे ज़्यादा होगी, रंग बदलने वाला लूप यहीं पर ब्रेक (बंद) हो जाएगा!
+            if ready_count >= 1:
+                logging.info(f"Ready count is {ready_count}. Stopping the color blinking worker loop for chat {chat_id}.")
+                break
+            
+            # जब तक कोई खिलाड़ी रेडी नहीं होता (Count = 0), तब तक ही रंग बदलेगा
             raw_button = {
                 "text": "I am ready!",
                 "callback_data": f"ready_{quiz_id}",
-                "style": styles[idx] # सिर्फ स्टाइल (रंग) बदलेगा
+                "style": styles[idx]
             }
             
             try:
