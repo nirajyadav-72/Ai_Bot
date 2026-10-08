@@ -1307,11 +1307,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "The quiz will begin when at least 2 people are ready to play. Send /stop to stop it."
                 )
                 
-                # 🌟 FIX: Raw dictionary payload use kiya button ko Green colour dene ke liye
+                # शुरुआती बटन का रंग सेट (Primary)
                 raw_button = {
                     "text": "I am ready!",
                     "callback_data": f"ready_{quiz_id}",
-                    "style": "success"  # Hara (Green) rang lagane ke liye
+                    "style": "primary"  
                 }
                 kb = [[raw_button]]
                 
@@ -1325,6 +1325,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     if chat_id not in GROUP_GAMES:
                         GROUP_GAMES[chat_id] = {}
                     GROUP_GAMES[chat_id]["setup_message_id"] = quiz_panel_msg.message_id
+                
+                # 🌟 यहाँ से 3 सेकंड वाला कलर रिपीटिंग लूप बैकग्राउंड में एक्टिव होगा
+                asyncio.create_task(repeat_ready_button_color_worker(chat_id, quiz_panel_msg.message_id, quiz_id, context))
                 return
 
         # Welcome message text layout se pehle active quiz check
@@ -1348,7 +1351,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"<tg-spoiler>📢 Owner Details: ID `{OWNER_ID}`</tg-spoiler>"
         )
         
-        # 🌟 FIX: Welcome panel ke buttons ko bhi custom color diya (Blue aur Green)
         if is_private:
             kb = [
                 [{"text": "🚀 Create New Quiz", "callback_data": "btn_newquiz", "style": "success"}],
@@ -1375,7 +1377,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logging.error(f"Error in start: {e}", exc_info=True)  
         await update.message.reply_text("❌ An error occurred. Please try again with /start")
-        
+
 # Help command Handel
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
