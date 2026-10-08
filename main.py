@@ -1250,7 +1250,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if "pause_message_id" in game:
                     try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=game["pause_message_id"], reply_markup=None)
                     except Exception: pass
-
         # ✅ FIXED: context.args deep-linking logic check
         if context.args and len(context.args) > 0:
             first_arg = context.args  
@@ -1292,7 +1291,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 time_disp = f"{timer} sec" if timer < 60 else f"{timer // 60} min"
                 db_neg_val = negative_value if negative_value is not None else 0.0
                 
-                if not is_private && chat_id in GROUP_GAMES and GROUP_GAMES[chat_id].get("quiz_started"):
+                # 🟢 SYNTAX FIXED: '&&' को हटाकर पाइथन का लीगल 'and' कीवर्ड लगाया गया है
+                if not is_private and chat_id in GROUP_GAMES and GROUP_GAMES[chat_id].get("quiz_started"):
                     await update.message.reply_text(
                         "⚠️ A quiz is already running in this group. Please use /stop or wait for the current quiz results before starting a new quiz."
                     )
@@ -1349,7 +1349,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         "start_lock": asyncio.Lock()
                     })
 
-                # 🌟 मुख्य सुधार: ब्लिंकिंग टास्क के हैंडल को मेमोरी (GROUP_GAMES) में सेव किया ताकि बाद में बंद कर सकें
+                # 🌟 ब्लिंकिंग टास्क के हैंडल को मेमोरी (GROUP_GAMES) में सेव किया ताकि बाद में बंद कर सकें
                 task_handle = asyncio.create_task(repeat_ready_button_color_worker(chat_id, quiz_panel_msg.message_id, quiz_id, context))
                 if not is_private and chat_id in GROUP_GAMES:
                     GROUP_GAMES[chat_id]["blink_task"] = task_handle
