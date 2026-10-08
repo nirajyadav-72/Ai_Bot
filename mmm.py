@@ -429,9 +429,10 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     welcome_text = (
         "<blockquote>🤖 <b>Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n"
         "<blockquote>📚 <b>Step 1 — Select Subject:</b></blockquote>\n"
-        "Niche diye gaye buttons me se apna main <b>Subject</b> chunein, "
-        "jiske baad uske specific topics open honge.\n\n"
-        "<i>✍️ (Note: Agar aapko list se alag koi naya topic chahiye, toh aap abhi bhi seedhe chat me type karke bhej sakte hain!)</i>"
+        "<blockquote>Niche diye gaye buttons me se apna main <b>Subject</b> chunein, "
+        "jiske baad uske specific topics open honge.</blockquote>\n\n"
+        "<i>✍️ (Note: Agar aapko list se alag koi naya topic chahiye, toh aap abhi bhi seedhe chat me type karke bhej sakte hain!)</i>\n"
+        "❤️‍🔥 <b>Onwer: Niraj</b>"
     )
     
     if query:
@@ -581,12 +582,76 @@ async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAUL
     
     updated_text = (
         f"<blockquote>📂 Subject: <b>{sub_title}</b></blockquote>\n\n"
-        "🎯 <b>topics me se koi ek select karein:</b>"
+        "<blockquote>🎑 <b>topics me se koi ek select karein:</b></blockquote>"
     )
     
     await query.edit_message_text(text=updated_text, reply_markup=InlineKeyboardMarkup(topics_keyboard), parse_mode="HTML")
     return TOPIC
 
+async def handle_final_topic_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Triggered when user clicks a specific topic button. Saves it and routes to Q_COUNT"""
+    query = update.callback_query
+    await query.answer()
+    
+    topic_chosen = query.data.replace("set_topic_", "").strip()
+    
+    # 🟢 फिक्स मैपिंग डेटाबेस: शॉर्ट कोड्स को बड़े नाम असाइन करने के लिए
+    topic_map = {
+        # Polity Mapping
+        "pol_1": "Making and Sources of Indian Constitution",
+        "pol_2": "Preamble and Schedules of Indian Constitution",
+        "pol_3": "Union and its Territory and Citizenship",
+        "pol_4": "Fundamental Rights of India",
+        "pol_5": "Directive Principles of State Policy and Fundamental Duties",
+        "pol_6": "President Vice President and Prime Minister of India",
+        "pol_7": "Indian Parliament Lok Sabha and Rajya Sabha",
+        "pol_8": "Supreme Court of India and Judicial Review",
+        "pol_9": "Governor Chief Minister and State Legislature",
+        "pol_10": "High Court and Subordinate Courts in India",
+        "pol_11": "Panchayati Raj and Local Self Government",
+        "pol_12": "Election Commission of India and Electoral Reforms",
+        "pol_13": "Constitutional and Non Constitutional Bodies CAG NITI Aayog",
+        "pol_14": "Important Constitutional Amendments of India",
+        "pol_15": "Emergency Provisions in Indian Constitution",
+        
+        # Languages Mapping
+        "lang_1": "Hindi Grammar Varnamala and Sandhi",
+        "lang_2": "Hindi Grammar Sangya Sarvnam Kriya Avyay",
+        "lang_3": "Hindi Grammar Samas Upsarg Pratyay",
+        "lang_4": "Hindi Vocabulary Vilom Paryayvachi",
+        "lang_5": "Hindi Grammar Ling Vachan Karak Kaal",
+        "lang_6": "Hindi Muhavare Lokoktiyan Ras Chhand Alankar",
+        "lang_7": "English Grammar Parts of Speech",
+        "lang_8": "English Grammar Tenses and Sentence Structure",
+        "lang_9": "English Grammar Active and Passive Voice",
+        "lang_10": "English Grammar Direct and Indirect Narration",
+        "lang_11": "English Grammar Subject Verb Agreement Errors",
+        "lang_12": "English Vocabulary Synonyms Antonyms One Word Substitution",
+        "lang_13": "English Grammar Prepositions and Articles"
+    }
+    
+    # अगर चुना गया कोड हमारी मैपिंग डिक्शनरी में है, तो असली नाम निकालें
+    if topic_chosen in topic_map:
+        topic_chosen = topic_map[topic_chosen]
+        
+    context.user_data['topic'] = topic_chosen
+    
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+        
+    reply_keyboard = [['10', '20', '50', '70']]
+    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
+    
+    await query.message.reply_text(
+        f"<blockquote>✅ Topic Saved: <b>{context.user_data['topic']}</b></blockquote>\n\n"
+        "<blockquote>🔢 <b>Step 2:</b> How many questions do you want?</blockquote>",
+        parse_mode="HTML",
+        reply_markup=markup
+    )
+    return Q_COUNT
+    
 async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if not is_authorized(update): return TOPIC
     
