@@ -2797,7 +2797,7 @@ async def save_edited_negative(update: Update, context: ContextTypes.DEFAULT_TYP
 # 🎯 SINGLE READY BUTTON DRIVEN ACTIVATION
 # ==========================================
 async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Auto-joins users and dynamically updates player count directly inside the panel message text."""
+    """Auto-joins users and sets dynamic counter to verify activation benchmarks (race-safe)."""
     try:
         query = update.callback_query
         if not query or not query.message or not query.message.chat:
@@ -2812,8 +2812,9 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         user_id = user.id
         user_name = user.username or user.first_name or "Player"
-        logging.info(f"handle_ready_click invoked: chat_id={chat_id} user_id={user_id}")
+        logging.info(f"handle_ready_click invoked: chat_id={chat_id} msg_id={message_id} user_id={user_id}")
 
+        # Parse callback data safely
         data = query.data or ""
         parts = data.split("_")
         if len(parts) < 2:
@@ -2832,6 +2833,7 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
             except Exception:
                 old_qid = None
             if (old_qid is not None and old_qid != quiz_id) and not game.get("quiz_started"):
+                logging.info(f"Clearing stale GROUP_GAMES entry for chat {chat_id}")
                 GROUP_GAMES.pop(chat_id, None)
                 game = None
 
@@ -2850,7 +2852,7 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "quiz_started": False,
                 "poll_message_ids": {},
                 "setup_message_id": message_id,
-                "setup_panel_text": query.message.text, # मूल टेक्स्ट सुरक्षित रखा
+                "setup_panel_text": query.message.text,
                 "is_private": False,
                 "quiz_paused": False,
                 "consecutive_no_answers": 0,
@@ -2865,8 +2867,11 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         game.setdefault("user_answers", {})
         if not isinstance(game.get("ready_users"), set):
             game["ready_users"] = set(game.get("ready_users") or [])
+        game.setdefault("poll_map", {})
         game.setdefault("poll_message_ids", {})
         game.setdefault("question_start_times", {})
+        game.setdefault("quiz_started", False)
+        game.setdefault("quiz_paused", False)
         
         if "start_lock" not in game or not isinstance(game["start_lock"], asyncio.Lock):
             game["start_lock"] = asyncio.Lock()
@@ -2875,7 +2880,6 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
             try: await query.answer("Quiz is starting, please wait...", show_alert=False)
             except Exception: pass
             return
-        # [हिस्सा 1 के कोड के ठीक नीचे इसे जोड़ें]
         # If quiz already started, just add the user and ack
         if game.get("quiz_started"):
             if user_id not in game["joined_users"]:
@@ -2899,7 +2903,9 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         is_private_chat = str(query.message.chat.type) == "private"
         min_ready_required = 1 if is_private_chat else 2
 
-        # If threshold reached, do an atomic start guarded by start_lock
+        # ====================================================================
+        # 🏁 QUIZ TARGET ACHIEVED: ATOMIC START & HIDE BUTTONS LOGIC
+        # ====================================================================
         if ready_count >= min_ready_required and not game.get("quiz_started"):
             lock = game["start_lock"]
             game["starting"] = True
@@ -2911,13 +2917,17 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     game.pop("starting", None)
                     return
 
-                try: await query.edit_message_reply_markup(reply_markup=None)
-                except Exception: pass
+                # 🔥 मुख्य सुधार: 'I am ready' बटन को स्क्रीन से तुरंत और परमानेंट हाइड (रिमूव) करें
+                try: 
+                    await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=None)
+                except Exception as e:
+                    logging.warning(f"Primary button hide failed: {e}")
 
                 if game.get("previous_panel_message_id"):
                     try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=game["previous_panel_message_id"], reply_markup=None)
                     except Exception: pass
 
+                # काउंटडाउन एनिमेशन लूप
                 try:
                     for count in ["🎲 The quiz is about to begin…", "3️⃣....", "2️⃣Ready...", "1️⃣ SET…", "Go..🚀"]:
                         cmsg = await context.bot.send_message(chat_id=chat_id, text=count)
@@ -2926,6 +2936,7 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         except Exception: pass
                 except Exception: pass
 
+                # गेम फ्लैग को स्टार्ट मार्क करें
                 game["current_q"] = 0
                 game["quiz_started"] = True
                 game.pop("starting", None)
@@ -2935,7 +2946,7 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
             return
 
         # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        # 🔥 MODIFIED: Update user count strictly inside message text
+        # 👥 LIVE COUNT: Update user count strictly inside message text
         # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         if not game.get("quiz_started"):
             try:
@@ -2943,18 +2954,16 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 if not base_text:
                     base_text = query.message.text
                     if "\n\n━━━━━━━━━━━━━━━━━\n👥 Ready Players:" in base_text:
-                        base_text = base_text.split("\n\n━━━━━━━━━━━━━━━━━\n👥 Ready Players:")[0]
+                        base_text = base_text.split("\n\n━━━━━━━━━━━━━━━━━\n👥 Ready Players:")
                     game["setup_panel_text"] = base_text
 
-                # टेक्स्ट संदेश के ठीक नीचे बॉर्डर और खिलाड़ियों की लाइव संख्या जोड़ें
                 updated_text = base_text + f"\n\n━━━━━━━━━━━━━━━━━\n👥 <b>Ready Players:</b> {ready_count}"
                 
-                # मुख्य टेक्स्ट बदलें, वर्तमान में चमकता हुआ बटन वैसे ही रहेगा
                 await context.bot.edit_message_text(
                     chat_id=chat_id,
                     message_id=message_id,
                     text=updated_text,
-                    reply_markup=query.message.reply_markup, # चमकता हुआ बटन अप्रभावित रहेगा
+                    reply_markup=query.message.reply_markup, # जब तक गेम शुरू नहीं होता, ब्लिंकिंग जारी रहेगी
                     parse_mode="HTML"
                 )
             except Exception as e:
@@ -2968,7 +2977,7 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     except Exception as e:
         logging.exception(f"Unexpected error in handle_ready_click: {e}")
-            
+
 async def handle_pause_quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle quiz pause resume"""
     try:
