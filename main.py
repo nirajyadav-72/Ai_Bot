@@ -1718,12 +1718,15 @@ async def receive_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     try:
         title = update.message.text.strip()
         
-        # 🔴 NEW: Check if title exceeds 128 characters
         if len(title) > 128:
             await update.message.reply_text(
                 "⚠️ This title is too long. Please send a new one, 128 characters max."
             )
             return TITLE
+            
+        # 🟢 SAFETY FIX: Ensure 'quiz_build' structure is alive
+        if "quiz_build" not in context.user_data or not isinstance(context.user_data["quiz_build"], dict):
+            context.user_data["quiz_build"] = {"title": "", "description": "", "questions": []}
         
         context.user_data["quiz_build"]["title"] = title
         await update.message.reply_text(
