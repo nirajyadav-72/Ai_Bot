@@ -398,7 +398,6 @@ CRITICAL RULES:
         
 # --- BOT ROUTINES & HANDLERS ---
 async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # 🔥 FIXED: query वेरिएबल को यहाँ पूरी तरह से सही ढंग से डिफाइन कर दिया गया है
     query = update.callback_query
     msg_obj = query.message if query else update.message
     user_id = query.from_user.id if query else update.message.from_user.id
@@ -407,13 +406,11 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     
     allowed_ids = get_allowed_ids()
     
-    # 1. ग्रुप आईडी सुरक्षा जाँच (sirf group ke liye)
     if chat_type in ["group", "supergroup"]:
         if SUPPORT_GROUP_ID and chat_id != SUPPORT_GROUP_ID:
             await msg_obj.reply_text("❌ <b>Security Error:</b> Yah command is group me allowed nahi hai.", parse_mode="HTML")
             return ConversationHandler.END
             
-    # 2. यूज़र सुरक्षा जाँच (Group aur Private Chat dono ke liye)
     if user_id != OWNER_ID and user_id not in allowed_ids:
         await msg_obj.reply_text("❌ <b>Sorry!</b> Yah command keval authorized users hi use kar sakte hain.", parse_mode="HTML")
         return ConversationHandler.END
@@ -423,698 +420,65 @@ async def autoquiz_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     context.user_data.clear()
     
-    # 🏛️ LEVEL 1: MAIN SUBJECT BUTTONS
-    main_subject_keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📰 Current Affairs & GK 📰", callback_data="sub_current_gk")],
-        [InlineKeyboardButton("📜 History (इतिहास)", callback_data="sub_history"),
-         InlineKeyboardButton("✨ Polity (राजव्यवस्था)", callback_data="sub_polity")],
-        [InlineKeyboardButton("🌍 Geography (भूगोल)", callback_data="sub_geography"),
-         InlineKeyboardButton("🧬 General Science (विज्ञान)", callback_data="sub_science")],
-        [InlineKeyboardButton("🤖 Languages & Grammar", callback_data="sub_languages")]
+    # 🌟 Raw dict structure to inject button colors (Blue & Green)
+    mode_keyboard = InlineKeyboardMarkup([
+        [
+            {"text": "✍️ Text Mode (Type Topic)", "callback_data": "mode_text_input", "style": "primary"},
+            {"text": "📂 Subject Mode (Buttons)", "callback_data": "mode_button_select", "style": "success"}
+        ]
     ])
     
     welcome_text = (
         "<blockquote>🤖 <b>Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n"
-        "<blockquote>📚 <b>Step 1 — Select Subject:</b></blockquote>\n"
-        "<blockquote>Niche diye gaye buttons me se apna main <b>Subject</b> chunein, "
-        "jiske baad uske specific topics open honge.</blockquote>\n\n"
-        "<i>✍️ (Note: Agar aapko list se alag koi naya topic chahiye, toh aap abhi bhi seedhe chat me type karke bhej sakte hain!)</i>\n"
-        "❤️‍🔥 <b>Onwer: Niraj</b>"
+        "<blockquote>🎯 <b>Choose Topic Input Mode:</b></blockquote>\n"
+        "Aap quiz ka topic kis tarah se set karna chahte hain?\n\n"
+        "📝 <b>Text Mode:</b> Aap chat me khud apna topic manually type karke bhejenge.\n"
+        "🗂️ <b>Subject Mode:</b> Bot की pre-defined subject list (History, GK आदि) में से चुनेंगे।"
     )
     
     if query:
-        await query.edit_message_text(text=welcome_text, reply_markup=main_subject_keyboard, parse_mode="HTML")
+        await query.edit_message_text(text=welcome_text, reply_markup=mode_keyboard, parse_mode="HTML")
     else:
-        await msg_obj.reply_text(text=welcome_text, reply_markup=main_subject_keyboard, parse_mode="HTML")
+        await msg_obj.reply_text(text=welcome_text, reply_markup=mode_keyboard, parse_mode="HTML")
         
     return TOPIC
 
-async def handle_subject_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles subject button clicks and updates keyboard with specific topics"""
+async def handle_topic_mode_routing(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
+    if not query:
+        return TOPIC
+
     await query.answer()
-    
-    selected_sub = query.data
-    topics_keyboard = []
-    sub_title = ""
+    choice = query.data
 
-    if selected_sub == "sub_current_gk":
-        sub_title = "📰 Current Affairs & GK"
-        topics_keyboard = [
-            [InlineKeyboardButton("📰 Current Affairs 2026", callback_data="set_topic_Current Affairs 2026")],
-            [InlineKeyboardButton("🌐 International News", callback_data="set_topic_International Current Affairs")],
-            [InlineKeyboardButton("🏆 Sports & Awards", callback_data="set_topic_Sports and Awards 2026")],
-            [InlineKeyboardButton("💡 Static GK", callback_data="set_topic_Static General Knowledge")]
-        ]
-    elif selected_sub == "sub_history":
-        sub_title = "History (इतिहास)"
-        topics_keyboard = [
-            # 🏺 प्राचीन भारत (Ancient India)
-            [InlineKeyboardButton("🏺 सिंधु घाटी सभ्यता", callback_data="set_topic_Indus Valley Civilization"),
-             InlineKeyboardButton("📖 वैदिक काल", callback_data="set_topic_Vedic Period History")],
-            [InlineKeyboardButton("🕉️ बौद्ध और जैन धर्म", callback_data="set_topic_Buddhism and Jainism"),
-             InlineKeyboardButton("👑 16 महाजनपद", callback_data="set_topic_16 Mahajanapadas")],
-            [InlineKeyboardButton("🦁 मौर्य साम्राज्य", callback_data="set_topic_Mauryan Empire"),
-             InlineKeyboardButton("📀 गुप्त साम्राज्य (स्वर्ण युग)", callback_data="set_topic_Gupta Empire History")],
-             
-            # ⚔️ मध्यकालीन भारत (Medieval India)
-            [InlineKeyboardButton("🕌 दिल्ली सल्तनत", callback_data="set_topic_Delhi Sultanate Dynasty"),
-             InlineKeyboardButton("🏯 मुगल साम्राज्य", callback_data="set_topic_Mughal Empire History")],
-            [InlineKeyboardButton("🚩 मराठा और विजयनगर", callback_data="set_topic_Maratha and Vijayanagara Empire"),
-             InlineKeyboardButton("✨ भक्ति और सूफी आंदोलन", callback_data="set_topic_Bhakti and Sufi Movement")],
-             
-            # 🇮🇳 आधुनिक भारत (Modern India)
-            [InlineKeyboardButton("🚢 यूरोपीय शक्तियों का आगमन", callback_data="set_topic_Arrival of European Powers in India"),
-             InlineKeyboardButton("💥 1857 का विद्रोह", callback_data="set_topic_Revolt of 1857 Indian History")],
-            [InlineKeyboardButton("🎯 भारतीय राष्ट्रीय कांग्रेस", callback_data="set_topic_Indian National Congress INC History"),
-             InlineKeyboardButton("🚶 गांधीवादी युग और आंदोलन", callback_data="set_topic_Mahatma Gandhi and Freedom Movements")],
-            [InlineKeyboardButton("✊ क्रांतिकारी आंदोलन", callback_data="set_topic_Indian Revolutionary Freedom Fighters"),
-             InlineKeyboardButton("📅 भारत का विभाजन और स्वतंत्रता", callback_data="set_topic_Indian Independence and Partition 1947")],
-             
-            # 🌍 विश्व इतिहास (World History)
-            [InlineKeyboardButton("⚙️ औद्योगिक क्रांति", callback_data="set_topic_Industrial Revolution World History"),
-             InlineKeyboardButton("🗼 फ्रांस और रूस की क्रांति", callback_data="set_topic_French and Russian Revolutions")],
-            [InlineKeyboardButton("⚔️ प्रथम और द्वितीय विश्व युद्ध", callback_data="set_topic_World War 1 and World War 2 History"),
-             InlineKeyboardButton("❄️ शीतयुद्ध का दौर", callback_data="set_topic_Cold War Era Geopolitics")]
-        ]
-    elif selected_sub == "sub_polity":
-        sub_title = "Polity (राजव्यवस्था)"
-        # 🟢 फिक्स: यहाँ callback_data को छोटा (Short) कर दिया गया है ताकि 64-byte limit न टूटे
-        topics_keyboard = [
-            [InlineKeyboardButton("✨ संविधान का निर्माण व स्रोत", callback_data="set_topic_pol_1"),
-             InlineKeyboardButton("⚡ प्रस्तावना व अनुसूचियां", callback_data="set_topic_pol_2")],
-            [InlineKeyboardButton("✨ संघ, राज्यक्षेत्र व नागरिकता", callback_data="set_topic_pol_3"),
-             InlineKeyboardButton("💥 मौलिक अधिकार (Rights)", callback_data="set_topic_pol_4")],
-            [InlineKeyboardButton("🌟 नीति निदेशक तत्व व कर्तव्य", callback_data="set_topic_pol_5"),
-             InlineKeyboardButton("💫 राष्ट्रपति, उपराष्ट्रपति व PM", callback_data="set_topic_pol_6")],
-            [InlineKeyboardButton("🎉 भारतीय संसद (लोक-राज्यसभा)", callback_data="set_topic_pol_7"),
-             InlineKeyboardButton("❤️‍🔥 सर्वोच्च न्यायालय (Supreme Court)", callback_data="set_topic_pol_8")],
-            [InlineKeyboardButton("❤️‍🩹 राज्यपाल, CM व विधानमंडल", callback_data="set_topic_pol_9"),
-             InlineKeyboardButton("🌷 उच्च न्यायालय (High Court)", callback_data="set_topic_pol_10")],
-            [InlineKeyboardButton("☘️ पंचायती राज व स्थानीय शासन", callback_data="set_topic_pol_11"),
-             InlineKeyboardButton("🍀 निर्वाचन आयोग व चुनाव सुधार", callback_data="set_topic_pol_12")],
-            [InlineKeyboardButton("🍃 UPSC, CAG और नीति आयोग", callback_data="set_topic_pol_13"),
-             InlineKeyboardButton("🍁 प्रमुख संवैधानिक संशोधन", callback_data="set_topic_pol_14")],
-            [InlineKeyboardButton("🍂 आपातकालीन प्रावधान (Emergency)", callback_data="set_topic_pol_15")]
-        ]
-    elif selected_sub == "sub_geography":
-        sub_title = "Geography (भूगोल)"
-        topics_keyboard = [
-            # 🇮🇳 भारत का भूगोल (Indian Geography)
-            [InlineKeyboardButton("🇮🇳 भारत का भौतिक स्वरूप", callback_data="set_topic_Physical Features of India"),
-             InlineKeyboardButton("🌊 भारत की नदियां व जलतंत्र", callback_data="set_topic_Indian Rivers and Drainage System")],
-            [InlineKeyboardButton("🌦️ भारत की जलवायु व मिट्टी", callback_data="set_topic_Indian Climate and Soil Types"),
-             InlineKeyboardButton("🌳 वनस्पति व राष्ट्रीय उद्यान", callback_data="set_topic_Natural Vegetation and National Parks of India")],
-            [InlineKeyboardButton("🌾 कृषि, फसलें और सिंचाई", callback_data="set_topic_Agriculture and Irrigation in India"),
-             InlineKeyboardButton("🏔️ प्रमुख बांध व परियोजनाएं", callback_data="set_topic_Major Dams and River Valley Projects in India")],
-            [InlineKeyboardButton("⛏️ खनिज व ऊर्जा संसाधन", callback_data="set_topic_Minerals and Energy Resources of India"),
-             InlineKeyboardButton("🛣️ उद्योग, राजमार्ग व बंदरगाह", callback_data="set_topic_Industries Transport and Ports in India")],
-            [InlineKeyboardButton("👥 जनगणना व प्रमुख जनजातियां", callback_data="set_topic_Indian Census and Tribes")],
-             
-            # 🌍 विश्व का भूगोल (World Geography)
-            [InlineKeyboardButton("🗺️ महाद्वीप, पर्वत व मरुस्थल", callback_data="set_topic_Continents Mountains and Deserts of the World"),
-             InlineKeyboardButton("🌏 विश्व की नदियां और झीलें", callback_data="set_topic_World Rivers Lakes and Waterfalls")],
-            [InlineKeyboardButton("⚓ प्रमुख जलसंधियां व नहरें", callback_data="set_topic_Important Straits and Canals of the World")],
-             
-            # ☀️ भौतिक व सामान्य भूगोल (Physical Geography)
-            [InlineKeyboardButton("🌌 सौरमंडल, अक्षांश व देशांतर", callback_data="set_topic_Solar System Latitudes and Longitudes"),
-             InlineKeyboardButton("🌋 पृथ्वी की संरचना व ज्वालामुखी", callback_data="set_topic_Interior of Earth Volcanoes and Earthquakes")],
-            [InlineKeyboardButton("🌀 वायुमंडल, पवनें व चक्रवात", callback_data="set_topic_Atmosphere Structure Winds and Cyclones"),
-             InlineKeyboardButton("🌊 महासागरीय धाराएं व ज्वार", callback_data="set_topic_Ocean Currents and Tides")]
-        ]
-    elif selected_sub == "sub_science":
-        sub_title = "General Science"
-        topics_keyboard = [
-            # 🧬 जीव विज्ञान (Biology)
-            [InlineKeyboardButton("🧬 कोशिका विज्ञान (Cell Biology)", callback_data="set_topic_Cell Structure and Functions Biology"),
-             InlineKeyboardButton("🩻 मानव शरीर के तंत्र (Systems)", callback_data="set_topic_Human Anatomy and Body Systems")],
-            [InlineKeyboardButton("🍎 पोषण, विटामिन और रोग", callback_data="set_topic_Human Nutrition Vitamins and Diseases"),
-             InlineKeyboardButton("🌿 पादप जगत (Plant Kingdom)", callback_data="set_topic_Plant Anatomy Physiology and Kingdom")],
-            [InlineKeyboardButton("🧬 आनुवंशिकी व जैव विकास", callback_data="set_topic_Genetics and Biological Evolution")],
-             
-            # 🧪 रसायन विज्ञान (Chemistry)
-            [InlineKeyboardButton("🧪 पदार्थ की अवस्थाएं व परमाणु", callback_data="set_topic_Matter States and Atomic Structure Chemistry"),
-             InlineKeyboardButton("📊 आवर्त सारणी (Periodic Table)", callback_data="set_topic_Periodic Table and Elements Properties")],
-            [InlineKeyboardButton("⚗️ अम्ल, क्षारक और लवण", callback_data="set_topic_Acids Bases Salts and pH Scale"),
-             InlineKeyboardButton("💎 धातु, अधातु व मिश्रधातु", callback_data="set_topic_Metals NonMetals and Alloys Chemistry")],
-            [InlineKeyboardButton("🔥 कार्बनिक रसायन व ईंधन", callback_data="set_topic_Organic Chemistry Carbon and Fuels")],
-             
-            # 🧲 भौतिक विज्ञान (Physics)
-            [InlineKeyboardButton("📏 मात्रक, गति और बल", callback_data="set_topic_Units Measurements Motion and Force Physics"),
-             InlineKeyboardButton("⚡ कार्य, ऊर्जा और शक्ति", callback_data="set_topic_Work Energy and Power Physics")],
-            [InlineKeyboardButton("💡 प्रकाश व ध्वनि (Light/Sound)", callback_data="set_topic_Light Optics Sound and Waves Physics"),
-             InlineKeyboardButton("🔌 विद्युत व चुंबकत्व", callback_data="set_topic_Electricity and Magnetism Physics")],
-            [InlineKeyboardButton("🚀 आधुनिक भौतिकी व अंतरिक्ष", callback_data="set_topic_Modern Physics Nuclear Energy and Space")]
-        ]
-    elif selected_sub == "sub_languages":
-        sub_title = "Languages & Grammar"
-        # 🟢 फिक्स: यहाँ भी callback_data को छोटा कर दिया गया है
-        topics_keyboard = [
-            [InlineKeyboardButton("🍂 वर्णमाला, वर्तनी व संधि", callback_data="set_topic_lang_1"),
-             InlineKeyboardButton("✨ शब्द भेद (संज्ञा, सर्वनाम, क्रिया)", callback_data="set_topic_lang_2")],
-            [InlineKeyboardButton("⚡ समास, उपसर्ग व प्रत्यय", callback_data="set_topic_lang_3"),
-             InlineKeyboardButton("👍 विलोम, पर्यायवाची व अनेकार्थी", callback_data="set_topic_lang_4")],
-            [InlineKeyboardButton("💫 लिंग, वचन, कारक व काल", callback_data="set_topic_lang_5"),
-             InlineKeyboardButton("🍃 मुहावरे, लोकोक्तियां व रस-छंद", callback_data="set_topic_lang_6")],
-            [InlineKeyboardButton("☘️ Parts of Speech", callback_data="set_topic_lang_7"),
-             InlineKeyboardButton("🌷 Tenses & Sentence Structure", callback_data="set_topic_lang_8")],
-            [InlineKeyboardButton("❤️‍🔥 Active & Passive Voice", callback_data="set_topic_lang_9"),
-             InlineKeyboardButton("🎉 Direct & Indirect Speech", callback_data="set_topic_lang_10")],
-            [InlineKeyboardButton("💥 Subject-Verb Agreement", callback_data="set_topic_lang_11")],
-            [InlineKeyboardButton("💫 Synonyms, Antonyms & Idioms", callback_data="set_topic_lang_12"),
-             InlineKeyboardButton("✨ Prepositions & Articles", callback_data="set_topic_lang_13")]
-        ]
+    if choice == "mode_text_input":
+        await query.edit_message_text(
+            text="✍️ <b>Please type your Quiz Topic in the chat & send it:</b>\n\n<i>Example: Ancient Indian History, General Science Quiz etc.</i>",
+            reply_markup=None,
+            parse_mode="HTML"
+        )
+        return TOPIC
 
-    topics_keyboard.append([InlineKeyboardButton("Back to Subjects", callback_data="back_to_subjects_nav")])
-    
-    updated_text = (
-        f"<blockquote>📂 Subject: <b>{sub_title}</b></blockquote>\n\n"
-        "<blockquote>🎑 <b>topics me se koi ek select karein:</b></blockquote>"
-    )
-    
-    await query.edit_message_text(text=updated_text, reply_markup=InlineKeyboardMarkup(topics_keyboard), parse_mode="HTML")
+    elif choice == "mode_button_select" or choice == "back_to_subjects_nav":
+        # 🌟 Injecting color to Subject Selection Buttons
+        main_subject_keyboard = InlineKeyboardMarkup([
+            [{"text": "📰 Current Affairs & GK 📰", "callback_data": "sub_current_gk", "style": "primary"}],
+            [{"text": "📜 History (इतिहास)", "callback_data": "sub_history", "style": "primary"},
+             {"text": "✨ Polity (राजव्यवस्था)", "callback_data": "sub_polity", "style": "primary"}],
+            [{"text": "🌍 Geography (भूगोल)", "callback_data": "sub_geography", "style": "primary"},
+             {"text": "🧬 General Science (विज्ञान)", "callback_data": "sub_science", "style": "primary"}],
+            [{"text": "🤖 Languages & Grammar", "callback_data": "sub_languages", "style": "primary"}]
+        ])
+        
+        await query.edit_message_text(
+            text="<blockquote>🤖 <b>Welcome to AI Auto-Quiz Generator!</b></blockquote>\n\n<blockquote>📚 <b>Step 1 — Select Subject:</b></blockquote>\nNiche diye gaye buttons me se apna main <b>Subject</b> chunein, jiske baad uske specific topics open honge.",
+            reply_markup=main_subject_keyboard,
+            parse_mode="HTML"
+        )
+        return BUTTON_TOPIC
+        
     return TOPIC
 
-async def handle_final_topic_selection(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Triggered when user clicks a specific topic button. Saves it and routes to Q_COUNT"""
-    query = update.callback_query
-    await query.answer()
-    
-    topic_chosen = query.data.replace("set_topic_", "").strip()
-    
-    # 🟢 फिक्स मैपिंग डेटाबेस: शॉर्ट कोड्स को बड़े नाम असाइन करने के लिए
-    topic_map = {
-        # Polity Mapping
-        "pol_1": "Making and Sources of Indian Constitution",
-        "pol_2": "Preamble and Schedules of Indian Constitution",
-        "pol_3": "Union and its Territory and Citizenship",
-        "pol_4": "Fundamental Rights of India",
-        "pol_5": "Directive Principles of State Policy and Fundamental Duties",
-        "pol_6": "President Vice President and Prime Minister of India",
-        "pol_7": "Indian Parliament Lok Sabha and Rajya Sabha",
-        "pol_8": "Supreme Court of India and Judicial Review",
-        "pol_9": "Governor Chief Minister and State Legislature",
-        "pol_10": "High Court and Subordinate Courts in India",
-        "pol_11": "Panchayati Raj and Local Self Government",
-        "pol_12": "Election Commission of India and Electoral Reforms",
-        "pol_13": "Constitutional and Non Constitutional Bodies CAG NITI Aayog",
-        "pol_14": "Important Constitutional Amendments of India",
-        "pol_15": "Emergency Provisions in Indian Constitution",
-        
-        # Languages Mapping
-        "lang_1": "Hindi Grammar Varnamala and Sandhi",
-        "lang_2": "Hindi Grammar Sangya Sarvnam Kriya Avyay",
-        "lang_3": "Hindi Grammar Samas Upsarg Pratyay",
-        "lang_4": "Hindi Vocabulary Vilom Paryayvachi",
-        "lang_5": "Hindi Grammar Ling Vachan Karak Kaal",
-        "lang_6": "Hindi Muhavare Lokoktiyan Ras Chhand Alankar",
-        "lang_7": "English Grammar Parts of Speech",
-        "lang_8": "English Grammar Tenses and Sentence Structure",
-        "lang_9": "English Grammar Active and Passive Voice",
-        "lang_10": "English Grammar Direct and Indirect Narration",
-        "lang_11": "English Grammar Subject Verb Agreement Errors",
-        "lang_12": "English Vocabulary Synonyms Antonyms One Word Substitution",
-        "lang_13": "English Grammar Prepositions and Articles"
-    }
-    
-    # अगर चुना गया कोड हमारी मैपिंग डिक्शनरी में है, तो असली नाम निकालें
-    if topic_chosen in topic_map:
-        topic_chosen = topic_map[topic_chosen]
-        
-    context.user_data['topic'] = topic_chosen
-    
-    try:
-        await query.edit_message_reply_markup(reply_markup=None)
-    except Exception:
-        pass
-        
-    reply_keyboard = [['10', '20', '50', '70']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-    
-    await query.message.reply_text(
-        f"<blockquote>✅ Topic Saved: <b>{context.user_data['topic']}</b></blockquote>\n\n"
-        "<blockquote>🔢 <b>Step 2:</b> How many questions do you want?</blockquote>",
-        parse_mode="HTML",
-        reply_markup=markup
-    )
-    return Q_COUNT
-    
-async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_authorized(update): return TOPIC
-    
-    context.user_data['topic'] = update.message.text
-    
-    # ✅ Selective Keyboard 2: Question Count
-    reply_keyboard = [['10', '20', '50', '70']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-    
-    await update.message.reply_text(
-        f"<blockquote>✅ Topic Saved: <b>{context.user_data['topic']}</b></blockquote>\n\n"
-        "<blockquote>🔢 <b>Step 2:</b> How many questions do you want?</blockquote>",
-        parse_mode="HTML",
-        reply_markup=markup
-    )
-    return Q_COUNT
-
-async def handle_q_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_authorized(update): return Q_COUNT
-    
-    user_text = ""
-    query = update.callback_query
-    
-    # 1. Check if input came from the Question Count Inline Button
-    if query:
-        await query.answer()
-        user_text = query.data.replace("qcnt_", "").strip()
-        try: await query.edit_message_reply_markup(reply_markup=None)
-        except Exception: pass
-    elif update.message and update.message.text:
-        user_text = update.message.text.strip()
-        
-    allowed_counts = ['10', '20', '50', '70']
-    
-    if user_text not in allowed_counts:
-        # Fallback if invalid input
-        count_inline_keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("10", callback_data="qcnt_10"),
-                InlineKeyboardButton("20", callback_data="qcnt_20"),
-                InlineKeyboardButton("50", callback_data="qcnt_50"),
-                InlineKeyboardButton("70", callback_data="qcnt_70")
-            ]
-        ])
-        msg_target = query.message if query else update.message
-        await msg_target.reply_text(
-            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए इनलाइन बटनों में से ही किसी एक संख्या को चुनें:",
-            parse_mode="HTML",
-            reply_markup=count_inline_keyboard
-        )
-        return Q_COUNT
-        
-    context.user_data['q_count'] = int(user_text)
-    saved_topic = context.user_data.get('topic', 'AI Quiz')
-    
-    # 🔥 2. Title Step Confirmation Inline Buttons (Yes / No)
-    title_confirm_keyboard = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("Yes ✅", callback_data="title_use_topic"),
-            InlineKeyboardButton("No ❌", callback_data="title_custom_name")
-        ]
-    ])
-    
-    msg_obj = query.message if query else update.message
-    await msg_obj.reply_text(
-        f"<blockquote>✅ Questions Count: <b>{context.user_data['q_count']}</b></blockquote>\n\n"
-        f"🌟 <b>क्या आप क्विज़ का टाइटल भी वही रखना चाहते हैं जो टॉपिक का नाम है?</b>\n"
-        f"📝 <i>टॉपिक नाम: {saved_topic}</i>",
-        parse_mode="HTML",
-        reply_markup=title_confirm_keyboard
-    )
-    return TITLE
-
-async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Handles both custom text title input and Inline callback buttons for title step"""
-    if not is_authorized(update): return TITLE
-    
-    # 🟢 SAFETY FIX: Ensure 'quiz_build' exists in user_data to prevent KeyError
-    if "quiz_build" not in context.user_data:
-        context.user_data["quiz_build"] = {"title": "", "description": "", "questions": []}
-    
-    # Case 1: Agar user ne Inline Button (Yes/No) par click kiya hai
-    if update.callback_query:
-        query = update.callback_query
-        await query.answer()
-        
-        if query.data == "title_use_topic":
-            # 'Yes' click karne par saved topic ko hi title bana do
-            topic_name = context.user_data.get('topic', 'AI Quiz')
-            context.user_data['title'] = topic_name
-            context.user_data["quiz_build"]["title"] = topic_name  # Save to dict as well
-            
-            # Buttons remove karein screen se
-            try: await query.edit_message_reply_markup(reply_markup=None)
-            except Exception: pass
-            
-            # Step 4 (Description) par bhejein (Selective=True text keyboard layout)
-            reply_keyboard = [['Skip ⏭️']]
-            markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-            
-            await query.message.reply_text(
-                f"✅ Title Saved (Same as Topic): <b>{context.user_data['title']}</b>\n\n"
-                "<blockquote>📝 <b>Step 4:</b> Send a Description for this quiz.</blockquote>\n"
-                "<blockquote>or niche diye gaye <b>skip ⏭️</b> button par click kare.</blockquote>",
-                parse_mode="HTML",
-                reply_markup=markup
-            )
-            return DESCRIPTION
-            
-        elif query.data == "title_custom_name":
-            # 'No' click karne par message badal kar naya title chat me mangen
-            await query.edit_message_text(
-                "📝 <b>कृपया अपनी क्विज़ के लिए एक नया Title चैट में टाइप करके भेजें:</b>",
-                parse_mode="HTML",
-                reply_markup=None
-            )
-            return TITLE
-            
-    # Case 2: Agar user ne 'No' dabane ke baad chat me custom text title bheja hai
-    if update.message and update.message.text:
-        title_text = update.message.text.strip()
-        
-        if len(title_text) > 128:
-            await update.message.reply_text("⚠️ This title is too long. Please send a new one, 128 characters max.")
-            return TITLE
-            
-        context.user_data['title'] = title_text
-        context.user_data["quiz_build"]["title"] = title_text  # Save to dict as well
-        
-        reply_keyboard = [['Skip ⏭️']]
-        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-        
-        await update.message.reply_text(
-            f"✅ Title Saved: <b>{context.user_data['title']}</b>\n\n"
-            "<blockquote>📝 <b>Step 4:</b> Send a Description for this quiz.</blockquote>\n"
-            "<blockquote>or niche diye gaye <b>skip ⏭️</b> button par click kare.</blockquote>",
-            parse_mode="HTML",
-            reply_markup=markup
-        )
-        return DESCRIPTION
-
-    return TITLE
-
-async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_authorized(update): return DESCRIPTION
-    
-    text = update.message.text
-    context.user_data['description'] = "None" if text in ["/skip", "Skip ⏭️"] else text
-    
-    # ✅ Selective Keyboard 4: Language Choice
-    reply_keyboard = [['English', 'Hindi']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-    
-    await update.message.reply_text(
-        "<blockquote>🌐 <b>Step 5 — Language</b>\nChoose quiz output layout language:</blockquote>",
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
-    return LANGUAGE
-
-async def handle_language(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_authorized(update): return LANGUAGE
-    
-    user_text = update.message.text.strip()
-    allowed_langs = ['English', 'Hindi']
-    
-    if user_text not in allowed_langs:
-        reply_keyboard = [['English', 'Hindi']]
-        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-        await update.message.reply_text(
-            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए बटनों में से ही भाषा चुनें:",
-            reply_markup=markup,
-            parse_mode="HTML"
-        )
-        return LANGUAGE
-
-    context.user_data['language'] = user_text
-    
-    reply_keyboard = [['With Explanation', 'No Explanation']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-    
-    await update.message.reply_text(
-        "<blockquote>✨ <b>Step 6 — Explanation</b>\nDo you want explanations?</blockquote>",
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
-    return EXPLANATION
-
-async def handle_explanation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_authorized(update): return EXPLANATION
-    
-    user_text = update.message.text.strip()
-    allowed_expl = ['With Explanation', 'No Explanation']
-    
-    if user_text not in allowed_expl:
-        reply_keyboard = [['With Explanation', 'No Explanation']]
-        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-        await update.message.reply_text(
-            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए बटनों में से ही चुनें:",
-            reply_markup=markup,
-            parse_mode="HTML"
-        )
-        return EXPLANATION
-
-    context.user_data['explanation'] = user_text
-    
-    reply_keyboard = [['Easy', 'Medium', 'Hard']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-    
-    await update.message.reply_text(
-        "<blockquote>⚡ <b>Step 7 — Difficulty</b>\nChoose calculation difficulty:</blockquote>",
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
-    return DIFFICULTY
-
-async def handle_difficulty(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_authorized(update): return DIFFICULTY
-    
-    user_text = update.message.text.strip()
-    allowed_diff = ['Easy', 'Medium', 'Hard']
-    
-    if user_text not in allowed_diff:
-        reply_keyboard = [['Easy', 'Medium', 'Hard']]
-        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-        await update.message.reply_text(
-            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए बटनों में से कठिनाई का स्तर चुनें:",
-            reply_markup=markup,
-            parse_mode="HTML"
-        )
-        return DIFFICULTY
-
-    context.user_data['difficulty'] = user_text
-    
-    reply_keyboard = [['2 Options', '3 Options', '4 Options']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-    
-    await update.message.reply_text(
-        "<blockquote>🔥 <b>Step 8 — Option Count</b>\nHow many choices per card?</blockquote>",
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
-    return OPTIONS_COUNT
-
-async def handle_options_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_authorized(update): return OPTIONS_COUNT
-    
-    user_text = update.message.text.strip()
-    allowed_opts = ['2 Options', '3 Options', '4 Options']
-    
-    if user_text not in allowed_opts:
-        reply_keyboard = [['2 Options', '3 Options', '4 Options']]
-        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-        await update.message.reply_text(
-            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए बटनों में से विकल्पों की संख्या चुनें:",
-            reply_markup=markup,
-            parse_mode="HTML"
-        )
-        return OPTIONS_COUNT
-
-    context.user_data['options_count'] = int(user_text.split()[0])
-    
-    reply_keyboard = [['10 sec', '15 sec', '30 sec']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-    
-    await update.message.reply_text(
-        "<blockquote>⏱ <b>Step 9 — Time Limit</b>\nSet ticker duration:</blockquote>",
-        reply_markup=markup,
-        parse_mode="HTML"
-    )
-    return TIME_LIMIT
-
-async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if not is_authorized(update): 
-        return TIME_LIMIT
-    
-    user_text = update.message.text.strip()
-    allowed_times = ['10 sec', '15 sec', '30 sec']
-    
-    # 🚫 VALIDATION: Check if user sent something other than the buttons
-    if user_text not in allowed_times:
-        reply_keyboard = [['10 sec', '15 sec', '30 sec']]
-        markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True, resize_keyboard=True, selective=True)
-        await update.message.reply_text(
-            "⚠️ <b>अवैध इनपुट!</b> कृपया नीचे दिए गए बटनों में से ही टाइम लिमिट चुनें:",
-            reply_markup=markup,
-            parse_mode="HTML"
-        )
-        return TIME_LIMIT
-    
-    context.user_data['time_limit'] = int(update.message.text.split()[0])
-    
-    topic = context.user_data.get('topic', 'General Knowledge')
-    count = context.user_data.get('q_count', 5)
-    lang = context.user_data.get('language', 'English')
-    difficulty = context.user_data.get('difficulty', 'Medium')
-    options_cnt = context.user_data.get('options_count', 4)
-    
-    # 🎬 स्टेप 1: शुरुआती लोडिंग मैसेज (0 सेकंड)
-    generating_msg = await update.message.reply_text(
-        "<b>🚀 AI Quiz Generator</b>\n\n"
-        "CNM⬜⬜⬜⬜⬜⬜⬜⬜\n"
-        "🔎 Researching your topic...\n"
-        "⏳ please wait...",
-        parse_mode="HTML",
-        reply_markup=ReplyKeyboardRemove(selective=True)
-    )
-    
-    try:
-        # बैकग्राउंड में AI जनरेशन टास्क को शुरू करें
-        task = asyncio.create_task(asyncio.to_thread(
-            generate_bulk_questions_ai, topic, count, lang, difficulty, options_cnt
-        ))
-        
-        # --- ⏳ लाइव 3-3 सेकंड का डिलीट + न्यू मैसेज लूप ---
-        try:
-            # स्टेप 2: 3 सेकंड का होल्ड
-            await asyncio.sleep(3)
-            if not task.done(): # सिर्फ तभी बदलें जब टास्क अभी भी चल रहा हो
-                try: await generating_msg.delete()
-                except: pass
-                generating_msg = await update.message.reply_text(
-                    "<b>🚀 AI Quiz Generator</b>\n\n"
-                    "🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜⬜⬜\n"
-                    "🧠 Crafting questions...\n"
-                    "⏳ please wait...",
-                    parse_mode="HTML"
-                )
-                
-            # स्टेप 3: और 4 सेकंड का होल्ड (कुल 7 सेकंड)
-            await asyncio.sleep(4)
-            if not task.done():
-                try: await generating_msg.delete()
-                except: pass
-                generating_msg = await update.message.reply_text(
-                    "<b>🚀 AI Quiz Generator</b>\n\n"
-                    "🟪🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜⬜\n"
-                    "✍️ Writing options...\n"
-                    "⏳ please wait...",
-                    parse_mode="HTML"
-                )
-                
-            # स्टेप 4: और 5 सेकंड का होल्ड (कुल 12 सेकंड - रीट्राई के लिए सेफ बफर)
-            await asyncio.sleep(5)
-            if not task.done():
-                try: await generating_msg.delete()
-                except: pass
-                generating_msg = await update.message.reply_text(
-                    "<b>🚀 AI Quiz Generator</b>\n\n"
-                    "🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜⬜\n"
-                    "📟 Verifying answers...\n"
-                    "⏳ please wait...",
-                    parse_mode="HTML"
-                )
-            
-        except Exception as msg_err:
-            logging.warning(f"Animation message sequence alert: {msg_err}")
-
-        # ⚡ AI का फाइनल रिजल्ट आने तक रुकें
-        ai_questions = await task
-        
-        # ❌ फेलियर हैंडलिंग (None और 0 दोनों स्थितियों के लिए सुरक्षित)
-        if ai_questions is None or len(ai_questions) == 0:
-            try: await generating_msg.delete()
-            except: pass
-            await update.message.reply_text(
-                "❌ <b>AI Quiz Generator Error</b>\n\n"
-                "Server par heavy load ya error ke karan quiz generate nahi ho paya. Kripya thodi der baad fir se koshish karein.",
-                parse_mode="HTML"
-            )
-            context.user_data.clear()
-            return ConversationHandler.END
-            
-        # 🎉 स्टेप 5: सफलतापूर्वक जनरेट होने पर फाइनल ग्रीन स्टेटस (Done)
-        try:
-            try: await generating_msg.delete()
-            except: pass
-            generating_msg = await update.message.reply_text(
-                "<b>🚀 AI Quiz Generator</b>\n\n"
-                "Verified Answer's ✅\n"
-                "💯 Done generated...\n\n"
-                "🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩",
-                parse_mode="HTML"
-            )
-            await asyncio.sleep(2) # यूज़र को ग्रीन बार देखने का थोड़ा समय दें
-            try: await generating_msg.delete()
-            except: pass
-        except Exception:
-            pass
-        
-        # FORMAT QUESTIONS PROPERLY
-        formatted_questions = []
-        for q in ai_questions:
-            correct_idx = q.get("correct", 0)
-            options = q.get("options", [])
-            
-            if not isinstance(correct_idx, int):
-                try: correct_idx = int(correct_idx)
-                except: correct_idx = 0
-            
-            if correct_idx < 0 or correct_idx >= len(options):
-                correct_idx = 0
-            
-            formatted_questions.append({
-                "text": q.get("question", ""),
-                "options": options,
-                "correct": correct_idx,
-                "explanation": q.get("explanation", ""),
-                "pre_message": ""
-            })
-        
-        actual_count = len(formatted_questions)
-        alert_text = ""
-        if actual_count < count:
-            alert_text = f"\n\n⚠️ <b>नोट:</b> आपने {count} सवाल माँगे थे, लेकिन AI ने कुल <b>{actual_count}</b> सवाल ही जनरेट किए हैं।"
-        
-        context.user_data["ai_questions"] = formatted_questions
-        context.user_data["quiz_build"] = {
-            "title": context.user_data.get("title", "AI Quiz"),
-            "description": context.user_data.get("description", ""),
-            "timer": context.user_data.get("time_limit", 30),
-            "questions": formatted_questions
-        }
-        context.user_data["quiz_build_creator_id"] = update.message.from_user.id
-        
-        neg_keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ No Negative (0.0)", callback_data="neg_0.0"), InlineKeyboardButton("📉 1/4th (-0.25)", callback_data="neg_0.25")],
-            [InlineKeyboardButton("📉 Half (-0.5)", callback_data="neg_0.5"), InlineKeyboardButton("📉 Single (-1.0)", callback_data="neg_1.0")],
-            [InlineKeyboardButton("📉 Heavy (-1.5)", callback_data="neg_1.5")]
-        ])
-        
-        await update.message.reply_text(
-            f"<blockquote>🛅 <b>Select Negative Marking Schema:</b>{alert_text}</blockquote>\n\n"
-            "<blockquote>Aap is quiz ke liye kitni negative marking set karna chahte hain?</blockquote>",
-            reply_markup=neg_keyboard,
-            parse_mode="HTML"
-        )
-        return NEGATIVE
-        
-    except Exception as e:
-        logging.error(f"Error in handle_time_limit: {e}", exc_info=True)
-        try: await generating_msg.delete()
-        except: pass
-        
-        # 429 एरर के लिए यूज़र फ्रेंडली मैसेज
-        if "429" in str(e) or "too_many_requests" in str(e):
-            await update.message.reply_text(
-                "⚠️ <b>आज का फ्री लिमिट कोटा समाप्त हो चुका है!</b>\n\n"
-                "AI मॉडल की प्रतिदिन की सीमा (20 रिक्वेस्ट) पूरी हो गई है। कृपया कुछ समय बाद या कल दोबारा प्रयास करें।", 
-                parse_mode="HTML"
-            )
-        else:
-            await update.message.reply_text("aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare", parse_mode="HTML")
-            
-        context.user_data.clear()
-        return ConversationHandler.END
 
 # Final Summary aur Quiz Generation Confirmation
 async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
