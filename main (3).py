@@ -5442,30 +5442,44 @@ async def main():
         conv_handler = ConversationHandler(
             entry_points=[CommandHandler("autoquiz", autoquiz_start)],
             states={
+                # 📝 मोड 1: टेक्स्ट इनपुट मोड (यहाँ बटन का शुरुआती गेटवे और टेक्स्ट रिसीवर दोनों हैं)
                 TOPIC: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_topic), # पुराना लॉजिक वैसे ही रहेगा
-                    CallbackQueryHandler(handle_subject_navigation, pattern="^sub_"),
-                    CallbackQueryHandler(handle_final_topic_selection, pattern="^set_topic_"),
-                    CallbackQueryHandler(autoquiz_start, pattern="^back_to_subjects_nav$")
-                 ],
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_topic), 
+                    CallbackQueryHandler(handle_topic_mode_routing, pattern="^mode_"), 
+                 ], 
+                # 📂 मोड 2: प्योर बटन मोड (यहाँ कोई MessageHandler नहीं है, इसलिए टेक्स्ट काम नहीं करेगा!)
+                BUTTON_TOPIC: [
+                    CallbackQueryHandler(handle_subject_navigation, pattern="^sub_"), 
+                    CallbackQueryHandler(handle_final_topic_selection, pattern="^set_topic_"), 
+                    CallbackQueryHandler(handle_topic_mode_routing, pattern="^back_to_subjects_nav$") 
+                ],
                 Q_COUNT: [
                     CallbackQueryHandler(handle_q_count, pattern="^qcnt_"),
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_q_count)
                  ],
                 TITLE: [
                     CallbackQueryHandler(handle_title, pattern="^title_"),
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_title)
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_title) # ✅ मैसेज इनपुट चालू है
                  ],
                 DESCRIPTION: [
-                        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_description),
-                        CommandHandler("skip", handle_description)
-                    ],
-                LANGUAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_language)],
-                EXPLANATION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_explanation)],
-                DIFFICULTY: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_difficulty)],
-                OPTIONS_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_options_count)],
-                TIME_LIMIT: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_time_limit)],
-                NEGATIVE: [CallbackQueryHandler(handle_negative_and_finish, pattern="^neg_")],  # ✅ Callback handler
+                    CallbackQueryHandler(handle_description, pattern="^desc_skip$"),
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_description) # ✅ मैसेज इनपुट चालू है
+                ],
+                LANGUAGE: [
+                    CallbackQueryHandler(handle_language, pattern="^lang_"),
+                ],
+                EXPLANATION: [
+                    CallbackQueryHandler(handle_explanation, pattern="^expl_"),
+                ],
+                DIFFICULTY: [
+                    CallbackQueryHandler(handle_difficulty, pattern="^diff_"),
+                ],
+                OPTIONS_COUNT: [
+                    CallbackQueryHandler(handle_options_count, pattern="^opts_"),
+                ],
+                TIME_LIMIT: [
+                    CallbackQueryHandler(handle_time_limit, pattern="^time_"),
+                ],
+                NEGATIVE: [CallbackQueryHandler(handle_negative_and_finish, pattern="^neg_")],
             },
             fallbacks=[CommandHandler("cancel", cancel)],
         )
