@@ -813,6 +813,177 @@ async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     return TITLE
 
+async def handle_description(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return DESCRIPTION
+    
+    query = update.callback_query
+    
+    # 🟢 Case 1: अगर यूज़र ने इनलाइन 'Skip Description' बटन पर क्लिक किया है
+    if query:
+        await query.answer()
+        context.user_data['description'] = "None"
+        
+    # 🟢 Case 2: अगर यूज़र ने चैट में डिस्क्रिप्शन टेक्स्ट टाइप करके भेजा है
+    else:
+        text = update.message.text.strip()
+        context.user_data['description'] = "None" if text in ["/skipped", "Skip ⏭️", "/skip"] else text
+        
+        # 🔥 FIXED (FORCE CLOSE BUTTON LOGIC):
+        # मेमोरी से स्टोर की गई मैसेज आईडी को निकालकर उस पूरे पुराने बटन वाले पैनल को डिलीट कर रहे हैं
+        old_panel_id = context.user_data.pop("last_desc_panel_id", None)
+        if old_panel_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=old_panel_id
+                )
+            except Exception:
+                # सेफ्टी फॉलबैक: अगर डिलीट करने की परमिशन न हो, तो कम से कम बटन्स को क्लोज (रिमूव) कर दे
+                try:
+                    await context.bot.edit_message_reply_markup(
+                        chat_id=update.effective_chat.id,
+                        message_id=old_panel_id,
+                        reply_markup=None
+                    )
+                except Exception:
+                    pass
+
+    # 🟢 COLORED: Step 5 (Language) के लिए इनलाइन कीबोर्ड बटन्स को Green (success) कलर दिया गया है
+    lang_inline_keyboard = InlineKeyboardMarkup([
+        [
+            {"text": "Hindi", "callback_data": "lang_Hindi", "style": "success"},
+            {"text": "English", "callback_data": "lang_English", "style": "primary"}
+        ]
+    ])
+    
+    # यदि बटन दबाया था तो उसी मेसेज को एडिट करेगा, यदि टेक्स्ट भेजा था तो नया फ्रेश मेसेज भेजेगा
+    if query:
+        await query.edit_message_text(
+            text="<blockquote>🌐 Step 5 — Language</blockquote>\n<b>Choose quiz output layout language:</b>",
+            reply_markup=lang_inline_keyboard,
+            parse_mode="HTML"
+        )
+    else:
+        await update.message.reply_text(
+            text="<blockquote>🌐 Step 5 — Language</blockquote>\n<b>Choose quiz output layout language:</b>",
+            reply_markup=lang_inline_keyboard,
+            parse_mode="HTML"
+        )
+        
+    return LANGUAGE
+
+async def handle_language(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return LANGUAGE
+    query = update.callback_query
+    if not query:
+        return LANGUAGE
+        
+    await query.answer()
+    user_text = query.data.replace("lang_", "").strip()
+    context.user_data['language'] = user_text
+    
+    # 🌟 Language specific features custom colors
+    expl_inline_keyboard = InlineKeyboardMarkup([
+        [
+            {"text": "With Explanation", "callback_data": "expl_With Explanation", "style": "primary"},
+            {"text": "No Explanation", "callback_data": "expl_No Explanation", "style": "success"}
+        ]
+    ])
+    
+    await query.edit_message_text(
+        text="<blockquote>✨ Step 6 — Explanation</blockquote>\n<b>Do you want explanations?</b>",
+        reply_markup=expl_inline_keyboard,
+        parse_mode="HTML"
+    )
+    return EXPLANATION
+
+async def handle_explanation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return EXPLANATION
+    
+    query = update.callback_query
+    
+    # 🟢 सिर्फ इनलाइन बटन्स स्वीकार करें, टेक्स्ट मैसेज पूरी तरह ब्लॉक
+    if not query:
+        return EXPLANATION
+        
+    await query.answer()
+    user_text = query.data.replace("expl_", "").strip()
+    context.user_data['explanation'] = user_text
+    
+    # इसे अपने मुख्य कोड में handle_explanation फ़ंक्शन के अंदर बदलें:
+    diff_inline_keyboard = InlineKeyboardMarkup([
+        [
+            {"text": "Easy", "callback_data": "diff_Easy", "style": "primary"},
+            {"text": "Medium", "callback_data": "diff_Medium", "style": "success"},
+            {"text": "Hard", "callback_data": "diff_Hard", "style": "primary"}
+        ]
+    ])
+    
+    await query.edit_message_text(
+        text="<blockquote>⚡ Step 7 — Difficulty</blockquote>\n<b>Choose calculation difficulty:</b>",
+        reply_markup=diff_inline_keyboard,
+        parse_mode="HTML"
+    )
+    return DIFFICULTY
+
+async def handle_difficulty(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return DIFFICULTY
+    
+    query = update.callback_query
+    
+    # 🟢 सिर्फ इनलाइन बटन्स स्वीकार करें, टेक्स्ट मैसेज पूरी तरह ब्लॉक
+    if not query:
+        return DIFFICULTY
+        
+    await query.answer()
+    user_text = query.data.replace("diff_", "").strip()
+    context.user_data['difficulty'] = user_text
+    
+    # 🟢 COLORED: Step 8 (Option Count) के लिए इनलाइन कीबोर्ड बटन्स को Green (success) कलर दिया गया है
+    opts_inline_keyboard = InlineKeyboardMarkup([
+        [
+            {"text": "2 Options", "callback_data": "opts_2", "style": "success"},
+            {"text": "3 Options", "callback_data": "opts_3", "style": "primary"},
+            {"text": "4 Options", "callback_data": "opts_4", "style": "success"}
+        ]
+    ])
+    
+    await query.edit_message_text(
+        text="<blockquote>🔥 Step 8 — Option Count</blockquote>\n<b>How many choices per card?</b>",
+        reply_markup=opts_inline_keyboard,
+        parse_mode="HTML"
+    )
+    return OPTIONS_COUNT
+
+async def handle_options_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return OPTIONS_COUNT
+    
+    query = update.callback_query
+    
+    # 🟢 सिर्फ इनलाइन बटन्स स्वीकार करें, टेक्स्ट मैसेज पूरी तरह ब्लॉक
+    if not query:
+        return OPTIONS_COUNT
+        
+    await query.answer()
+    user_text = query.data.replace("opts_", "").strip()
+    context.user_data['options_count'] = int(user_text)
+    
+    # 🔵 COLORED: Step 9 (Time Limit) के लिए इनलाइन कीबोर्ड बटन्स को Blue (primary) कलर दिया गया है
+    time_inline_keyboard = InlineKeyboardMarkup([
+        [
+            {"text": "10 sec", "callback_data": "time_10", "style": "primary"},
+            {"text": "15 sec", "callback_data": "time_15", "style": "success"},
+            {"text": "30 sec", "callback_data": "time_30", "style": "primary"}
+        ]
+    ])
+    
+    await query.edit_message_text(
+        text="<blockquote>⏱ Step 9 — Time Limit</blockquote>\n<b>Set ticker duration:</b>",
+        reply_markup=time_inline_keyboard,
+        parse_mode="HTML"
+    )
+    return TIME_LIMIT
+
 
 # Final Summary aur Quiz Generation Confirmation
 async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
