@@ -688,6 +688,131 @@ async def handle_final_topic_selection(update: Update, context: ContextTypes.DEF
     )
     return Q_COUNT
 
+async def handle_topic(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return TOPIC
+    
+    context.user_data['topic'] = update.message.text
+    
+    # 🟢 FIXED & COLORED: Raw payload format used to force Green (success) button colors
+    count_inline_keyboard = InlineKeyboardMarkup([
+        [
+            {"text": "10", "callback_data": "qcnt_10", "style": "success"},
+            {"text": "20", "callback_data": "qcnt_20", "style": "success"},
+            {"text": "50", "callback_data": "qcnt_50", "style": "success"},
+            {"text": "70", "callback_data": "qcnt_70", "style": "success"}
+        ]
+    ])
+    
+    await update.message.reply_text(
+        text=(
+            f"<blockquote>✅ Topic Saved: <b>{context.user_data['topic']}</b></blockquote>\n\n"
+            "<blockquote>✨ Step 2:</blockquote><b>How many questions do you want?</b>"
+        ),
+        parse_mode="HTML",
+        reply_markup=count_inline_keyboard
+    )
+    return Q_COUNT
+
+async def handle_q_count(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return Q_COUNT
+    query = update.callback_query
+    if not query:
+        return Q_COUNT  
+        
+    await query.answer()
+    user_text = query.data.replace("qcnt_", "").strip()
+    context.user_data['q_count'] = int(user_text)
+    saved_topic = context.user_data.get('topic', 'AI Quiz')
+    
+    # 🌟 Yes button gets Green (success), No button gets Blue (primary) for layout balance
+    title_confirm_keyboard = InlineKeyboardMarkup([
+        [
+            {"text": "Yes ✅", "callback_data": "title_use_topic", "style": "success"},
+            {"text": "No ❌", "callback_data": "title_custom_name", "style": "primary"}
+        ]
+    ])
+    
+    await query.edit_message_text(
+        text=(
+            f"<blockquote>✅ Questions Count: <b>{context.user_data['q_count']}</b></blockquote>\n\n"
+            f"💫 <b>क्या आप क्विज़ का टाइटल वही रखना चाहते हैं जो टॉपिक का नाम है?</b>\n"
+            f"📝 <i>टॉपिक नाम: {saved_topic}</i>"
+        ),
+        parse_mode="HTML",
+        reply_markup=title_confirm_keyboard
+    )
+    return TITLE
+
+async def handle_title(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not is_authorized(update): return TITLE
+    
+    if "quiz_build" not in context.user_data:
+        context.user_data["quiz_build"] = {"title": "", "description": "", "questions": []}
+    
+    query = update.callback_query
+    
+    # Case 1: अगर यूज़र ने इनलाइन बटन (Yes/No) पर क्लिक किया है
+    if query:
+        await query.answer()
+        if query.data == "title_use_topic":
+            topic_name = context.user_data.get('topic', 'AI Quiz')
+            context.user_data['title'] = topic_name
+            context.user_data["quiz_build"]["title"] = topic_name  
+            
+            desc_inline_keyboard = InlineKeyboardMarkup([
+                [{"text": "Skip Description ⏭️", "callback_data": "desc_skip", "style": "primary"}]
+            ])
+            
+            # मैसेज सेंड करके उसकी ID मेमोरी में सेव कर रहे हैं
+            sent_msg = await query.edit_message_text(
+                text=(
+                    f"<blockquote>✅ Title Saved (Same as Topic): <b>{context.user_data['title']}</b></blockquote>\n\n"
+                    "<blockquote>📝 <b>Step 4:</b> Send a Description for this quiz in chat.</blockquote>\n"
+                    "<b>Or Skip Description button par click kare.</b>"
+                ),
+                parse_mode="HTML",
+                reply_markup=desc_inline_keyboard
+            )
+            # 📌 यहाँ पुरानी मैसेज आईडी को स्टोर कर लिया
+            context.user_data["last_desc_panel_id"] = sent_msg.message_id
+            return DESCRIPTION
+            
+        elif query.data == "title_custom_name":
+            await query.edit_message_text(
+                "📝 <b>कृपया अपनी क्विज़ के लिए एक नया Title चैट में टाइप करके भेजें:</b>",
+                parse_mode="HTML",
+                reply_markup=None
+            )
+            return TITLE
+            
+    # Case 2: अगर यूज़र चैट में अपना कस्टम Title टाइप करके भेजता है
+    if update.message and update.message.text:
+        title_text = update.message.text.strip()
+        if len(title_text) > 128:
+            await update.message.reply_text("⚠️ This title is too long. Please send a new one, 128 characters max.")
+            return TITLE
+            
+        context.user_data['title'] = title_text
+        context.user_data["quiz_build"]["title"] = title_text
+        
+        # इसे अपने कोड में जहां भी desc_inline_keyboard है, वहां अपडेट कर लें (जैसे handle_title के अंदर):
+        desc_inline_keyboard = InlineKeyboardMarkup([
+            [{"text": "Skip Description ⏭️", "callback_data": "desc_skip", "style": "primary"}]
+        ])
+        
+        sent_msg = await update.message.reply_text(
+            f"<blockquote>✅ Title Saved: <b>{context.user_data['title']}</b></blockquote>\n\n"
+            "<blockquote>📝 <b>Step 4:</b> Send a Description for this quiz in chat.</blockquote>\n"
+            "<b>Or Skip Description button par click kare.</b>",
+            parse_mode="HTML",
+            reply_markup=desc_inline_keyboard
+        )
+        # 📌 यहाँ भी पुरानी मैसेज आईडी को स्टोर कर लिया
+        context.user_data["last_desc_panel_id"] = sent_msg.message_id
+        return DESCRIPTION
+
+    return TITLE
+
 
 # Final Summary aur Quiz Generation Confirmation
 async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
