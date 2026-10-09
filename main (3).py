@@ -244,8 +244,8 @@ def check_active_quiz_creation(user_id, context):
     return "quiz_build" in context.user_data and context.user_data["quiz_build"].get("title")
     
 # --- CONVERSATION STATES ---
-(TOPIC, Q_COUNT, TITLE, DESCRIPTION, LANGUAGE, 
- EXPLANATION, DIFFICULTY, OPTIONS_COUNT, TIME_LIMIT, NEGATIVE) = range(10)
+(TOPIC, BUTTON_TOPIC, Q_COUNT, TITLE, DESCRIPTION, LANGUAGE, 
+ EXPLANATION, DIFFICULTY, OPTIONS_COUNT, TIME_LIMIT, NEGATIVE) = range(11)
 
 # AI Question Generator helper
 def generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt):
