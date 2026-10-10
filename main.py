@@ -988,8 +988,6 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if not is_authorized(update): return TIME_LIMIT
     
     query = update.callback_query
-    
-    # 🟢 सिर्फ इनलाइन बटन्स स्वीकार करें, टेक्स्ट मैसेज पूरी तरह ब्लॉक
     if not query:
         return TIME_LIMIT
         
@@ -1004,10 +1002,10 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     options_cnt = context.user_data.get('options_count', 4)
     
     msg_target = query.message
-    
-    # इनलाइन मेनू क्लीनअप और एनीमेशन लोडर शुरुआत
+
+    # 🚀 पहला पैनल: हमेशा दिखेगा
     generating_msg = await query.edit_message_text(
-        text="<b>🚀 AI Quiz Generator</b>\n\nCNM⬜⬜⬜⬜⬜⬜⬜⬜\n🔎 Researching your topic...\n⏳ please wait...",
+        text="<b>🚀 AI Quiz Generator</b>\n\n⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜\n🔎 Researching your topic...\n⏳ please wait...",
         parse_mode="HTML",
         reply_markup=None
     )
@@ -1018,41 +1016,35 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ))
         
         try:
-            await asyncio.sleep(3)
-            if not task.done():
-                try: await generating_msg.delete()
-                except: pass
-                generating_msg = await msg_target.chat.send_message(
-                    "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜⬜⬜\n🧠 Crafting questions...\n⏳ please wait...",
-                    parse_mode="HTML"
-                )
-                
+            # 🟢 पहला एनिमेशन: 3 सेकंड का अनिवार्य वेट
             await asyncio.sleep(4)
-            if not task.done():
-                try: await generating_msg.delete()
-                except: pass
-                generating_msg = await msg_target.chat.send_message(
-                    "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜⬜\n✍️ Writing options...\n⏳ please wait...",
-                    parse_mode="HTML"
-                )
+            await generating_msg.edit_text(
+                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜\n🧠 Crafting questions...\n⏳ please wait...",
+                parse_mode="HTML"
+            )
                 
-            await asyncio.sleep(5)
-            if not task.done():
-                try: await generating_msg.delete()
-                except: pass
-                generating_msg = await msg_target.chat.send_message(
-                    "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜⬜\n📟 Verifying answers...\n⏳ please wait...",
-                    parse_mode="HTML"
-                )
+            # 🟢 दूसरा एनिमेशन: अगला 4 सेकंड का अनिवार्य वेट
+            await asyncio.sleep(4)
+            await generating_msg.edit_text(
+                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜\n✍️ Writing options...\n⏳ please wait...",
+                parse_mode="HTML"
+            )
+                
+            # 🟢 तीसरा एनिमेशन बदलाव: अगला 4 सेकंड का अनिवार्य वेट (कंडीशन हटा दी गई है, यह भी हर हाल में दिखेगा)
+            await asyncio.sleep(4)
+            await generating_msg.edit_text(
+                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜\n📟 Verifying answers...\n⏳ please wait...",
+                parse_mode="HTML"
+            )
         except Exception as msg_err:
             logging.warning(f"Animation message sequence alert: {msg_err}")
 
+        # 🔥 मुख्य बदलाव: तीनों एनिमेशन दिखने के बाद बोट यहाँ आकर AI टास्क के खत्म होने का इंतज़ार करेगा। 
+        # अगर AI को 11 सेकंड से ज़्यादा का समय लग रहा है, तो स्क्रीन इसी तीसरे एनिमेशन पर रुकी रहेगी।
         ai_questions = await task
         
         if ai_questions is None or len(ai_questions) == 0:
-            try: await generating_msg.delete()
-            except: pass
-            await msg_target.chat.send_message(
+            await generating_msg.edit_text(
                 "❌ <b>AI Quiz Generator Error</b>\n\nServer par heavy load ya error ke karan quiz generate nahi ho paya. Kripya thodi der baad fir se koshish karein.",
                 parse_mode="HTML"
             )
@@ -1060,16 +1052,13 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             return ConversationHandler.END
             
         try:
-            try: await generating_msg.delete()
-            except: pass
-            generating_msg = await msg_target.chat.send_message(
+            await generating_msg.edit_text(
                 "<b>🚀 AI Quiz Generator</b>\n\nVerified Answer's ✅\n"
                 "💯 Done generated...\n\n🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩",
                 parse_mode="HTML"
             )
-            await asyncio.sleep(2)
-            try: await generating_msg.delete()
-            except: pass
+            await asyncio.sleep(3)
+            await generating_msg.delete()
         except Exception:
             pass
         
@@ -1119,8 +1108,6 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         
     except Exception as e:
         logging.error(f"Error in handle_time_limit: {e}", exc_info=True)
-        try: await generating_msg.delete()
-        except: pass
         
         if "429" in str(e) or "too_many_requests" in str(e):
             await msg_target.chat.send_message(
