@@ -1006,10 +1006,10 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     # 🚀 Step 1: 10% Minimalist Design
     generating_msg = await query.edit_message_text(
         text=(
-            "<b>┌────────────────────────┐</b>\n"
-            "<b>🤖 AI AUTOMATION ENGINE</b>\n"
-            "<b>└────────────────────────┘</b>\n\n"
-            "<code>[█░░░░░░░░░] 10%</code>\n\n"
+            "<b>┌─────────────────────┐</b>\n"
+            "<b>.  AI AUTOMATION ENGINE</b>\n"
+            "<b>└─────────────────────┘</b>\n\n"
+            "<code>█░░░░░░░░░ 10%</code>\n\n"
             "📡 <b>Status:</b> <i>Researching topic dataset...</i>\n"
             "⚡ <b>Please hold while we process the cloud request.</b>"
         ),
@@ -1027,10 +1027,10 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             await asyncio.sleep(4)
             await generating_msg.edit_text(
                 text=(
-                    "<b>┌────────────────────────┐</b>\n"
-                    "<b>🤖 AI AUTOMATION ENGINE</b>\n"
-                    "<b>└────────────────────────┘</b>\n\n"
-                    "<code>[████░░░░░░] 40%</code>\n\n"
+                    "<b>┌─────────────────────┐</b>\n"
+                    "<b>.  AI AUTOMATION ENGINE</b>\n"
+                    "<b>└─────────────────────┘</b>\n\n"
+                    "<code>████░░░░░░ 40%</code>\n\n"
                     "🧠 <b>Status:</b> <i>Crafting high-quality questions...</i>\n"
                     "⚡ <b>Applying difficulty benchmarks.</b>"
                 ),
@@ -1041,10 +1041,10 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             await asyncio.sleep(4)
             await generating_msg.edit_text(
                 text=(
-                    "<b>┌────────────────────────┐</b>\n"
+                    "<b>┌─────────────────────┐</b>\n"
                     "<b>🤖 AI AUTOMATION ENGINE</b>\n"
-                    "<b>└────────────────────────┘</b>\n\n"
-                    "<code>[███████░░░] 70%</code>\n\n"
+                    "<b>└─────────────────────┘</b>\n\n"
+                    "<code>███████░░░ 70%</code>\n\n"
                     "✍️ <b>Status:</b> <i>Structuring multiple-choice options...</i>\n"
                     "⚡ <b>Injecting dynamic vectors.</b>"
                 ),
@@ -1055,10 +1055,10 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             await asyncio.sleep(4)
             await generating_msg.edit_text(
                 text=(
-                    "<b>┌────────────────────────┐</b>\n"
-                    "<b>🤖 AI AUTOMATION ENGINE</b>\n"
-                    "<b>└────────────────────────┘</b>\n\n"
-                    "<code>[█████████░] 95%</code>\n\n"
+                    "<b>┌─────────────────────┐</b>\n"
+                    "<b>.  AI AUTOMATION ENGINE</b>\n"
+                    "<b>└─────────────────────┘</b>\n\n"
+                    "<code>█████████░ 95%</code>\n\n"
                     "📟 <b>Status:</b> <i>Verifying answer key & integrity...</i>\n"
                     "⚡ <b>Finalizing payload encryption.</b>"
                 ),
@@ -1081,10 +1081,10 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             # ✅ Success: 100%
             await generating_msg.edit_text(
                 text=(
-                    "<b>┌────────────────────────┐</b>\n"
-                    "<b>🤖 AI AUTOMATION ENGINE</b>\n"
-                    "<b>└────────────────────────┘</b>\n\n"
-                    "<code>[██████████] 100%</code>\n\n"
+                    "<b>┌─────────────────────┐</b>\n"
+                    "<b>.  AI AUTOMATION ENGINE</b>\n"
+                    "<b>└─────────────────────┘</b>\n\n"
+                    "<code>██████████ 100%</code>\n\n"
                     "✨ <b>Process Complete:</b> <code>SUCCESS</code>\n"
                     "📦 <b>Quiz generation verified and compiled.</b>"
                 ),
