@@ -4349,54 +4349,28 @@ async def execute_broadcast_callback(update: Update, context: ContextTypes.DEFAU
         await context.bot.send_message(chat_id=query.message.chat.id, text=report_text, parse_mode="Markdown")
 
 # ------------------ Autorun helpers ------------------
-                        
 async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before_start=10, min_players_required=1, force_start=False):
     """
-    🇮🇳 Background loop for an autorun.
-    - Supports schedule_time (HH:MM) stored in autoruns.schedule_time (if present) otherwise uses interval_minutes.
-    - Ensures serial execution across autoruns by acquiring AUTORUN_SERIAL_LOCK before posting/starting in SUPPORT_GROUP_ID.
-    - ✅ FORCE STARTS quiz without waiting for users (autorun mode)
-    - Times are in IST (Indian Standard Time)
+    🇮🇳 भाग 1: टाइमर शेड्यूलिंग और सुरक्षा लॉक प्रबंधन
+    यह हिस्सा भारत के समय (IST) के अनुसार सही समय पर एक्टिव होता है और क्लैश रोकता है।
     """
     try:
-        logging.info(f"🚀 Autorun worker {autorun_id} started for quiz {quiz_id}")
+        logging.info(f"🚀 Fully Automated AI Autorun worker {autorun_id} started.")
         
         while True:
-            # Read DB active flag + schedule_time
+            # 1. डेटाबेस से चेक करें कि ऑटोरन एक्टिव है या नहीं
             with sqlite3.connect(DB_FILE) as conn:
                 cur = conn.cursor()
                 cur.execute("SELECT active, schedule_time FROM autoruns WHERE id = ?", (autorun_id,))
                 row = cur.fetchone()
                 if not row or row[0] != 1:
-                    logging.info(f"Autorun {autorun_id}: stopped via DB (active flag = 0)")
-                    break  # stopped via DB
+                    logging.info(f"Autorun {autorun_id}: stopped via DB active flag constraint.")
+                    break  
                 schedule_time = row[1]
 
-                cur.execute("SELECT title, description, timer, negative_value FROM quizzes WHERE quiz_id = ?", (quiz_id,))
-                quiz = cur.fetchone()
-
-            if not quiz:
-                logging.warning(f"Autorun {autorun_id}: quiz {quiz_id} not found, stopping.")
-                break
-
-            title, desc, timer, negative_value = quiz
-            time_disp = f"{timer} sec" if timer < 60 else f"{timer // 60} min"
-            db_neg_val = negative_value if negative_value is not None else 0.0
-
-            init_text = (
-                f"<blockquote>🎮 <b><ins>LIVE QUIZ STARTED SOON</ins></b></blockquote>⏰\n\n"
-                f"<blockquote>📚 Title: {escape_markdown(title)}</blockquote>\n"
-                f"<blockquote>🔥 Description: {escape_markdown(desc) if desc else 'No description'}</blockquote>\n"
-                f"<blockquote>⏱ Time per question: {time_disp}</blockquote>\n"
-                f"<blockquote>📉 Negative Marking: -{db_neg_val} Marks per wrong answer</blockquote>\n\n"
-                "🏁 <b>This quiz will start automatically shortly.</b>\n"
-                "<b>Use /stop in the group to stop it once started.</b>"
-            )
-
-            # 🇮🇳 IST time use करो (UTC नहीं)
             now = datetime.now(tz=IST)
 
-            # Schedule-wait: either HH:MM schedule or interval-based wait
+            # ⏰ HH:MM (जैसे 14:30) या मिनट इंटरवल के आधार पर वेट टाइम कैलकुलेट करें
             if schedule_time:
                 next_ts = next_occurrence_from_hhmm(schedule_time, ref_dt=now)
                 wait_seconds = (next_ts - now).total_seconds()
@@ -4404,203 +4378,188 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                     cur = conn.cursor()
                     cur.execute("UPDATE autoruns SET next_run = ? WHERE id = ?", (next_ts.isoformat(), autorun_id))
                     conn.commit()
-                logging.info(f"⏰ Autorun {autorun_id}: waiting until scheduled time {next_ts.isoformat()} (in {wait_seconds:.0f}s) - IST")
+                logging.info(f"⏰ Autorun {autorun_id}: Waiting until scheduled time {next_ts.isoformat()} ({wait_seconds:.0f}s left)")
                 try:
                     await asyncio.sleep(max(0, wait_seconds))
                 except asyncio.CancelledError:
-                    logging.info(f"Autorun worker {autorun_id} cancelled while waiting for schedule")
                     return
             else:
-                # interval-based: set next_run and sleep interval
                 next_ts = now + timedelta(minutes=interval_minutes)
                 with sqlite3.connect(DB_FILE) as conn:
                     cur = conn.cursor()
                     cur.execute("UPDATE autoruns SET next_run = ? WHERE id = ?", (next_ts.isoformat(), autorun_id))
                     conn.commit()
-                logging.info(f"⏰ Autorun {autorun_id}: waiting {interval_minutes} minutes until {next_ts.isoformat()} - IST")
+                logging.info(f"⏰ Autorun {autorun_id}: Waiting for interval loop of {interval_minutes} minutes.")
                 try:
                     await asyncio.sleep(interval_minutes * 60)
                 except asyncio.CancelledError:
-                    logging.info(f"Autorun worker {autorun_id} cancelled during interval wait")
                     return
 
-            # ---------- SERIAL SECTION: Acquire lock before posting/starting ----------
+            # ---------- सीरियल लॉक सुरक्षा (क्रैश रोकने के लिए) ----------
             acquired = False
             try:
-                logging.info(f"🔐 Autorun {autorun_id}: attempting to acquire serial lock to post/start quiz {quiz_id}")
+                logging.info(f"🔐 Autorun {autorun_id}: Attempting lock acquisition...")
                 await AUTORUN_SERIAL_LOCK.acquire()
                 acquired = True
-                logging.info(f"✅ Autorun {autorun_id}: acquired serial lock")
+                logging.info(f"✅ Autorun {autorun_id}: Acquired serial runtime lock.")
 
-                # Wait if a quiz is already running in support group
+                # अगर ग्रुप में पहले से ही कोई दूसरी क्विज़ लाइव चल रही है, तो 10-10 सेकंड रुकें
                 attempt_count = 0
                 while SUPPORT_GROUP_ID in GROUP_GAMES and GROUP_GAMES[SUPPORT_GROUP_ID].get("quiz_started"):
                     attempt_count += 1
-                    logging.info(f"⏳ Autorun {autorun_id}: support group busy (attempt {attempt_count}). Waiting 10s...")
-                    try:
-                        await asyncio.sleep(10)
-                    except asyncio.CancelledError:
-                        logging.info(f"Autorun worker {autorun_id} cancelled while waiting for group free")
-                        return
-                    
-                    # After 5 attempts (50 seconds), give up
+                    logging.info(f"⏳ Group busy. Attempt {attempt_count}/5. Waiting 10 seconds...")
+                    await asyncio.sleep(10)
                     if attempt_count >= 5:
-                        logging.warning(f"Autorun {autorun_id}: group still busy after {attempt_count * 10}s, skipping this run")
-                        return
+                        logging.warning("Group occupied beyond timeout thresholds. Postponing this run.")
+                        break
+                
+                if attempt_count >= 5:
+                    continue
+                # ====================================================================
+                # 🔥 भाग 2: 50+ रैंडम टॉपिक्स पूल, AI जनरेशन और ग्रुप लाइव ब्रॉडकास्ट
+                # ====================================================================
+                auto_topics_pool = [
+                    # 📰 Current Affairs & GK
+                    "Current Affairs 2026", "International Current Affairs", "Sports and Awards 2026", "Static General Knowledge",
+                    
+                    # 📜 Ancient & Medieval History
+                    "Indus Valley Civilization", "Vedic Period History", "Buddhism and Jainism", "16 Mahajanapadas", 
+                    "Mauryan Empire", "Gupta Empire History", "Delhi Sultanate Dynasty", "Mughal Empire History", 
+                    "Maratha and Vijayanagara Empire", "Bhakti and Sufi Movement",
+                    
+                    # 🇮🇳 Modern & World History
+                    "Arrival of European Powers in India", "Revolt of 1857 Indian History", "Indian National Congress INC History", 
+                    "Mahatma Gandhi and Freedom Movements", "Indian Revolutionary Freedom Fighters", "Indian Independence and Partition 1947",
+                    "Industrial Revolution World History", "French and Russian Revolutions", "World War 1 and World War 2 History", "Cold War Era Geopolitics",
+                    
+                    # ✨ Polity (Constitutional Frameworks)
+                    "Making and Sources of Indian Constitution", "Preamble and Schedules of Indian Constitution", 
+                    "Union and its Territory and Citizenship", "Fundamental Rights of India", 
+                    "Directive Principles of State Policy and Fundamental Duties", "President Vice President and Prime Minister of India", 
+                    "Indian Parliament Lok Sabha and Rajya Sabha", "Supreme Court of India and Judicial Review", 
+                    "Governor Chief Minister and State Legislature", "High Court and Subordinate Courts in India", 
+                    "Panchayati Raj and Local Self Government", "Election Commission of India and Electoral Reforms", 
+                    "Constitutional and Non Constitutional Bodies CAG NITI Aayog", "Important Constitutional Amendments of India", 
+                    "Emergency Provisions in Indian Constitution",
+                    
+                    # 🌍 Geography (Indian & Global Ecosystems)
+                    "Physical Features of India", "Indian Rivers and Drainage System", "Indian Climate and Soil Types", 
+                    "Natural Vegetation and National Parks of India", "Agriculture and Irrigation in India", 
+                    "Major Dams and River Valley Projects in India", "Minerals and Energy Resources of India", 
+                    "Industries Transport and Ports in India", "Indian Census and Tribes", 
+                    "Continents Mountains and Deserts of the World", "World Rivers Lakes and Waterfalls", 
+                    "Important Straits and Canals of the World", "Solar System Latitudes and Longitudes", 
+                    "Interior of Earth Volcanoes and Earthquakes", "Atmosphere Structure Winds and Cyclones", "Ocean Currents and Tides",
+                    
+                    # 🧬 General Science (Physics, Chemistry, Biology)
+                    "Cell Structure and Functions Biology", "Human Anatomy and Body Systems", "Human Nutrition Vitamins and Diseases", 
+                    "Plant Anatomy Physiology and Kingdom", "Genetics and Biological Evolution", 
+                    "Matter States and Atomic Structure Chemistry", "Periodic Table and Elements Properties", 
+                    "Acids Bases Salts and pH Scale", "Metals NonMetals and Alloys Chemistry", "Organic Chemistry Carbon and Fuels",
+                    "Units Measurements Motion and Force Physics", "Work Energy and Power Physics", 
+                    "Light Optics Sound and Waves Physics", "Electricity and Magnetism Physics", "Modern Physics Nuclear Energy and Space",
+                    
+                    # 🤖 Languages & Grammar (English & Hindi)
+                    "Hindi Grammar Varnamala and Sandhi", "Hindi Grammar Sangya Sarvnam Kriya Avyay", "Hindi Grammar Samas Upsarg Pratyay", 
+                    "Hindi Vocabulary Vilom Paryayvachi", "Hindi Grammar Ling Vachan Karak Kaal", "Hindi Muhavare Lokoktiyan Ras Chhand Alankar",
+                    "English Grammar Parts of Speech", "English Grammar Tenses and Sentence Structure", "English Grammar Active and Passive Voice", 
+                    "English Grammar Direct and Indirect Narration", "English Grammar Subject Verb Agreement Errors", 
+                    "English Vocabulary Synonyms Antonyms One Word Substitution", "English Grammar Prepositions and Articles"
+                ]
+                
+                selected_topic = random.choice(auto_topics_pool)
+                logging.info(f"🎲 Automated Engine selected: {selected_topic}")
 
-                # Post the panel in support group
-                sent = None
+                # 🧠 Gemini AI से 10 फ्रेश सवाल हिंदी भाषा में बनवाएं
+                ai_questions = await asyncio.to_thread(
+                    generate_bulk_questions_ai, selected_topic, 10, "Hindi", "Medium", 4
+                )
+
+                if not ai_questions or len(ai_questions) == 0:
+                    logging.error("⚠️ AI structural generation skipped or quota limited. Retrying on next cycle.")
+                    continue
+
+                # 💾 नए बने क्विज़ को डेटाबेस में ऑटो-सेव करें
+                conn = sqlite3.connect(DB_FILE)
+                cursor = conn.cursor()
+                cursor.execute(
+                    "INSERT INTO quizzes (creator_id, title, description, timer, negative_value) VALUES (?, ?, ?, ?, ?)", 
+                    (OWNER_ID, f"Auto AI Quiz: {selected_topic}", f"Daily automated session focused on {selected_topic}.", 30, 0.25)
+                )
+                new_quiz_id = cursor.lastrowid
+                
+                for q in ai_questions:
+                    options = q.get("options", [])
+                    correct_idx = q.get("correct", 0)
+                    q_text = q.get("question", "")
+                    explanation = q.get("explanation", f"The correct answer is option {correct_idx + 1}.")
+                    
+                    cursor.execute(
+                        "INSERT INTO questions (quiz_id, question_text, options, correct_answer, explanation, pre_message) VALUES (?, ?, ?, ?, ?, ?)", 
+                        (new_quiz_id, q_text, json.dumps(options), correct_idx, explanation, "")
+                    )
+                conn.commit()
+                conn.close()
+
+                # 📤 ग्रुप में घोषणा पैनल भेजें और उसे पिन करें
+                init_text = (
+                    f"<blockquote>🤖 <b><ins>DAILY AUTOMATIC LIVE QUIZ</ins></b> 🚀</blockquote>\n\n"
+                    f"<blockquote>📚 <b>Topic:</b> {escape_markdown(selected_topic)}</blockquote>\n"
+                    f"<blockquote>📝 <b>Questions Count:</b> 10 Fresh AI Generated Questions</blockquote>\n"
+                    f"<blockquote>⏱ <b>Duration Limit:</b> 30s per question card</blockquote>\n"
+                    f"<blockquote>📉 <b>Negative Schema:</b> -0.25 per wrong response</blockquote>\n\n"
+                    f"🏁 <i>This quiz has been created natively by Gemini AI and will begin auto-running in {wait_before_start} seconds! Get ready!</i>"
+                )
+
                 old_panel_id = None
                 if SUPPORT_GROUP_ID in GROUP_GAMES:
                     old_panel_id = GROUP_GAMES[SUPPORT_GROUP_ID].get("setup_message_id")
 
+                sent_msg = await app.bot.send_message(chat_id=SUPPORT_GROUP_ID, text=init_text, parse_mode="HTML")
                 try:
-                    logging.info(f"📨 Autorun {autorun_id}: posting quiz panel in support group {SUPPORT_GROUP_ID}")
-                    sent = await app.bot.send_message(
-                        chat_id=SUPPORT_GROUP_ID,
-                        text=init_text,
-                        parse_mode="HTML"
-                    )
-                    
-                    # best-effort pin
-                    try:
-                        if sent and hasattr(sent, "message_id"):
-                            await app.bot.pin_chat_message(
-                                chat_id=SUPPORT_GROUP_ID, 
-                                message_id=sent.message_id, 
-                                disable_notification=False
-                            )
-                            logging.info(f"📌 Autorun {autorun_id}: pinned quiz panel (msg_id={sent.message_id})")
-                    except Exception as e:
-                        logging.warning(f"Autorun {autorun_id}: pin failed (optional): {e}")
-                except Exception as e:
-                    logging.error(f"❌ Autorun {autorun_id}: failed to post panel: {e}")
-                    return
+                    await app.bot.pin_chat_message(chat_id=SUPPORT_GROUP_ID, message_id=sent_msg.message_id)
+                except Exception: pass
 
-                # Initialize game entry for this autorun post
+                # इन-मेमोरी गेम स्टेट को इनिशियलाइज़ करें
                 if SUPPORT_GROUP_ID not in GROUP_GAMES:
                     GROUP_GAMES[SUPPORT_GROUP_ID] = {}
                 
                 GROUP_GAMES[SUPPORT_GROUP_ID].update({
-                    "quiz_id": quiz_id,
-                    "setup_message_id": sent.message_id if sent else None,
-                    "setup_panel_text": init_text,
-                    "previous_panel_message_id": old_panel_id,
-                    "joined_users": {},
-                    "scores": {},
-                    "poll_map": {},
-                    "start_time": None,
-                    "user_answers": {},
-                    "question_start_times": {},
-                    "ready_users": set(),
-                    "quiz_started": False,
-                    "poll_message_ids": {},
-                    "is_private": False,
-                    "quiz_paused": False,
-                    "consecutive_no_answers": 0,
-                    "autorun_id": autorun_id,
-                    "start_lock": asyncio.Lock()
+                    "quiz_id": new_quiz_id, "setup_message_id": sent_msg.message_id, "setup_panel_text": init_text,
+                    "previous_panel_message_id": old_panel_id, "joined_users": {}, "scores": {}, "poll_map": {}, 
+                    "start_time": None, "user_answers": {}, "question_start_times": {}, "ready_users": set(), 
+                    "quiz_started": False, "poll_message_ids": {}, "is_private": False, "quiz_paused": False, 
+                    "consecutive_no_answers": 0, "autorun_id": autorun_id, "start_lock": asyncio.Lock()
                 })
-                logging.info(f"✅ Autorun {autorun_id}: quiz panel posted successfully (msg_id={getattr(sent, 'message_id', None)})")
 
-                # allow short join window
-                logging.info(f"⏳ Autorun {autorun_id}: waiting {wait_before_start}s for users to join...")
-                try:
-                    await asyncio.sleep(wait_before_start)
-                except asyncio.CancelledError:
-                    logging.info(f"Autorun worker {autorun_id} cancelled during wait_before_start")
-                    return
+                # ज्वाइन करने का टाइमर होल्ड (Delay Window)
+                await asyncio.sleep(wait_before_start)
 
-                # 🇮🇳 🔥 AUTORUN: FORCE START (बिना users के भी शुरू करो)
-                ready_count = len(GROUP_GAMES[SUPPORT_GROUP_ID].get("ready_users", set()))
-                joined_count = len(GROUP_GAMES[SUPPORT_GROUP_ID].get("joined_users", {}))
+                # बिना किसी बटन के सीधे लाइव पोल चालू (Force Start)
+                GROUP_GAMES[SUPPORT_GROUP_ID].update({"quiz_started": True, "current_q": 0})
                 
-                logging.info(f"🎯 Autorun {autorun_id}: auto-start time reached (ready={ready_count}, joined={joined_count})")
-                
-                # Notify about auto-start
-                if ready_count == 0 and joined_count == 0:
-                    try:
-                        await app.bot.send_message(
-                            chat_id=SUPPORT_GROUP_ID,
-                            text="<blockquote><b><tg-spoiler>🤖 Auto-starting quiz with 0 participants!</tg-spoiler></b></blockquote>\n\n"
-                                 "<blockquote><b><tg-spoiler>Users can still join and participate! ✅</tg-spoiler></b></blockquote>",
-                            parse_mode="HTML"
-                        )
-                        logging.info(f"Autorun {autorun_id}: sent 'starting with 0 participants' message")
-                    except Exception as e:
-                        logging.warning(f"Autorun {autorun_id}: could not send auto-start message: {e}")
-                else:
-                    try:
-                        await app.bot.send_message(
-                            chat_id=SUPPORT_GROUP_ID,
-                            text=f"<blockquote><b><tg-spoiler>🎯 Starting quiz now with {joined_count} participant(s)!</tg-spoiler></blockquote></b>\n\n"
-                                 f"<blockquote><b><tg-spoiler>👥 Ready: {ready_count} | Total Joined: {joined_count}</tg-spoiler></blockquote></b>",
-                            parse_mode="HTML"
-                        )
-                        logging.info(f"Autorun {autorun_id}: sent 'starting with participants' message")
-                    except Exception as e:
-                        logging.warning(f"Autorun {autorun_id}: could not send start message: {e}")
+                if old_panel_id:
+                    try: await app.bot.unpin_chat_message(chat_id=SUPPORT_GROUP_ID, message_id=old_panel_id)
+                    except Exception: pass
 
-                # Mark started and spawn question sender (FORCE START - बिना condition के)
-                GROUP_GAMES[SUPPORT_GROUP_ID].update({
-                    "quiz_started": True,
-                    "current_q": 0,
-                    "autorun_id": autorun_id
-                })
-                logging.info(f"✅ Autorun {autorun_id}: marked quiz_started=True, current_q=0")
-                
-                # unpin previous panel if exists
-                prev = old_panel_id
-                if prev and prev != GROUP_GAMES[SUPPORT_GROUP_ID].get("setup_message_id"):
-                    try:
-                        await app.bot.unpin_chat_message(chat_id=SUPPORT_GROUP_ID, message_id=prev)
-                        logging.info(f"Autorun {autorun_id}: unpinned old panel message {prev}")
-                    except Exception as e:
-                        logging.warning(f"Autorun {autorun_id}: could not unpin old panel: {e}")
-
-                # Create context object for send_next_group_poll
                 ctx = SimpleNamespace(bot=app.bot)
                 asyncio.create_task(send_next_group_poll(SUPPORT_GROUP_ID, ctx))
-                logging.info(f"🚀 Autorun {autorun_id}: FORCE-STARTED quiz {quiz_id} in support group (ready={ready_count}, joined={joined_count})")
 
-                # Wait until the quiz finishes (so we keep serial guarantee)
-                # 🔓 NO TIMEOUT - Quiz will take however long it needs!
-                try:
-                    while True:
-                        if SUPPORT_GROUP_ID not in GROUP_GAMES:
-                            logging.info(f"Autorun {autorun_id}: GROUP_GAMES entry removed; quiz likely finished")
-                            break
-                        if not GROUP_GAMES[SUPPORT_GROUP_ID].get("quiz_started"):
-                            logging.info(f"Autorun {autorun_id}: quiz_started flag false; quiz finished")
-                            break
-                        try:
-                            await asyncio.sleep(5)
-                        except asyncio.CancelledError:
-                            logging.info(f"Autorun worker {autorun_id} cancelled while waiting for quiz finish")
-                            return
-                            
-                except Exception as e:
-                    logging.error(f"Autorun {autorun_id}: error while waiting for quiz finish: {e}")
-                finally:
-                    pass
-
-                logging.info(f"✅ Autorun {autorun_id}: quiz completed, ready for next iteration")
+                # क्विज़ खत्म होने तक इस टास्क को होल्ड रखें (ताकि लॉक सुरक्षित रहे)
+                while SUPPORT_GROUP_ID in GROUP_GAMES and GROUP_GAMES[SUPPORT_GROUP_ID].get("quiz_started"):
+                    await asyncio.sleep(5)
 
             finally:
                 if acquired:
                     try:
                         AUTORUN_SERIAL_LOCK.release()
-                        logging.info(f"🔓 Autorun {autorun_id}: released serial lock")
-                    except RuntimeError:
-                        pass
+                        logging.info(f"🔓 Autorun {autorun_id}: Released serial lock constraint.")
+                    except RuntimeError: pass
 
-            # loop continues and recomputes next_run / waits for next iteration
-            logging.info(f"♻️ Autorun {autorun_id}: cycling back to wait loop")
-            
     except asyncio.CancelledError:
-        logging.info(f"🛑 Autorun worker {autorun_id} cancelled via task.cancel()")
-    except Exception as e:
-        logging.error(f"❌ Critical error in autorun_worker {autorun_id}: {e}", exc_info=True)
+        logging.info(f"🛑 Autorun background worker loop {autorun_id} canceled safely.")
+    except Exception as error:
+        logging.error(f"❌ Critical exception encountered in autorun runtime: {error}", exc_info=True)
         
 def schedule_autorun_task(app, autorun_id, quiz_id, interval_minutes, wait_before_start=10, min_players_required=1, force_start=False):
     if autorun_id in AUTORUN_TASKS and not AUTORUN_TASKS[autorun_id].done():
