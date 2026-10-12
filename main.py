@@ -4472,7 +4472,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
 
                 # 🧠 Gemini AI से 10 फ्रेश सवाल हिंदी भाषा में बनवाएं
                 ai_questions = await asyncio.to_thread(
-                    generate_bulk_questions_ai, selected_topic, 10, "Hindi", "Medium", 4
+                    generate_bulk_questions_ai, selected_topic, 50, "Hindi", "Medium", 4
                 )
 
                 if not ai_questions or len(ai_questions) == 0:
@@ -4484,7 +4484,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 cursor = conn.cursor()
                 cursor.execute(
                     "INSERT INTO quizzes (creator_id, title, description, timer, negative_value) VALUES (?, ?, ?, ?, ?)", 
-                    (OWNER_ID, f"Auto AI Quiz: {selected_topic}", f"Daily automated session focused on {selected_topic}.", 30, 0.25)
+                    (OWNER_ID, f"Auto AI Quiz: {selected_topic}", f"Daily automated session focused on {selected_topic}.", 15, 0.25)
                 )
                 new_quiz_id = cursor.lastrowid
                 
@@ -4505,8 +4505,8 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 init_text = (
                     f"<blockquote>🤖 <b><ins>DAILY AUTOMATIC LIVE QUIZ</ins></b> 🚀</blockquote>\n\n"
                     f"<blockquote>📚 <b>Topic:</b> {escape_markdown(selected_topic)}</blockquote>\n"
-                    f"<blockquote>📝 <b>Questions Count:</b> 10 Fresh AI Generated Questions</blockquote>\n"
-                    f"<blockquote>⏱ <b>Duration Limit:</b> 30s per question card</blockquote>\n"
+                    f"<blockquote>📝 <b>Questions Count:</b> 50 Fresh AI Generated Questions</blockquote>\n"
+                    f"<blockquote>⏱ <b>Duration Limit:</b> 15s per question card</blockquote>\n"
                     f"<blockquote>📉 <b>Negative Schema:</b> -0.25 per wrong response</blockquote>\n\n"
                     f"🏁 <i>This quiz has been created natively by Gemini AI and will begin auto-running in {wait_before_start} seconds! Get ready!</i>"
                 )
