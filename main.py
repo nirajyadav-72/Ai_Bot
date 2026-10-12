@@ -4421,45 +4421,63 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 auto_topics_pool = [
                     # 📰 Current Affairs & GK
                     # 📜 Ancient & Medieval History
-                    "Indus Valley Civilization", "Vedic Period History", "Buddhism and Jainism", "16 Mahajanapadas", 
-                    "Mauryan Empire", "Gupta Empire History", "Delhi Sultanate Dynasty", "Mughal Empire History", 
-                    "Maratha and Vijayanagara Empire", "Bhakti and Sufi Movement",
+                    "सिंधु घाटी सभ्यता", "वैदिक काल का इतिहास", "बौद्ध धर्म और जैन धर्म", "16 महाजनपद", 
+                    "मौर्य साम्राज्य", "गुप्त साम्राज्य का इतिहास", "दिल्ली सल्तनत राजवंश", "मुग़ल साम्राज्य का इतिहास", 
+                    "मराठा और विजयनगर साम्राज्य", "भक्ति और सूफी आंदोलन",
                     
                     # 🇮🇳 Modern & World History
-                    "Arrival of European Powers in India", "Revolt of 1857 Indian History", "Indian National Congress INC History", 
-                    "Mahatma Gandhi and Freedom Movements", "Indian Revolutionary Freedom Fighters", "Indian Independence and Partition 1947",
-                    "Industrial Revolution World History", "French and Russian Revolutions", "World War 1 and World War 2 History", "Cold War Era Geopolitics",
+                    "भारत में यूरोपीय शक्तियों का आगमन", "1857 का विद्रोह (भारतीय इतिहास)", "भारतीय राष्ट्रीय कांग्रेस (INC) का इतिहास", 
+                    "महात्मा गांधी और स्वतंत्रता आंदोलन", "भारत के क्रांतिकारी स्वतंत्रता सेनानी", "भारत की स्वतंत्रता और विभाजन 1947",
+                    "औद्योगिक क्रांति (विश्व इतिहास)", "फ्रांसीसी और रूसी क्रांतियाँ", "प्रथम विश्व युद्ध और द्वितीय विश्व युद्ध का इतिहास", "शीतयुद्ध काल की भू-राजनीति",
                     
                     # ✨ Polity (Constitutional Frameworks)
-                    "Making and Sources of Indian Constitution", "Preamble and Schedules of Indian Constitution", 
-                    "Union and its Territory and Citizenship", "Fundamental Rights of India", 
-                    "Directive Principles of State Policy and Fundamental Duties", "President Vice President and Prime Minister of India", 
-                    "Indian Parliament Lok Sabha and Rajya Sabha", "Supreme Court of India and Judicial Review", 
-                    "Governor Chief Minister and State Legislature", "High Court and Subordinate Courts in India", 
-                    "Panchayati Raj and Local Self Government", "Election Commission of India and Electoral Reforms", 
-                    "Constitutional and Non Constitutional Bodies CAG NITI Aayog", "Important Constitutional Amendments of India", 
-                    "Emergency Provisions in Indian Constitution",
+                    "भारतीय संविधान का निर्माण और उसके स्रोत", "भारतीय संविधान की प्रस्तावना और अनुसूचियाँ", 
+                    "संघ और उसका राज्य क्षेत्र तथा नागरिकता", "भारत के मौलिक अधिकार", 
+                    "राज्य के नीति निर्देशक तत्व और मौलिक कर्तव्य", "भारत के राष्ट्रपति, उपराष्ट्रपति और प्रधानमंत्री", 
+                    "भारतीय संसद (लोकसभा और राज्यसभा)", "भारत का सर्वोच्च न्यायालय और न्यायिक समीक्षा", 
+                    "राज्यपाल, मुख्यमंत्री और राज्य विधानमंडल", "भारत में उच्च न्यायालय और अधीनस्थ न्यायालय", 
+                    "पंचायती राज और स्थानीय स्वशासन", "भारत का निर्वाचन आयोग और चुनावी सुधार", 
+                    "संवैधानिक और गैर-संवैधानिक निकाय CAG NITI Aayog", "भारत के महत्वपूर्ण संविधान संशोधन", 
+                    "भारतीय संविधान में आपातकालीन प्रावधान",
                     
                     # 🌍 Geography (Indian & Global Ecosystems)
-                    "Physical Features of India", "Indian Rivers and Drainage System", "Indian Climate and Soil Types", 
-                    "Natural Vegetation and National Parks of India", "Agriculture and Irrigation in India", 
-                    "Major Dams and River Valley Projects in India", "Minerals and Energy Resources of India", 
-                    "Industries Transport and Ports in India", "Indian Census and Tribes", 
-                    "Continents Mountains and Deserts of the World", "World Rivers Lakes and Waterfalls", 
-                    "Important Straits and Canals of the World", "Solar System Latitudes and Longitudes", 
-                    "Interior of Earth Volcanoes and Earthquakes", "Atmosphere Structure Winds and Cyclones", "Ocean Currents and Tides",
+                    "भारत के भौतिक लक्षण", "भारत की नदियाँ और अपवाह तंत्र", "भारत की जलवायु और मिट्टी के प्रकार", 
+                    "भारत की प्राकृतिक वनस्पति और राष्ट्रीय उद्यान", "भारत में कृषि और सिंचाई", 
+                    "भारत के प्रमुख बांध और नदी घाटी परियोजनाएँ", "भारत के खनिज और ऊर्जा संसाधन", 
+                    "भारत में उद्योग, परिवहन और बंदरगाह", "भारत की जनगणना और जनजातियाँ", 
+                    "विश्व के महाद्वीप, पर्वत और मरुस्थल", "विश्व की नदियाँ, झीलें और जलप्रपात", 
+                    "विश्व के प्रमुख जलडमरू मध्य और नहरें", "सौर मंडल, अक्षांश और देशांतर रेखाएँ", 
+                    "पृथ्वी की आंतरिक संरचना, ज्वालामुखी और भूकंप", "वायुमंडल की संरचना, पवनें और चक्रवात", "महासागरीय धाराएँ और ज्वार-भाटा",
                     
                     # 🧬 General Science (Physics, Chemistry, Biology)
-                    "Cell Structure and Functions Biology", "Human Anatomy and Body Systems", "Human Nutrition Vitamins and Diseases", 
-                    "Plant Anatomy Physiology and Kingdom", "Genetics and Biological Evolution", 
-                    "Matter States and Atomic Structure Chemistry", "Periodic Table and Elements Properties", 
-                    "Acids Bases Salts and pH Scale", "Metals NonMetals and Alloys Chemistry", "Organic Chemistry Carbon and Fuels",
-                    "Units Measurements Motion and Force Physics", "Work Energy and Power Physics", 
-                    "Light Optics Sound and Waves Physics", "Electricity and Magnetism Physics", "Modern Physics Nuclear Energy and Space",
+                    "कोशिका की संरचना और कार्य (जीव विज्ञान)", "मानव शरीर की शारीरिक रचना और तंत्र", "मानव पोषण, विटामिन और रोग", 
+                    "पादप की शारीरिक रचना, कार्यिकी और पादप जगत", "आनुवंशिकी और जैविक विकास", 
+                    "पदार्थ की अवस्थाएँ और परमाणु संरचना (रसायन विज्ञान)", "आवर्त सारणी और तत्वों के गुणधर्म", 
+                    "अम्ल, क्षार, लवण और pH पैमाना", "धातु, अधतु और मिश्र धातु (रसायन विज्ञान)", "कार्बनिक रसायन, कार्बन और ईंधन",
+                    "मात्रक, मापन, गति और बल (भौतिक विज्ञान)", "कार्य, ऊर्जा और शक्ति (भौतिक विज्ञान)", 
+                    "प्रकाश, प्रकाशिकी, ध्वनि और तरंगें (भौतिक विज्ञान)", "विद्युत और चुंबकत्व (भौतिक विज्ञान)", "आधुनिक भौतिकी, परमाणु ऊर्जा और अंतरिक्ष",
                     
                     # 🤖 Languages & Grammar (English & Hindi)
-                    "Hindi Grammar Varnamala and Sandhi", "Hindi Grammar Sangya Sarvnam Kriya Avyay", "Hindi Grammar Samas Upsarg Pratyay", 
-                    "Hindi Vocabulary Vilom Paryayvachi", "Hindi Grammar Ling Vachan Karak Kaal", "Hindi Muhavare Lokoktiyan Ras Chhand Alankar"
+                    "हिंदी व्याकरण: वर्णमाला और संधि", "हिंदी व्याकरण: संज्ञा, सर्वनाम, क्रिया और अव्यय", "हिंदी व्याकरण: समास, उपसर्ग और प्रत्यय", 
+                    "हिंदी शब्दावली: विलोम और पर्यायवाची शब्द", "हिंदी व्याकरण: लिंग, वचन, कारक और काल", "हिंदी मुहावरे, लोकोक्तियाँ, रस, छंद और अलंकार",
+                    "हिंदी व्याकरण: तद्भव-तत्सम और देशज-विदेशज शब्द", "हिंदी व्याकरण: अनेक शब्दों के लिए एक शब्द / वाक्यांश",
+                    "हिंदी व्याकरण: वाक्य शुद्धि और वर्तनी शुद्धि", "हिंदी व्याकरण: विराम चिह्न और उनके प्रयोग",
+                    "हिंदी शब्दावली: अनेकार्थक और श्रुतिसम भिन्नार्थक शब्द", "हिंदी साहित्य: प्रमुख कवि, लेखक और उनकी रचनाएँ",
+                    "हिंदी भाषा: अपठित गद्यांश और प्रश्नोत्तर", "हिंदी भाषा: पत्र लेखन और पारिभाषिक शब्दावली",
+
+                    # 🔢 Quantitative Aptitude (Mathematics)
+                    "संख्या पद्धति और सरलीकरण", "समीकरण, एलसीएम और एचसीएफ", "प्रतिशत और लाभ-हानि", 
+                    "साधारण और चक्रवृद्घि ब्याज", "अनुपात, समानुपात और साझेदारी", "औसत, आयु और मिश्रण", 
+                    "समय, कार्य और मजदूरी", "नल और टंकी", "समय, चाल और दूरी", 
+                    "नाव और धारा, रेलगाड़ी आधारित प्रश्न", "क्षेत्रमिति: 2D और 3D आकृतियाँ", "क्रमचय, संचय और प्रायिकता", 
+                    "बीजगणित, ज्यामिति और त्रिकोणमिति", "आँकड़ों का विश्लेषण (DI): ग्राफ और तालिकाएँ",
+
+                    # 🧠 Logical Reasoning (Verbal & Non-Verbal)
+                    "सादृश्यता और वर्गीकरण", "वर्णमाला और कोडिंग-डिकोडिंग", "रक्त संबंध (Blood Relations)", 
+                    "दिशा और दूरी का ज्ञान", "क्रम और बैठने की व्यवस्था (Ranking Seating)", "पहेली (Puzzle Test)", 
+                    "न्याय वाक्य (Syllogism)", "कथन-निष्कर्ष, तर्क और पूर्वधारणाएँ", "पासा और घन (Dice Cube)", 
+                    "घड़ी और कैलेंडर", "लुप्त संख्या और पद ज्ञात करना", "गणितीय संक्रियाएँ", 
+                    "अशाब्दिक तर्कशक्ति: दर्पण, जल प्रतिबिंब और कागज़ मोड़ना", "आकृतियों की गिनती और श्रृंखला"
                 ]
                 
                 selected_topic = random.choice(auto_topics_pool)
