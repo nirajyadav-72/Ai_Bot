@@ -4420,8 +4420,6 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 # ====================================================================
                 auto_topics_pool = [
                     # 📰 Current Affairs & GK
-                    "Current Affairs 2026", "International Current Affairs", "Sports and Awards 2026", "Static General Knowledge",
-                    
                     # 📜 Ancient & Medieval History
                     "Indus Valley Civilization", "Vedic Period History", "Buddhism and Jainism", "16 Mahajanapadas", 
                     "Mauryan Empire", "Gupta Empire History", "Delhi Sultanate Dynasty", "Mughal Empire History", 
@@ -4461,10 +4459,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                     
                     # 🤖 Languages & Grammar (English & Hindi)
                     "Hindi Grammar Varnamala and Sandhi", "Hindi Grammar Sangya Sarvnam Kriya Avyay", "Hindi Grammar Samas Upsarg Pratyay", 
-                    "Hindi Vocabulary Vilom Paryayvachi", "Hindi Grammar Ling Vachan Karak Kaal", "Hindi Muhavare Lokoktiyan Ras Chhand Alankar",
-                    "English Grammar Parts of Speech", "English Grammar Tenses and Sentence Structure", "English Grammar Active and Passive Voice", 
-                    "English Grammar Direct and Indirect Narration", "English Grammar Subject Verb Agreement Errors", 
-                    "English Vocabulary Synonyms Antonyms One Word Substitution", "English Grammar Prepositions and Articles"
+                    "Hindi Vocabulary Vilom Paryayvachi", "Hindi Grammar Ling Vachan Karak Kaal", "Hindi Muhavare Lokoktiyan Ras Chhand Alankar"
                 ]
                 
                 selected_topic = random.choice(auto_topics_pool)
