@@ -1003,9 +1003,16 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     msg_target = query.message
 
-    # 🚀 पहला पैनल: हमेशा दिखेगा
+    # 🚀 Step 1: 10% Minimalist Design
     generating_msg = await query.edit_message_text(
-        text="<b>🚀 AI Quiz Generator</b>\n\n⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜\n🔎 Researching your topic...\n⏳ please wait...",
+        text=(
+            "<b>┌────────────────────────┐</b>\n"
+            "<b>🤖 AI AUTOMATION ENGINE</b>\n"
+            "<b>└────────────────────────┘</b>\n\n"
+            "<code>[█░░░░░░░░░] 10%</code>\n\n"
+            "📡 <b>Status:</b> <i>Researching topic dataset...</i>\n"
+            "⚡ <b>Please hold while we process the cloud request.</b>"
+        ),
         parse_mode="HTML",
         reply_markup=None
     )
@@ -1016,45 +1023,71 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ))
         
         try:
-            # 🟢 पहला एनिमेशन: 3 सेकंड का अनिवार्य वेट
+            # 🟢 Step 2: 40%
             await asyncio.sleep(4)
             await generating_msg.edit_text(
-                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜\n🧠 Crafting questions...\n⏳ please wait...",
+                text=(
+                    "<b>┌────────────────────────┐</b>\n"
+                    "<b>🤖 AI AUTOMATION ENGINE</b>\n"
+                    "<b>└────────────────────────┘</b>\n\n"
+                    "<code>[████░░░░░░] 40%</code>\n\n"
+                    "🧠 <b>Status:</b> <i>Crafting high-quality questions...</i>\n"
+                    "⚡ <b>Applying difficulty benchmarks.</b>"
+                ),
                 parse_mode="HTML"
             )
                 
-            # 🟢 दूसरा एनिमेशन: अगला 4 सेकंड का अनिवार्य वेट
+            # 🟢 Step 3: 70%
             await asyncio.sleep(4)
             await generating_msg.edit_text(
-                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜\n✍️ Writing options...\n⏳ please wait...",
+                text=(
+                    "<b>┌────────────────────────┐</b>\n"
+                    "<b>🤖 AI AUTOMATION ENGINE</b>\n"
+                    "<b>└────────────────────────┘</b>\n\n"
+                    "<code>[███████░░░] 70%</code>\n\n"
+                    "✍️ <b>Status:</b> <i>Structuring multiple-choice options...</i>\n"
+                    "⚡ <b>Injecting dynamic vectors.</b>"
+                ),
                 parse_mode="HTML"
             )
                 
-            # 🟢 तीसरा एनिमेशन बदलाव: अगला 4 सेकंड का अनिवार्य वेट (कंडीशन हटा दी गई है, यह भी हर हाल में दिखेगा)
+            # 🟢 Step 4: 95%
             await asyncio.sleep(4)
             await generating_msg.edit_text(
-                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜\n📟 Verifying answers...\n⏳ please wait...",
+                text=(
+                    "<b>┌────────────────────────┐</b>\n"
+                    "<b>🤖 AI AUTOMATION ENGINE</b>\n"
+                    "<b>└────────────────────────┘</b>\n\n"
+                    "<code>[█████████░] 95%</code>\n\n"
+                    "📟 <b>Status:</b> <i>Verifying answer key & integrity...</i>\n"
+                    "⚡ <b>Finalizing payload encryption.</b>"
+                ),
                 parse_mode="HTML"
             )
         except Exception as msg_err:
             logging.warning(f"Animation message sequence alert: {msg_err}")
 
-        # 🔥 मुख्य बदलाव: तीनों एनिमेशन दिखने के बाद बोट यहाँ आकर AI टास्क के खत्म होने का इंतज़ार करेगा। 
-        # अगर AI को 11 सेकंड से ज़्यादा का समय लग रहा है, तो स्क्रीन इसी तीसरे एनिमेशन पर रुकी रहेगी।
         ai_questions = await task
         
         if ai_questions is None or len(ai_questions) == 0:
             await generating_msg.edit_text(
-                "❌ <b>AI Quiz Generator Error</b>\n\nServer par heavy load ya error ke karan quiz generate nahi ho paya. Kripya thodi der baad fir se koshish karein.",
+                "❌ <b>CORE ENGINE ERROR</b>\n\nUnable to establish stable AI stream due to heavy query load. Please re-initiate the command shortly.",
                 parse_mode="HTML"
             )
             context.user_data.clear()
             return ConversationHandler.END
             
         try:
+            # ✅ Success: 100%
             await generating_msg.edit_text(
-                "<b>🚀 AI Quiz Generator</b>\n\nVerified Answer's ✅\n"
-                "💯 Done generated...\n\n🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩",
+                text=(
+                    "<b>┌────────────────────────┐</b>\n"
+                    "<b>🤖 AI AUTOMATION ENGINE</b>\n"
+                    "<b>└────────────────────────┘</b>\n\n"
+                    "<code>[██████████] 100%</code>\n\n"
+                    "✨ <b>Process Complete:</b> <code>SUCCESS</code>\n"
+                    "📦 <b>Quiz generation verified and compiled.</b>"
+                ),
                 parse_mode="HTML"
             )
             await asyncio.sleep(3)
@@ -1082,7 +1115,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         actual_count = len(formatted_questions)
         alert_text = ""
         if actual_count < count:
-            alert_text = f"\n\n⚠️ <b>नोट:</b> आपने {count} सवाल माँगे थे, लेकिन AI ने कुल <b>{actual_count}</b> सवाल ही जनरेट किए हैं।"
+            alert_text = f"\n\n⚠️ <b>System Alert:</b> Requested <code>{count}</code> slots, but AI engine generated <code>{actual_count}</code> items."
         
         context.user_data["ai_questions"] = formatted_questions
         context.user_data["quiz_build"] = {
@@ -1093,14 +1126,14 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         context.user_data["quiz_build_creator_id"] = query.from_user.id
         
         neg_keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("❌ No Negative (0.0)", callback_data="neg_0.0"), InlineKeyboardButton("📉 1/4th (-0.25)", callback_data="neg_0.25")],
-            [InlineKeyboardButton("📉 Half (-0.5)", callback_data="neg_0.5"), InlineKeyboardButton("📉 Single (-1.0)", callback_data="neg_1.0")],
-            [InlineKeyboardButton("📉 Heavy (-1.5)", callback_data="neg_1.5")]
+            [InlineKeyboardButton("❌ Disabled (0.0)", callback_data="neg_0.0"), InlineKeyboardButton("📉 Standard (-0.25)", callback_data="neg_0.25")],
+            [InlineKeyboardButton("📉 Moderate (-0.5)", callback_data="neg_0.5"), InlineKeyboardButton("📉 Competitive (-1.0)", callback_data="neg_1.0")],
+            [InlineKeyboardButton("📉 Extreme (-1.5)", callback_data="neg_1.5")]
         ])
         
         await msg_target.chat.send_message(
-            f"<blockquote>🛅 <b>Select Negative Marking Schema:</b>{alert_text}</blockquote>\n\n"
-            "<blockquote>Aap is quiz ke liye kitni negative marking set karna chahte hain?</blockquote>",
+            f"<blockquote>📊 <b>Configure Negative Marking Schema</b>{alert_text}</blockquote>\n\n"
+            "Please select the preferred evaluation penalty rule for incorrect responses from the console options below:",
             reply_markup=neg_keyboard,
             parse_mode="HTML"
         )
@@ -1111,11 +1144,11 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         
         if "429" in str(e) or "too_many_requests" in str(e):
             await msg_target.chat.send_message(
-                "⚠️ <b>आज का फ्री लिमिट कोटा समाप्त हो चुका है!</b>\n\nAI मॉडल की प्रतिदिन की सीमा (20 रिक्वेस्ट) पूरी हो गई है। कृपया कुछ समय बाद या कल दोबारा प्रयास करें।", 
+                "⚠️ <b>Daily Data Quota Exhausted</b>\n\nThe system has reached its maximum daily transaction capacity (20 limits). Service will resume in the next cycle.", 
                 parse_mode="HTML"
             )
         else:
-            await msg_target.chat.send_message("aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare", parse_mode="HTML")
+            await msg_target.chat.send_message("❌ <b>Session Terminated:</b> System runtime exception encountered. Please restart the interface.", parse_mode="HTML")
             
         context.user_data.clear()
         return ConversationHandler.END
