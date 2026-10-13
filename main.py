@@ -1249,7 +1249,7 @@ async def global_continuous_polling_worker(app: Application):
     Har 30 minutes me database se ek question uthakar sabhi registered 
     groups aur private chats me automated quiz poll send karta hai.
     Question HAMESHA normal text me jayega.
-    Options agar limits ke andar hain toh pure poll me jayenge, varna dynamic short layout use hoga.
+    Poll me koi timer nahi hoga, users ise kabhi bhi attend kar sakenge.
     """
     global POLLING_LOOP_ACTIVE
     logging.info("Background Global Continuous Polling Worker started.")
@@ -1323,7 +1323,7 @@ async def global_continuous_polling_worker(app: Application):
                     for i, opt in enumerate(options):
                         text_message_payload += f" {i+1}. {opt}\n"
                         
-                    poll_question = "👇 ऊपर दिए गए प्रश्न ka sahi uttar chunein:"
+                    poll_question = "👇 ऊपर दिए गए प्रश्न का सही उत्तर चुनें:"
                     poll_options = [f"Option {i+1}" for i in range(len(options))]
                 else:
                     # Options limit ke andar hain, toh text me sirf question jayega aur options pure poll card me
@@ -1347,7 +1347,7 @@ async def global_continuous_polling_worker(app: Application):
                         # Chhota sa pause proper arrangement ke liye
                         await asyncio.sleep(0.5)
                         
-                        # Step B: Uske theek niche functional poll card attach hoga
+                        # Step B: Uske theek niche functional poll card attach hoga (Bina open_period parameter ke)
                         await app.bot.send_poll(
                             chat_id=target_chat,
                             question=poll_question,
@@ -1355,8 +1355,7 @@ async def global_continuous_polling_worker(app: Application):
                             type="quiz",
                             correct_option_id=correct_idx,
                             explanation=clean_expl,
-                            is_anonymous=False,
-                            open_period=45 # 45 seconds ticket lifetime window
+                            is_anonymous=False
                         )
                         await asyncio.sleep(0.3) # API flood protection delay
                     except Exception as chat_err:
@@ -1374,8 +1373,8 @@ async def global_continuous_polling_worker(app: Application):
         except Exception as e:
             logging.error(f"Error inside global continuous polling worker loop: {e}", exc_info=True)
             
-        # ⏱️ 30 Minutes interval timer (30 * 60 = 1800 seconds)
-        await asyncio.sleep(1800)
+        # ⏱️ 10 Minutes interval timer (10 * 60 = 600 seconds)
+        await asyncio.sleep(600)
 
 async def start_global_polling_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Owner-only command to resume background global 30-min polling"""
