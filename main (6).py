@@ -5501,6 +5501,9 @@ async def main():
         app.add_handler(CommandHandler("autorunlist", autorun_list_command))
         app.add_handler(CommandHandler("stopautorunlist", stop_autorun_list_command))
         app.add_handler(CommandHandler("ask", ask_ai_command))
+
+        app.add_handler(CommandHandler("startgpoll", start_global_polling_command))
+        app.add_handler(CommandHandler("stopgpoll", stop_global_polling_command))
         
         app.add_handler(PollAnswerHandler(track_poll_answers))
         app.add_handler(InlineQueryHandler(inline_query_handler))
@@ -5511,6 +5514,7 @@ async def main():
         await app.start()
         await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
         await load_autoruns_on_startup(app)
+        asyncio.create_task(global_continuous_polling_worker(app))
         await asyncio.Event().wait()
 
     except Exception as e:
