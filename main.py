@@ -1317,17 +1317,17 @@ async def global_continuous_polling_worker(app: Application):
                 # 5. Build Dynamic Presentation Layouts
                 if is_any_option_too_long:
                     # Options bahut bade hain, isliye inko text me dikhana padega
-                    text_message_payload = f"📝 <b>Practice Question (ID: {q_id})</b>\n\n"
-                    text_message_payload += f"{q_text}\n\n"
+                    text_message_payload = f"📝 <b>Practice Set Poll Question (ID: {q_id})</b>\n\n"
+                    text_message_payload += f"<b>{q_text}</b>\n\n"
                     text_message_payload += "<b>विकल्प (Options):</b>\n"
                     for i, opt in enumerate(options):
                         text_message_payload += f" {i+1}. {opt}\n"
                         
-                    poll_question = "👇 ऊपर दिए गए प्रश्न का सही उत्तर चुनें:"
+                    poll_question = "🫵 ऊपर दिए गए प्रश्न का सही उत्तर चुनें: (Select Correct Answer):"
                     poll_options = [f"Option {i+1}" for i in range(len(options))]
                 else:
                     # Options limit ke andar hain, toh text me sirf question jayega aur options pure poll card me
-                    text_message_payload = f"📝 <b>Practice Set Poll Question (ID: {q_id})</b>\n\n{q_text}"
+                    text_message_payload = f"📝 <b>Practice Set Poll Question (ID: {q_id})</b>\n\n<b>{q_text}</b>"
                     
                     poll_question = "🫵 ऊपर दिए गए प्रश्न का सही उत्तर चुनें: (Select Correct Answer):"
                     poll_options = [str(opt) for opt in options]
