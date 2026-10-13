@@ -1262,7 +1262,138 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("❌ Quiz setup processing setup abandoned.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
-    
+
+async def picques_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """AI खुद प्रश्न सोचेगा, उसकी पूरी इमेज (डिजाइन + टेक्स्ट) जनरेट करेगा और पोल के साथ सपोर्ट ग्रुप में भेजेगा"""
+    try:
+        message = update.message
+        if not message:
+            return
+
+        # 🔒 सुरक्षा और कॉन्फ़िगरेशन की जाँच
+        if not is_authorized(update):
+            await message.reply_text("❌ <b>Sorry!</b> Yah command keval authorized users hi use kar sakte hain.", parse_mode="HTML")
+            return
+
+        if not SUPPORT_GROUP_ID:
+            await message.reply_text("❌ <b>Configuration Error:</b> SUPPORT_GROUP_ID is not configured in .env", parse_mode="HTML")
+            return
+
+        if not ai_client:
+            await message.reply_text("❌ <b>AI Client Error:</b> Gemini API client initialized nahi hai.", parse_mode="HTML")
+            return
+
+        # यदि यूज़र ने कोई टॉपिक नहीं लिखा, तो डिफ़ॉल्ट रूप से General Knowledge पर सवाल बनेगा
+        topic = "General Knowledge and Current Affairs"
+        if context.args:
+            topic = " ".join(context.args)
+
+        processing_msg = await message.reply_text(f"🤖 <b>Gemini AI '{topic}' पर प्रश्न और उसकी इमेज डिज़ाइन कर रहा है... इसमें 10-15 सेकंड लग सकते हैं।</b>", parse_mode="HTML")
+
+        # 🇮🇳 लाइव डेट-टाइम कॉन्टेक्स्ट
+        now_ist = datetime.now(tz=IST)
+        current_date_str = now_ist.strftime("%B %Y")
+
+        # 📝 स्टेप 1: Gemini Text Model से पहले एक परफेक्ट प्रश्न और उसका सही उत्तर (JSON) मंगाना
+        text_prompt = f"""Generate exactly 1 high-quality, exam-level multiple choice question about "{topic}".
+Current Evaluation Date Context: {current_date_str}
+
+Return ONLY a valid JSON object (no markdown, no extra text):
+{{
+  "question_text": "Write the quiz question here clearly in Hindi and English combined...",
+  "option_A": "Option A text",
+  "option_B": "Option B text",
+  "option_C": "Option C text",
+  "option_D": "Option D text",
+  "correct_index": 0,
+  "explanation": "Short explanation in Hindi"
+}}
+
+CRITICAL RULES:
+1. "correct_index" MUST be a 0-based index (0=A, 1=B, 2=C, 3=D).
+2. Keep the text professional and direct.
+3. Return ONLY JSON."""
+
+        text_response = await asyncio.to_thread(
+            ai_client.interactions.create,
+            model='gemini-3.5-flash-lite',
+            input=text_prompt,
+        )
+
+        if not text_response or not text_response.output_text:
+            await processing_msg.edit_text("⚠️ AI ने कोई सवाल जनरेट नहीं किया। कृपया दोबारा प्रयास करें।")
+            return
+
+        clean_text = text_response.output_text.strip().replace("```json", "").replace("```", "").strip()
+        match = re.search(r'\{.*\}', clean_text, re.DOTALL)
+        if match:
+            clean_text = match.group(0)
+
+        data = json.loads(clean_text)
+        
+        q_text = data.get("question_text", "")
+        opt_A = data.get("option_A", "")
+        opt_B = data.get("option_B", "")
+        opt_C = data.get("option_C", "")
+        opt_D = data.get("option_D", "")
+        correct_idx = int(data.get("correct_index", 0))
+        explanation = data.get("explanation", "")
+
+        await processing_msg.edit_text("🎨 <b>प्रश्न तैयार है! अब AI इसकी पूरी ग्राफिक इमेज (Text-embedded Banner) डिज़ाइन कर रहा है...</b>", parse_mode="HTML")
+
+        # 🖼️ स्टेप 2: Imagen Model को इमेज में टेक्स्ट लिखने के लिए निर्देश (Prompt) देना
+        # हम प्रॉम्प्ट में स्पष्ट कह रहे हैं कि इमेज के अंदर ही प्रश्न और चारों ऑप्शंस लिखे होने चाहिए।
+        image_prompt = f"""A premium educational quiz banner template with a dark sci-fi neon background. 
+At the top, it must have the big bold text: "QUESTION OF THE DAY".
+In the center, write this exact question text in bright green color: "{q_text}".
+Below the question, list these four options clearly in bright yellow color:
+A. {opt_A}
+B. {opt_B}
+C. {opt_C}
+D. {opt_D}
+The layout must be ultra-clean, modern, highly readable, with high-contrast text typography, professional digital gaming hud borders, and no spelling mistakes in the rendered text."""
+
+        # Imagen-3.0 मॉडल से पूरी इमेज जनरेट करवाना
+        image_result = await asyncio.to_thread(
+            ai_client.models.generate_images,
+            model='imagen-3.0-generate-002',
+            prompt=image_prompt,
+            config=dict(number_of_images=1, output_mime_type="image/jpeg", aspect_ratio="16:9")
+        )
+
+        if not image_result or not image_result.generated_images:
+            await processing_msg.edit_text("⚠️ AI इमेज जनरेट करने में असमर्थ रहा। कृपया दोबारा प्रयास करें।")
+            return
+
+        # इमेज बाइट्स को निकालना
+        generated_image_bytes = image_result.generated_images[0].image.image_bytes
+
+        # 📤 स्टेप 3: जनरेट की गई पूरी इमेज को सपोर्ट ग्रुप में भेजना
+        await context.bot.send_photo(
+            chat_id=SUPPORT_GROUP_ID,
+            photo=generated_image_bytes,
+            caption=f"🏆 <b>Question of the Day</b>\n📚 <b>Topic:</b> {html_escape(topic)}\n📖 <b>Explanation:</b> {html_escape(explanation)}",
+            parse_mode="HTML"
+        )
+
+        # 📊 स्टेप 4: उसी सपोर्ट ग्रुप में यूज़र्स के वोट करने के लिए लाइव पोल भेजना
+        poll_options = ["Option A", "Option B", "Option C", "Option D"]
+        await context.bot.send_poll(
+            chat_id=SUPPORT_GROUP_ID,
+            question="🎯 ऊपर दी गई AI निर्मित इमेज को देखकर सही उत्तर चुनें:",
+            options=poll_options,
+            type="quiz",
+            correct_option_id=correct_idx,
+            is_anonymous=False
+        )
+
+        await processing_msg.edit_text("✅ <b>AI ने खुद पूरी इमेज और पोल डिज़ाइन करके सपोर्ट ग्रुप में भेज दिया है!</b>", parse_mode="HTML")
+
+    except Exception as e:
+        logging.error(f"Critical error in picques_command: {e}", exc_info=True)
+        if 'processing_msg' in locals():
+            await processing_msg.edit_text(f"❌ प्रोसेस पूरा करने में एरर आया: {html_escape(str(e))}")
+
 async def repeat_ready_button_color_worker(chat_id: int, message_id: int, quiz_id: int, context: ContextTypes.DEFAULT_TYPE):
     """बटन का रंग बदलता है और बाहरी फ़ोर्स क्लोज़ (Cancel) को सुरक्षित रूप से स्वीकार करता है।"""
     styles = ["primary", "success"]
