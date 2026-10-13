@@ -99,6 +99,7 @@ GROUP_GAMES = {}
 # In-memory map for autorun asyncio tasks: key = autorun_id, value = asyncio.Task
 AUTORUN_TASKS = {}
 AUTORUN_LIST_TASK = None
+POLLING_LOOP_ACTIVE = True
 # Global autorun serial lock — ensures autoruns run one-by-one in SUPPORT_GROUP_ID
 AUTORUN_SERIAL_LOCK = asyncio.Lock()
 # ====================================================================
@@ -169,6 +170,9 @@ def init_db():
                 created_at TEXT DEFAULT (datetime('now'))
             )
         """)
+        # 🆕 Tracking table for global continuous sequential polling
+        cursor.execute("CREATE TABLE IF NOT EXISTS polling_state (key TEXT PRIMARY KEY, last_question_id INTEGER DEFAULT 0)")
+        cursor.execute("INSERT OR IGNORE INTO polling_state (key, last_question_id) VALUES ('global_loop', 0)")
         conn.commit()
 
         # Ensure older DBs get the schedule_time column if missing
