@@ -1243,7 +1243,166 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("❌ Quiz setup processing setup abandoned.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
+
+async def global_continuous_polling_worker(app: Application):
+    """
+    Har 30 minutes me database se ek question uthakar sabhi registered 
+    groups aur private chats me automated quiz poll send karta hai.
+    Question HAMESHA normal text me jayega.
+    Options agar limits ke andar hain toh pure poll me jayenge, varna dynamic short layout use hoga.
+    """
+    global POLLING_LOOP_ACTIVE
+    logging.info("Background Global Continuous Polling Worker started.")
+    await asyncio.sleep(10) # Initial startup buffer delay
     
+    while True:
+        try:
+            # Agar owner ne loop ko stop kiya hai, toh ye 10-10 second ruk kar check karega
+            if not POLLING_LOOP_ACTIVE:
+                await asyncio.sleep(10)
+                continue
+
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            
+            # 1. Last sent question ID status read karein
+            cursor.execute("SELECT last_question_id FROM polling_state WHERE key = 'global_loop'")
+            state_row = cursor.fetchone()
+            last_qid = state_row[0] if state_row else 0
+            
+            # 2. Next question fetch karein jo list me sequential ho
+            cursor.execute(
+                "SELECT id, question_text, options, correct_answer, explanation FROM questions WHERE id > ? ORDER BY id ASC LIMIT 1", 
+                (last_qid,)
+            )
+            q_row = cursor.fetchone()
+            
+            # Agar last question tak pahunch gaye ho, toh loop zero se restart karein
+            if not q_row:
+                cursor.execute("SELECT id, question_text, options, correct_answer, explanation FROM questions ORDER BY id ASC LIMIT 1")
+                q_row = cursor.fetchone()
+            
+            if q_row:
+                q_id, q_text, options_json, correct_ans, explanation = q_row
+                options = json.loads(options_json)
+                
+                # Correct index integer verification
+                try:
+                    correct_idx = int(correct_ans)
+                except (ValueError, TypeError):
+                    try:
+                        correct_idx = options.index(str(correct_ans))
+                    except ValueError:
+                        correct_idx = 0
+                
+                if correct_idx < 0 or correct_idx >= len(options):
+                    correct_idx = 0
+                
+                # 3. Target broadcast chats pull karein database se
+                cursor.execute("SELECT chat_id FROM broadcast_groups")
+                groups = cursor.fetchall()
+                
+                cursor.execute("SELECT chat_id FROM broadcast_users")
+                users = cursor.fetchall()
+                
+                all_target_chats = list(set([r[0] for r in groups] + [r[0] for r in users]))
+                logging.info(f"Global Poll: Broadcasting Question ID {q_id} to {len(all_target_chats)} chats.")
+                
+                # 4. SMART OPTIONS CHARACTER LIMIT CHECK (Telegram limit is 100 chars per option)
+                is_any_option_too_long = any(len(str(opt)) > 100 for opt in options)
+                
+                # Explanation validation (Max 200 chars allowed by Telegram)
+                clean_expl = explanation.strip() if explanation and len(explanation.strip()) <= 200 else None
+                
+                # 5. Build Dynamic Presentation Layouts
+                if is_any_option_too_long:
+                    # Options bahut bade hain, isliye inko text me dikhana padega
+                    text_message_payload = f"📝 <b>Practice Question (ID: {q_id})</b>\n\n"
+                    text_message_payload += f"{q_text}\n\n"
+                    text_message_payload += "<b>विकल्प (Options):</b>\n"
+                    for i, opt in enumerate(options):
+                        text_message_payload += f" {i+1}. {opt}\n"
+                        
+                    poll_question = "👇 ऊपर दिए गए प्रश्न ka sahi uttar chunein:"
+                    poll_options = [f"Option {i+1}" for i in range(len(options))]
+                else:
+                    # Options limit ke andar hain, toh text me sirf question jayega aur options pure poll card me
+                    text_message_payload = f"📝 <b>Practice Question (ID: {q_id})</b>\n\n{q_text}"
+                    
+                    poll_question = "👇 Sahi uttar chunein (Select Correct Answer):"
+                    poll_options = [str(opt) for opt in options]
+                
+                # 6. Target chats me messages dispatch karein
+                for target_chat in all_target_chats:
+                    if not POLLING_LOOP_ACTIVE:
+                        break
+                    try:
+                        # Step A: Hamesha pehle text message me Question send hoga
+                        await app.bot.send_message(
+                            chat_id=target_chat,
+                            text=text_message_payload,
+                            parse_mode="HTML"
+                        )
+                        
+                        # Chhota sa pause proper arrangement ke liye
+                        await asyncio.sleep(0.5)
+                        
+                        # Step B: Uske theek niche functional poll card attach hoga
+                        await app.bot.send_poll(
+                            chat_id=target_chat,
+                            question=poll_question,
+                            options=poll_options,
+                            type="quiz",
+                            correct_option_id=correct_idx,
+                            explanation=clean_expl,
+                            is_anonymous=False,
+                            open_period=45 # 45 seconds ticket lifetime window
+                        )
+                        await asyncio.sleep(0.3) # API flood protection delay
+                    except Exception as chat_err:
+                        logging.warning(f"Failed sending global automated poll setup to chat {target_chat}: {chat_err}")
+                
+                # 7. State update karke save karein database me (sirf tab jab loop active bacha ho)
+                if POLLING_LOOP_ACTIVE:
+                    cursor.execute("UPDATE polling_state SET last_question_id = ? WHERE key = 'global_loop'", (q_id,))
+                    conn.commit()
+            else:
+                logging.info("Global Polling Loop: No questions found in the database yet.")
+                
+            conn.close()
+            
+        except Exception as e:
+            logging.error(f"Error inside global continuous polling worker loop: {e}", exc_info=True)
+            
+        # ⏱️ 30 Minutes interval timer (30 * 60 = 1800 seconds)
+        await asyncio.sleep(1800)
+
+async def start_global_polling_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Owner-only command to resume background global 30-min polling"""
+    global POLLING_LOOP_ACTIVE
+    if OWNER_ID is None or update.message.from_user.id != OWNER_ID:
+        await update.message.reply_text("❌ Unauthorized - Only bot owner can use this command.")
+        return
+        
+    if POLLING_LOOP_ACTIVE:
+        await update.message.reply_text("⚠️ Global automated 30-min polling is already running.")
+    else:
+        POLLING_LOOP_ACTIVE = True
+        await update.message.reply_text("✅ <b>Global Automated Polling Resumed!</b>\n\nBot ab har 30 min me database se agla question automatic sabhi chats me send karega.", parse_mode="HTML")
+
+async def stop_global_polling_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Owner-only command to pause background global 30-min polling"""
+    global POLLING_LOOP_ACTIVE
+    if OWNER_ID is None or update.message.from_user.id != OWNER_ID:
+        await update.message.reply_text("❌ Unauthorized - Only bot owner can use this command.")
+        return
+        
+    if not POLLING_LOOP_ACTIVE:
+        await update.message.reply_text("⚠️ Global automated polling is already paused/stopped.")
+    else:
+        POLLING_LOOP_ACTIVE = False
+        await update.message.reply_text("🛑 <b>Global Automated Polling Stopped!</b>\n\nAutomated questions distribution has been successfully paused.", parse_mode="HTML")
+
 async def repeat_ready_button_color_worker(chat_id: int, message_id: int, quiz_id: int, context: ContextTypes.DEFAULT_TYPE):
     """बटन का रंग बदलता है और बाहरी फ़ोर्स क्लोज़ (Cancel) को सुरक्षित रूप से स्वीकार करता है।"""
     styles = ["primary", "success"]
