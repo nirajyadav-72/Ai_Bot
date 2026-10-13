@@ -5651,6 +5651,7 @@ async def main():
         app.add_handler(CommandHandler("autorunlist", autorun_list_command))
         app.add_handler(CommandHandler("stopautorunlist", stop_autorun_list_command))
         app.add_handler(CommandHandler("ask", ask_ai_command))
+        app.add_handler(CommandHandler("picques", picques_command))
         
         app.add_handler(PollAnswerHandler(track_poll_answers))
         app.add_handler(InlineQueryHandler(inline_query_handler))
