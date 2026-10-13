@@ -1327,9 +1327,9 @@ async def global_continuous_polling_worker(app: Application):
                     poll_options = [f"Option {i+1}" for i in range(len(options))]
                 else:
                     # Options limit ke andar hain, toh text me sirf question jayega aur options pure poll card me
-                    text_message_payload = f"📝 <b>Practice Question (ID: {q_id})</b>\n\n{q_text}"
+                    text_message_payload = f"📝 <b>Practice Set Poll Question (ID: {q_id})</b>\n\n{q_text}"
                     
-                    poll_question = "👇 Sahi uttar chunein (Select Correct Answer):"
+                    poll_question = "🫵 ऊपर दिए गए प्रश्न का सही उत्तर चुनें: (Select Correct Answer):"
                     poll_options = [str(opt) for opt in options]
                 
                 # 6. Target chats me messages dispatch karein
