@@ -3747,7 +3747,7 @@ async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_quest
 
 async def repeat_leaderboard_button_color_worker(chat_id: int, message_id: int, quiz_id: int, context: ContextTypes.DEFAULT_TYPE):
     """Cycles the Leaderboard 'Start Again' button between success and primary every 3 seconds"""
-    styles = ["primary", "success"]
+    styles = ["primary", "success", "danger"]
     idx = 0
     bot_username = context.bot.username if context.bot.username else "quiz_bot"
     share_url = f"https://t.me/{bot_username}?startgroup=quiz_{quiz_id}"
