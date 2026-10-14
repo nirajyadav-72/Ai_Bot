@@ -1407,7 +1407,7 @@ async def stop_global_polling_command(update: Update, context: ContextTypes.DEFA
 
 async def repeat_ready_button_color_worker(chat_id: int, message_id: int, quiz_id: int, context: ContextTypes.DEFAULT_TYPE):
     """बटन का रंग बदलता है और बाहरी फ़ोर्स क्लोज़ (Cancel) को सुरक्षित रूप से स्वीकार करता है।"""
-    styles = ["primary", "success"]
+    styles = ["primary", "success", "danger"]
     idx = 0
     
     try:
