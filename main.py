@@ -1245,12 +1245,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 async def global_continuous_polling_worker(app: Application):
-    """
-    Har 30 minutes me database se ek question uthakar sabhi registered 
-    groups aur private chats me automated quiz poll send karta hai.
-    Question HAMESHA normal text me jayega.
-    Poll me koi timer nahi hoga, users ise kabhi bhi attend kar sakenge.
-    """
     global POLLING_LOOP_ACTIVE
     logging.info("Background Global Continuous Polling Worker started.")
     await asyncio.sleep(10) # Initial startup buffer delay
@@ -1305,8 +1299,15 @@ async def global_continuous_polling_worker(app: Application):
                 cursor.execute("SELECT chat_id FROM broadcast_users")
                 users = cursor.fetchall()
                 
-                all_target_chats = list(set([r[0] for r in groups] + [r[0] for r in users]))
-                logging.info(f"Global Poll: Broadcasting Question ID {q_id} to {len(all_target_chats)} chats.")
+                # Raw list mapping clean array sequence
+                raw_chats = [r[0] for r in groups] + [r[0] for r in users]
+                all_target_chats = list(set(raw_chats))
+                
+                # 🔥 CRITICAL FIXED: Owner ki private chat ID ko destination list se bahar (Filter) karein
+                if OWNER_ID in all_target_chats:
+                    all_target_chats.remove(OWNER_ID)
+                    
+                logging.info(f"Global Poll: Broadcasting Question ID {q_id} to {len(all_target_chats)} users/groups (Owner Chat Exempted).")
                 
                 # 4. SMART OPTIONS CHARACTER LIMIT CHECK (Telegram limit is 100 chars per option)
                 is_any_option_too_long = any(len(str(opt)) > 100 for opt in options)
@@ -1314,20 +1315,20 @@ async def global_continuous_polling_worker(app: Application):
                 # Explanation validation (Max 200 chars allowed by Telegram)
                 clean_expl = explanation.strip() if explanation and len(explanation.strip()) <= 200 else None
                 
-                # 5. Build Dynamic Presentation Layouts
+                # 5. Build Dynamic Presentation Layouts (Removed ID display text completely)
                 if is_any_option_too_long:
                     # Options bahut bade hain, isliye inko text me dikhana padega
-                    text_message_payload = f"📝 <b>Practice Set Poll Question (ID: {q_id})</b>\n\n"
+                    text_message_payload = "📝 <b>Practice Question</b>\n\n"
                     text_message_payload += f"<b>{q_text}</b>\n\n"
                     text_message_payload += "<b>विकल्प (Options):</b>\n"
                     for i, opt in enumerate(options):
-                        text_message_payload += f" {i+1}. {opt}\n"
+                        text_message_payload += f" {i+1}<b>. {opt}</b>\n"
                         
                     poll_question = "🫵 ऊपर दिए गए प्रश्न का सही उत्तर चुनें: (Select Correct Answer):"
                     poll_options = [f"Option {i+1}" for i in range(len(options))]
                 else:
                     # Options limit ke andar hain, toh text me sirf question jayega aur options pure poll card me
-                    text_message_payload = f"📝 <b>Practice Set Poll Question (ID: {q_id})</b>\n\n<b>{q_text}</b>"
+                    text_message_payload = f"📝 <b>Practice Question</b>\n\n<b>{q_text}</b>"
                     
                     poll_question = "🫵 ऊपर दिए गए प्रश्न का सही उत्तर चुनें: (Select Correct Answer):"
                     poll_options = [str(opt) for opt in options]
@@ -1347,7 +1348,7 @@ async def global_continuous_polling_worker(app: Application):
                         # Chhota sa pause proper arrangement ke liye
                         await asyncio.sleep(0.5)
                         
-                        # Step B: Uske theek niche functional poll card attach hoga (Bina open_period parameter ke)
+                        # Step B: Uske theek niche functional poll card attach hoga (Without timer)
                         await app.bot.send_poll(
                             chat_id=target_chat,
                             question=poll_question,
@@ -1373,12 +1374,13 @@ async def global_continuous_polling_worker(app: Application):
         except Exception as e:
             logging.error(f"Error inside global continuous polling worker loop: {e}", exc_info=True)
             
-        # ⏱️ 10 Minutes interval timer (10 * 60 = 600 seconds)
-        await asyncio.sleep(600)
+        # ⏱️ 30 Minutes interval timer (30 * 60 = 1800 seconds)
+        await asyncio.sleep(1800)
 
 async def start_global_polling_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Owner-only command to resume background global 30-min polling"""
     global POLLING_LOOP_ACTIVE
+    # Strictly check if command caller is the authenticated bot owner
     if OWNER_ID is None or update.message.from_user.id != OWNER_ID:
         await update.message.reply_text("❌ Unauthorized - Only bot owner can use this command.")
         return
@@ -1387,11 +1389,12 @@ async def start_global_polling_command(update: Update, context: ContextTypes.DEF
         await update.message.reply_text("⚠️ Global automated 30-min polling is already running.")
     else:
         POLLING_LOOP_ACTIVE = True
-        await update.message.reply_text("✅ <b>Global Automated Polling Resumed!</b>\n\nBot ab har 30 min me database se agla question automatic sabhi chats me send karega.", parse_mode="HTML")
+        await update.message.reply_text("✅ <b>Global Automated Polling Resumed!</b>\n\nBot ab har 30 min me database se agla question automatic sabhi users aur groups me send karega (Owner chat blocked).", parse_mode="HTML")
 
 async def stop_global_polling_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Owner-only command to pause background global 30-min polling"""
     global POLLING_LOOP_ACTIVE
+    # Strictly check if command caller is the authenticated bot owner
     if OWNER_ID is None or update.message.from_user.id != OWNER_ID:
         await update.message.reply_text("❌ Unauthorized - Only bot owner can use this command.")
         return
