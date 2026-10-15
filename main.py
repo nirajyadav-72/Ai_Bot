@@ -1009,7 +1009,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     # 🚀 पहला पैनल: हमेशा दिखेगा
     generating_msg = await query.edit_message_text(
-        text="<b>🚀 AI Quiz Generator</b>\n\n⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜\n🔎 Researching your topic...\n⏳ please wait...",
+        text="<b>🚀 AI Quiz Generator</b>\n\n⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜\n🔎 <b>Researching your topic...</b>\n⏳ <b>please wait...</b>",
         parse_mode="HTML",
         reply_markup=None
     )
@@ -1023,21 +1023,21 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             # 🟢 पहला एनिमेशन: 3 सेकंड का अनिवार्य वेट
             await asyncio.sleep(4)
             await generating_msg.edit_text(
-                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜\n🧠 Crafting questions...\n⏳ please wait...",
+                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜\n🧠 <b>Crafting questions...</b>\n⏳ <b>please wait...</b>",
                 parse_mode="HTML"
             )
                 
             # 🟢 दूसरा एनिमेशन: अगला 4 सेकंड का अनिवार्य वेट
             await asyncio.sleep(4)
             await generating_msg.edit_text(
-                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜\n✍️ Writing options...\n⏳ please wait...",
+                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜\n✍️ <b>Writing options...</b>\n⏳ <b>please wait...</b>",
                 parse_mode="HTML"
             )
                 
             # 🟢 तीसरा एनिमेशन बदलाव: अगला 4 सेकंड का अनिवार्य वेट (कंडीशन हटा दी गई है, यह भी हर हाल में दिखेगा)
             await asyncio.sleep(4)
             await generating_msg.edit_text(
-                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜\n📟 Verifying answers...\n⏳ please wait...",
+                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜\n📟 <b>Verifying answers...</b>\n⏳ <b>please wait...</b>",
                 parse_mode="HTML"
             )
         except Exception as msg_err:
@@ -1057,8 +1057,8 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             
         try:
             await generating_msg.edit_text(
-                "<b>🚀 AI Quiz Generator</b>\n\nVerified Answer's ✅\n"
-                "💯 Done generated...\n\n🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩",
+                "<b>🚀 AI Quiz Generator</b>\n\n🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩\n"
+                "<b>Verified Answer's</b> ✅\n💯 <b>Done generated...</b>",
                 parse_mode="HTML"
             )
             await asyncio.sleep(3)
