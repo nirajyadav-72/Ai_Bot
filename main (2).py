@@ -988,8 +988,6 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if not is_authorized(update): return TIME_LIMIT
     
     query = update.callback_query
-    
-    # 🟢 सिर्फ इनलाइन बटन्स स्वीकार करें, टेक्स्ट मैसेज पूरी तरह ब्लॉक
     if not query:
         return TIME_LIMIT
         
@@ -1004,10 +1002,10 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     options_cnt = context.user_data.get('options_count', 4)
     
     msg_target = query.message
-    
-    # इनलाइन मेनू क्लीनअप और एनीमेशन लोडर शुरुआत
+
+    # 🚀 पहला पैनल: हमेशा दिखेगा
     generating_msg = await query.edit_message_text(
-        text="<b>🚀 AI Quiz Generator</b>\n\nCNM⬜⬜⬜⬜⬜⬜⬜⬜\n🔎 Researching your topic...\n⏳ please wait...",
+        text="<b>🚀 AI Quiz Generator</b>\n\n⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜\n🔎 <b>Researching your topic...</b>\n⏳ <b>please wait...</b>",
         parse_mode="HTML",
         reply_markup=None
     )
@@ -1018,41 +1016,33 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ))
         
         try:
-            await asyncio.sleep(3)
-            if not task.done():
-                try: await generating_msg.delete()
-                except: pass
-                generating_msg = await msg_target.chat.send_message(
-                    "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜⬜⬜\n🧠 Crafting questions...\n⏳ please wait...",
-                    parse_mode="HTML"
-                )
-                
+            # 🟢 पहला एनिमेशन: 4 सेकंड का अनिवार्य वेट
             await asyncio.sleep(4)
-            if not task.done():
-                try: await generating_msg.delete()
-                except: pass
-                generating_msg = await msg_target.chat.send_message(
-                    "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜⬜\n✍️ Writing options...\n⏳ please wait...",
-                    parse_mode="HTML"
-                )
+            await generating_msg.edit_text(
+                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜\n🧠 <b>Crafting questions...</b>\n⏳ <b>please wait...</b>",
+                parse_mode="HTML"
+            )
                 
-            await asyncio.sleep(5)
-            if not task.done():
-                try: await generating_msg.delete()
-                except: pass
-                generating_msg = await msg_target.chat.send_message(
-                    "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜⬜\n📟 Verifying answers...\n⏳ please wait...",
-                    parse_mode="HTML"
-                )
+            # 🟢 दूसरा एनिमेशन: अगला 4 सेकंड का अनिवार्य वेट
+            await asyncio.sleep(4)
+            await generating_msg.edit_text(
+                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜\n✍️ <b>Writing options...</b>\n⏳ <b>please wait...</b>",
+                parse_mode="HTML"
+            )
+                
+            # 🟢 तीसरा एनिमेशन बदलाव: अगला 4 सेकंड का अनिवार्य वेट
+            await asyncio.sleep(4)
+            await generating_msg.edit_text(
+                "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜\n📟 <b>Verifying answers...</b>\n⏳ <b>please wait...</b>",
+                parse_mode="HTML"
+            )
         except Exception as msg_err:
             logging.warning(f"Animation message sequence alert: {msg_err}")
 
         ai_questions = await task
         
         if ai_questions is None or len(ai_questions) == 0:
-            try: await generating_msg.delete()
-            except: pass
-            await msg_target.chat.send_message(
+            await generating_msg.edit_text(
                 "❌ <b>AI Quiz Generator Error</b>\n\nServer par heavy load ya error ke karan quiz generate nahi ho paya. Kripya thodi der baad fir se koshish karein.",
                 parse_mode="HTML"
             )
@@ -1060,16 +1050,13 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             return ConversationHandler.END
             
         try:
-            try: await generating_msg.delete()
-            except: pass
-            generating_msg = await msg_target.chat.send_message(
-                "<b>🚀 AI Quiz Generator</b>\n\nVerified Answer's ✅\n"
-                "💯 Done generated...\n\n🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩",
+            await generating_msg.edit_text(
+                "<b>🚀 AI Quiz Generator</b>\n\n🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩\n"
+                "<b>Verified Answer's</b> ✅\n💯 <b>Done generated...</b>",
                 parse_mode="HTML"
             )
-            await asyncio.sleep(2)
-            try: await generating_msg.delete()
-            except: pass
+            await asyncio.sleep(3)
+            await generating_msg.delete()
         except Exception:
             pass
         
@@ -1102,6 +1089,59 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         }
         
         context.user_data["quiz_build_creator_id"] = query.from_user.id
+
+        # ====================================================================
+        # 📨 NEW: CRASH-PROOF AUTOMATIC CHUNKING & ONE-CLICK COPY GENERATOR
+        # ====================================================================
+        try:
+            # 1. Custom schemas me pure question dictionary arrays build karein
+            custom_json_list = []
+            for q_item in formatted_questions:
+                custom_json_list.append({
+                    "question": q_item["text"],
+                    "options": q_item["options"],
+                    "correct_id": q_item["correct"],
+                    "lang": str(lang).lower(),
+                    "explanation": q_item["explanation"]
+                })
+            
+            # 2. Dynamic tracking loops jo ensure karega ki character size block 4000 limit pass na ho
+            current_chunk = []
+            chunk_serial = 1
+            
+            for q_object in custom_json_list:
+                # Loop simulation check: current container text length analyze karein
+                test_list = current_chunk + [q_object]
+                test_json_str = json.dumps(test_list, indent=2, ensure_ascii=False)
+                wrapped_len = len(f"📋 <b>JSON List Part:</b>\n<pre>{html_escape(test_json_str)}</pre>")
+                
+                # Agar test payload safety baseline (3800 characters) cross karta hai
+                if wrapped_len > 3800 and current_chunk:
+                    # Purane safe block objects ko deploy karein
+                    final_str = json.dumps(current_chunk, indent=2, ensure_ascii=False)
+                    await msg_target.chat.send_message(
+                        text=f"📋 <b>JSON Copy Box (Part {chunk_serial}):</b>\n<pre>{html_escape(final_str)}</pre>",
+                        parse_mode="HTML"
+                    )
+                    await asyncio.sleep(0.5) # Flood restriction safeguard timer
+                    current_chunk = [q_object]
+                    chunk_serial += 1
+                else:
+                    current_chunk.append(q_object)
+            
+            # Rest remaining final chunk cleanup container dispatch
+            if current_chunk:
+                final_str = json.dumps(current_chunk, indent=2, ensure_ascii=False)
+                part_title = f" (Part {chunk_serial})" if chunk_serial > 1 else ""
+                await msg_target.chat.send_message(
+                    text=f"📋 <b>JSON Copy Box{part_title}:</b>\n<pre>{html_escape(final_str)}</pre>",
+                    parse_mode="HTML"
+                )
+                await asyncio.sleep(0.3)
+                
+        except Exception as json_send_err:
+            logging.error(f"Error executing advanced JSON split workflow: {json_send_err}")
+        # ====================================================================
         
         neg_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton("❌ No Negative (0.0)", callback_data="neg_0.0"), InlineKeyboardButton("📉 1/4th (-0.25)", callback_data="neg_0.25")],
@@ -1119,8 +1159,6 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         
     except Exception as e:
         logging.error(f"Error in handle_time_limit: {e}", exc_info=True)
-        try: await generating_msg.delete()
-        except: pass
         
         if "429" in str(e) or "too_many_requests" in str(e):
             await msg_target.chat.send_message(
@@ -1128,7 +1166,7 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 parse_mode="HTML"
             )
         else:
-            await msg_target.chat.send_message("aapka quiz genrate karne me error aa gaya tha esliye cancel ho gaya aap fir se quiz generate kare", parse_mode="HTML")
+            await msg_target.chat.send_message("aapka quiz genrate karne me error aa gaya tha esliye cancel हो गया aap fir se quiz generate kare", parse_mode="HTML")
             
         context.user_data.clear()
         return ConversationHandler.END
