@@ -1405,6 +1405,83 @@ async def stop_global_polling_command(update: Update, context: ContextTypes.DEFA
         POLLING_LOOP_ACTIVE = False
         await update.message.reply_text("🛑 <b>Global Automated Polling Stopped!</b>\n\nAutomated questions distribution has been successfully paused.", parse_mode="HTML")
 
+async def save_custom_topic_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Owner-only: Reply to a valid topic list message with /save to overwrite active topics pool.
+    Conditions applied: Minimum 5 topics, each starting on a new line.
+    """
+    try:
+        message = update.message
+        if not message:
+            return
+
+        if OWNER_ID is None or message.from_user.id != OWNER_ID:
+            await message.reply_text("❌ Unauthorized - Only bot owner can use this command.")
+            return
+
+        if not message.reply_to_message:
+            await message.reply_text(
+                "⚠️ *How to use?*\n"
+                "1. Bot की भेजी गई टॉपिक्स लिस्ट या अपने किसी लिस्ट मैसेज पर जाएँ।\n"
+                "2. उस मैसेज का *Reply* करते हुए केवल `/save` लिखकर भेजें.",
+                parse_mode="Markdown"
+            )
+            return
+
+        target_message = message.reply_to_message
+        raw_text = target_message.text or target_message.caption
+
+        if not raw_text or not raw_text.strip():
+            await message.reply_text("❌ Error: रिप्लाई किए गए मैसेज में कोई टेक्स्ट नहीं मिला।")
+            return
+
+        # 🟢 Condition 1 & Line Splitting Checker
+        raw_lines = raw_text.split('\n')
+        valid_topics = []
+
+        for line in raw_lines:
+            clean_line = line.strip()
+            if not clean_line:
+                continue
+            # सिस्टम की अनचाही लाइन्स या हेडर्स को रिमूव करें
+            if any(keyword in clean_line.lower() for keyword in ["list", "owner", "total", "schedule", "active", "⏱", "🎯", "🆔"]):
+                continue
+            valid_topics.append(clean_line)
+
+        # 🟢 Condition 2: Minimum 5 topics verification
+        if len(valid_topics) < 5:
+            await message.reply_text(
+                f"❌ *Validation Failed!*\n\n"
+                f"⚠️ रिप्लाई की गई लिस्ट में कम से कम *5 वैलिड टॉपिक्स* होने चाहिए।\n"
+                f"📊 वर्तमान में केवल `{len(valid_topics)}` टॉपिक्स ही डिटेक्ट हुए हैं।\n"
+                f"📝 सुनिश्चित करें कि हर टॉपिक एक *नई लाइन* से शुरू हो रहा हो।",
+                parse_mode="Markdown"
+            )
+            return
+
+        final_payload = "\n".join(valid_topics)
+        
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO autorun_custom_topic (key, topic_name, updated_at) VALUES ('active_topic', ?, datetime('now'))",
+            (final_payload,)
+        )
+        conn.commit()
+        conn.close()
+
+        preview_text = f"1. {valid_topics[0]}\n2. {valid_topics[1]}"
+        await message.reply_text(
+            f"✅ *New Topic Pool Successfully Overwritten!*\n\n"
+            f"🗑️ *Old Settings:* Automatically Deleted\n"
+            f"🔢 *Detected Valid Topics:* `{len(valid_topics)}` Items\n\n"
+            f"📋 *Saved Topics Preview:*\n`{preview_text}`\n`...and {len(valid_topics)-2} more topics stored.`",
+            parse_mode="Markdown"
+        )
+
+    except Exception as e:
+        logging.error(f"Error in save_custom_topic_command: {e}")
+        await update.message.reply_text("❌ Error saving dynamic topic configuration validation rules.")
+
 async def repeat_ready_button_color_worker(chat_id: int, message_id: int, quiz_id: int, context: ContextTypes.DEFAULT_TYPE):
     """बटन का रंग बदलता है और बाहरी फ़ोर्स क्लोज़ (Cancel) को सुरक्षित रूप से स्वीकार करता है।"""
     styles = ["primary", "success", "danger"]
