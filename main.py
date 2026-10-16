@@ -170,6 +170,15 @@ def init_db():
                 created_at TEXT DEFAULT (datetime('now'))
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS autorun_custom_topic (
+                key TEXT PRIMARY KEY,
+                topic_name TEXT NOT NULL,
+                updated_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        cursor.execute("INSERT OR IGNORE INTO autorun_custom_topic (key, topic_name) VALUES ('active_topic', '')")
+        
         # 🆕 Tracking table for global continuous sequential polling
         cursor.execute("CREATE TABLE IF NOT EXISTS polling_state (key TEXT PRIMARY KEY, last_question_id INTEGER DEFAULT 0)")
         cursor.execute("INSERT OR IGNORE INTO polling_state (key, last_question_id) VALUES ('global_loop', 0)")
