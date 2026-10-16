@@ -4759,13 +4759,6 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 ai_questions = await asyncio.to_thread(
                     generate_bulk_questions_ai, selected_topic, 50, "Hindi", "Medium", 4
                 )
-
-                # 🆕 जनरेशन पूरी होने के बाद अलर्ट मैसेज को सुरक्षित डिलीट करें
-                if generation_alert_msg:
-                    try:
-                        await app.bot.delete_message(chat_id=SUPPORT_GROUP_ID, message_id=generation_alert_msg.message_id)
-                    except Exception:
-                        pass
                 
                 # (यह कोड नीचे दिए गए 'भाग B' में जारी रहेगा)
                 if not ai_questions or len(ai_questions) == 0:
