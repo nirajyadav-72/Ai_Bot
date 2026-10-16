@@ -4745,7 +4745,6 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 logging.info(f"🎲 Automated Engine finalized topic: {selected_topic}")
 
                 # 🆕 मेंबर्स के लिए जनरेशन शुरू होने का लाइव अलर्ट मैसेज
-                generation_alert_msg = None
                 try:
                     generation_alert_msg = await app.bot.send_message(
                         chat_id=SUPPORT_GROUP_ID,
