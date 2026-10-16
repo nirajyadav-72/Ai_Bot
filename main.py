@@ -4646,7 +4646,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 except asyncio.CancelledError:
                     return
 
-            # ---------- सीरियल锁 सुरक्षा (क्रैश रोकने के लिए) ----------
+            # ---------- सीरियल सुरक्षा (क्रैश रोकने के लिए) ----------
             acquired = False
             try:
                 logging.info(f"🔐 Autorun {autorun_id}: Attempting lock acquisition...")
@@ -4744,13 +4744,35 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 
                 logging.info(f"🎲 Automated Engine finalized topic: {selected_topic}")
 
+                # 🆕 मेंबर्स के लिए जनरेशन शुरू होने का लाइव अलर्ट मैसेज
+                generation_alert_msg = None
+                try:
+                    generation_alert_msg = await app.bot.send_message(
+                        chat_id=SUPPORT_GROUP_ID,
+                        text=f"🔍 <b>Gemini AI आपके लिए प्रश्न जनरेट कर रहा है...</b>\n\n🎯 <b>विषय (Topic):</b> <code>{selected_topic}</code>\n⏳ कृपया प्रतीक्षा करें, क्विज़ कुछ ही देर में लाइव होने वाली है! 🚀",
+                        parse_mode="HTML"
+                    )
+                except Exception as alert_err:
+                    logging.warning(f"Could not send generation alert to support group: {alert_err}")
+
                 # 🧠 Gemini AI से 50 फ्रेश सवाल हिंदी भाषा में बनवाएं
                 ai_questions = await asyncio.to_thread(
                     generate_bulk_questions_ai, selected_topic, 50, "Hindi", "Medium", 4
                 )
 
+                # 🆕 जनरेशन पूरी होने के बाद अलर्ट मैसेज को सुरक्षित डिलीट करें
+                if generation_alert_msg:
+                    try:
+                        await app.bot.delete_message(chat_id=SUPPORT_GROUP_ID, message_id=generation_alert_msg.message_id)
+                    except Exception:
+                        pass
+                
+                # (यह कोड नीचे दिए गए 'भाग B' में जारी रहेगा)
                 if not ai_questions or len(ai_questions) == 0:
                     logging.error("⚠️ AI structural generation skipped or quota limited. Retrying on next cycle.")
+                    try:
+                        await app.bot.send_message(chat_id=SUPPORT_GROUP_ID, text="❌ <b>AI लोड या कोटा लिमिट के कारण क्विज़ जनरेट नहीं हो सकी।</b> अगली साइकिल में पुनः प्रयास किया जाएगा।", parse_mode="HTML")
+                    except Exception: pass
                     continue
 
                 # 💾 नए बने क्विज़ को डेटाबेस में ऑटो-सेव करें
@@ -4834,7 +4856,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
         logging.info(f"🛑 Autorun background worker loop {autorun_id} canceled safely.")
     except Exception as error:
         logging.error(f"❌ Critical exception encountered in autorun runtime: {error}", exc_info=True)
-        
+
 def schedule_autorun_task(app, autorun_id, quiz_id, interval_minutes, wait_before_start=10, min_players_required=1, force_start=False):
     if autorun_id in AUTORUN_TASKS and not AUTORUN_TASKS[autorun_id].done():
         return
