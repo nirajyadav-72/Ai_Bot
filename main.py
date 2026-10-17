@@ -5559,6 +5559,130 @@ User Query: {user_query}"""
     except Exception as e:
         logging.error(f"Critical error in ask_ai_command: {e}", exc_info=True)
 
+# 🔒 SECURED COMMAND: /question <quiz_id> (OWNER & ALLOWED USERS ONLY)
+async def export_questions_json_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Fetches all questions of a quiz and sends them in a click-to-copy JSON format with strict chunking limits"""
+    try:
+        message = update.message
+        if not message:
+            return
+
+        user_id = message.from_user.id
+        allowed_ids = get_allowed_ids()  # .env se clean IDs load karne ka aapka helper function
+
+        # 🔒 STRICT ACCESS LOCK CRITERIA
+        if user_id != OWNER_ID and user_id not in allowed_ids:
+            await message.reply_text(
+                "❌ <b>Access Denied:</b> Yah command keval Bot Owner aur Authorized Users hi use kar sakte hain.", 
+                parse_mode="HTML"
+            )
+            return
+
+        # Check if argument (quiz_id) is provided
+        args = context.args or []
+        if len(args) < 1:
+            await message.reply_text(
+                "💡 <b>Usage Help:</b>\n"
+                "Kripya command ke sath Quiz ID bhejein.\n"
+                "👉 <b>Example:</b> <code>/question 5</code>",
+                parse_mode="HTML"
+            )
+            return
+
+        try:
+            quiz_id = int(args[0])
+        except ValueError:
+            await message.reply_text("❌ <b>Invalid Quiz ID!</b> Kripya sirf ek number type karein. Example: <code>/question 5</code>", parse_mode="HTML")
+            return
+
+        # Fetch Quiz and Language context from Database
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT title, creator_id FROM quizzes WHERE quiz_id = ?", (quiz_id,))
+        quiz_data = cursor.fetchone()
+        
+        if not quiz_data:
+            await message.reply_text(f"❌ <b>Error:</b> Quiz ID <code>{quiz_id}</code> database me nahi mila.", parse_mode="HTML")
+            conn.close()
+            return
+        
+        quiz_title, creator_id = quiz_data
+
+        # Fetch all questions mapped to this quiz_id
+        cursor.execute("SELECT question_text, options, correct_answer, explanation FROM questions WHERE quiz_id = ?", (quiz_id,))
+        rows = cursor.fetchall()
+        conn.close()
+
+        if not rows:
+            await message.reply_text(f"⚠️ Is quiz (<b>{html_escape(quiz_title)}</b>) ke andar koi bhi question save nahi hai.", parse_mode="HTML")
+            return
+
+        processing_msg = await message.reply_text("⚡ <b>Fetching and structuring JSON payload...</b>", parse_mode="HTML")
+
+        # Map rows into your exact custom schema format
+        custom_json_list = []
+        for q_text, options_json, correct_ans, explanation in rows:
+            options = json.loads(options_json)
+            
+            # Correct answer integer index conversion logic (Safeguard)
+            try:
+                correct_id = int(correct_ans)
+            except (ValueError, TypeError):
+                try:
+                    correct_id = options.index(str(correct_ans))
+                except ValueError:
+                    correct_id = 0
+
+            # Default language detect baseline fallback
+            # Agar pure Hindi characters hain toh hindi, nahi toh default english strings
+            detected_lang = "hindi" if any(ord(char) > 2300 and ord(char) < 2430 for char in q_text) else "english"
+
+            custom_json_list.append({
+                "question": q_text,
+                "options": options,
+                "correct_id": correct_id,
+                "lang": detected_lang,
+                "explanation": explanation if explanation else ""
+            })
+
+        # 📦 OBJECT-SAFE CHUNKING LOOP (Strict 3800 character message box limitation)
+        current_chunk = []
+        chunk_serial = 1
+
+        await processing_msg.delete()
+
+        for q_object in custom_json_list:
+            test_list = current_chunk + [q_object]
+            test_json_str = json.dumps(test_list, indent=2, ensure_ascii=False)
+            wrapped_len = len(f"📋 <b>Quiz {quiz_id} JSON Box (Part 1):</b>\n<pre>{html_escape(test_json_str)}</pre>")
+            
+            if wrapped_len > 3800 and current_chunk:
+                final_str = json.dumps(current_chunk, indent=2, ensure_ascii=False)
+                await message.reply_text(
+                    text=f"📋 <b>Quiz {quiz_id} JSON Box (Part {chunk_serial}):</b>\n<pre>{html_escape(final_str)}</pre>",
+                    parse_mode="HTML"
+                )
+                await asyncio.sleep(0.5)  # API Flood lock security protection
+                current_chunk = [q_object]
+                chunk_serial += 1
+            else:
+                current_chunk.append(q_object)
+
+        # Remaining data chunk delivery
+        if current_chunk:
+            final_str = json.dumps(current_chunk, indent=2, ensure_ascii=False)
+            part_title = f" (Part {chunk_serial})" if chunk_serial > 1 else ""
+            await message.reply_text(
+                text=f"📋 <b>Quiz {quiz_id} JSON Box{part_title}:</b>\n<pre>{html_escape(final_str)}</pre>",
+                parse_mode="HTML"
+            )
+
+    except Exception as e:
+        logging.error(f"Error executing /question command setup: {e}", exc_info=True)
+        if 'message' in locals():
+            await message.reply_text("❌ Questions export loop executing process failed internal error.")
+
 # ⚡ send message to support group (only use owner)
 async def send_to_support_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Owner-only: In private chat reply to a message and copy it (with buttons if any) to SUPPORT_GROUP_ID."""
@@ -5775,6 +5899,7 @@ async def main():
         app.add_handler(CommandHandler("autorunlist", autorun_list_command))
         app.add_handler(CommandHandler("stopautorunlist", stop_autorun_list_command))
         app.add_handler(CommandHandler("ask", ask_ai_command))
+        app.add_handler(CommandHandler("question", export_questions_json_command))
 
         app.add_handler(CommandHandler("startgpoll", start_global_polling_command))
         app.add_handler(CommandHandler("stopgpoll", stop_global_polling_command))
