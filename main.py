@@ -4756,7 +4756,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
 
                 # 🧠 Gemini AI से 50 फ्रेश सवाल हिंदी भाषा में बनवाएं
                 ai_questions = await asyncio.to_thread(
-                    generate_bulk_questions_ai, selected_topic, 50, "Hindi", "Medium", 4
+                    generate_bulk_questions_ai, selected_topic, 50, "Hindi", "Hard", 4
                 )
                 
                 # (यह कोड नीचे दिए गए 'भाग B' में जारी रहेगा)
