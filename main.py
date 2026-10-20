@@ -5991,7 +5991,7 @@ async def main():
 
         app.add_handler(CommandHandler("startgpoll", start_global_polling_command))
         app.add_handler(CommandHandler("stopgpoll", stop_global_polling_command))
-        app.add_handler(CommandHandler("save", save_custom_topic_command))
+        app.add_handler(CommandHandler("savetopic", savetopic_custom_topic_command))
         
         app.add_handler(PollAnswerHandler(track_poll_answers))
         app.add_handler(InlineQueryHandler(inline_query_handler))
