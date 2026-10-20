@@ -5741,6 +5741,92 @@ async def send_to_support_group(update: Update, context: ContextTypes.DEFAULT_TY
             await update.message.reply_text("❌ An unexpected error occurred. Please try again.")
         except Exception:
             pass
+
+async def auto_quiz_summary_monitor(bot):
+    """
+    नया स्वतंत्र फ़ंक्शन: यह बैकग्राउंड में डेटाबेस को मॉनिटर करता है।
+    जैसे ही autorun_worker कोई नई क्विज़ सेव करता है, यह बिना पुराना कोड बदले 
+    उसकी समरी सीधे सपोर्ट चैनल (SUPPORT_GROUP_ID) में भेज देता है।
+    """
+    logging.info("🚀 Background Auto-Quiz Summary Monitor started successfully.")
+    
+    # सबसे आखरी क्विज़ आईडी का पता लगाएं ताकि सिर्फ नए वाले ही चैनल पर जाएं
+    last_known_quiz_id = 0
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT MAX(quiz_id) FROM quizzes")
+        row = cursor.fetchone()
+        if row and row[0]:
+            last_known_quiz_id = int(row[0])
+        conn.close()
+    except Exception as e:
+        logging.error(f"Error initializing monitor baseline ID: {e}")
+
+    while True:
+        try:
+            # हर 5 सेकंड में चेक करेगा कि कोई नई क्विज़ बनी है या नहीं
+            await asyncio.sleep(5)
+            
+            if not SUPPORT_GROUP_ID:
+                continue
+
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            
+            # सिर्फ वही क्विज़ उठाएं जो ऑटोमैटिक जनरेट हुई हैं (Auto AI Quiz वाली)
+            cursor.execute(
+                "SELECT quiz_id, title, description, timer FROM quizzes WHERE quiz_id > ? AND title LIKE 'Auto AI Quiz:%' ORDER BY quiz_id ASC", 
+                (last_known_quiz_id,)
+            )
+            new_quizzes = cursor.fetchall()
+            
+            for quiz_id, title, description, timer in new_quizzes:
+                # कुल प्रश्नों की संख्या निकालें
+                cursor.execute("SELECT COUNT(*) FROM questions WHERE quiz_id = ?", (quiz_id,))
+                total_q = cursor.fetchone()[0]
+                
+                time_display = f"{timer} sec" if timer < 60 else f"{timer // 60} min"
+                bot_username = bot.username if bot.username else "quiz_bot"
+                
+                # HTML के लिए टाइटल और डिस्क्रिप्शन को सुरक्षित करें
+                escaped_title = escape_markdown(title)
+                escaped_desc = escape_markdown(description) if description else "No description"
+                
+                summary_text = (
+                    "<b>🤖 NEW AUTOMATIC QUIZ GENERATED! 🚀</b>\n"
+                    "यह क्विज़ ऑटोमैटिक जनरेट होकर डेटाबेस में सुरक्षित सेव हो चुकी है।\n\n"
+                    f"📒 <b>Title:</b> {escaped_title}\n"
+                    f"🫥 <b>Description:</b> {escaped_desc}\n"
+                    f"⚡ {total_q} questions · ⏱ Time: {time_display}\n\n"
+                    f"<blockquote>🔗 External sharing link:</blockquote>\n"
+                    f"<tg-spoiler>https://t.me{bot_username}?start=quiz_{quiz_id}</tg-spoiler>"
+                )
+                
+                inline_keyboard = [
+                    [InlineKeyboardButton("Start Private Chat 👤", url=f"https://t.me{bot_username}?start=quiz_{quiz_id}")],
+                    [InlineKeyboardButton("Start Quiz in Group 👥", url=f"https://t.me{bot_username}?startgroup=quiz_{quiz_id}")],
+                    [InlineKeyboardButton("Share Quiz 📢", switch_inline_query=f"quiz_{quiz_id}")]
+                ]
+                reply_markup = InlineKeyboardMarkup(inline_keyboard)
+                
+                # सपोर्ट चैनल/ग्रुप में समरी पैनल सेंड करें
+                await bot.send_message(
+                    chat_id=SUPPORT_GROUP_ID, 
+                    text=summary_text, 
+                    reply_markup=reply_markup, 
+                    parse_mode="HTML"
+                )
+                logging.info(f"✨ [Monitor] Successfully sent Quiz ID {quiz_id} Summary Panel to Support Channel.")
+                
+                # बेसलाइन आईडी अपडेट करें ताकि दोबारा सेम मैसेज न जाए
+                last_known_quiz_id = quiz_id
+                
+            conn.close()
+            
+        except Exception as monitor_err:
+            logging.error(f"Error inside auto_quiz_summary_monitor loop: {monitor_err}", exc_info=True)
+
 # =====================================================================
 
 async def main():
@@ -5915,6 +6001,7 @@ async def main():
         await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
         await load_autoruns_on_startup(app)
         asyncio.create_task(global_continuous_polling_worker(app))
+        asyncio.create_task(auto_quiz_summary_monitor(app.bot)) 
         await asyncio.Event().wait()
 
     except Exception as e:
