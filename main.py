@@ -1416,8 +1416,8 @@ async def stop_global_polling_command(update: Update, context: ContextTypes.DEFA
         POLLING_LOOP_ACTIVE = False
         await update.message.reply_text("🛑 <b>Global Automated Polling Stopped!</b>\n\nAutomated questions distribution has been successfully paused.", parse_mode="HTML")
 
-async def save_custom_topic_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Owner-only: Reply to a valid topic list message with /save to overwrite active topics pool.
+async def savetopic_custom_topic_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Owner-only: Reply to a valid topic list message with /savetopic to overwrite active topics pool.
     Conditions applied: Minimum 5 topics, each starting on a new line.
     """
     try:
@@ -1431,10 +1431,10 @@ async def save_custom_topic_command(update: Update, context: ContextTypes.DEFAUL
 
         if not message.reply_to_message:
             await message.reply_text(
-                "⚠️ *How to use?*\n"
+                "⚠️ <b>How to use?</b>\n"
                 "1. Bot की भेजी गई टॉपिक्स लिस्ट या अपने किसी लिस्ट मैसेज पर जाएँ।\n"
-                "2. उस मैसेज का *Reply* करते हुए केवल `/save` लिखकर भेजें.",
-                parse_mode="Markdown"
+                "2. उस मैसेज का <b>Reply</b> करते हुए केवल `/savetopic` लिखकर भेजें.",
+                parse_mode="HTML"
             )
             return
 
@@ -1461,11 +1461,11 @@ async def save_custom_topic_command(update: Update, context: ContextTypes.DEFAUL
         # 🟢 Condition 2: Minimum 5 topics verification
         if len(valid_topics) < 5:
             await message.reply_text(
-                f"❌ *Validation Failed!*\n\n"
-                f"⚠️ रिप्लाई की गई लिस्ट में कम से कम *5 वैलिड टॉपिक्स* होने चाहिए।\n"
+                f"❌ <b>Validation Failed!</b>\n\n"
+                f"⚠️ रिप्लाई की गई लिस्ट में कम से कम 5 वैलिड टॉपिक्स होने चाहिए।\n"
                 f"📊 वर्तमान में केवल `{len(valid_topics)}` टॉपिक्स ही डिटेक्ट हुए हैं।\n"
-                f"📝 सुनिश्चित करें कि हर टॉपिक एक *नई लाइन* से शुरू हो रहा हो।",
-                parse_mode="Markdown"
+                f"📝 सुनिश्चित करें कि हर टॉपिक एक नई लाइन से शुरू हो रहा हो।",
+                parse_mode="HTML"
             )
             return
 
