@@ -5802,12 +5802,12 @@ async def auto_quiz_summary_monitor(bot):
                     f"🫥 <b>Description:</b> {escaped_desc}\n"
                     f"⚡ {total_q} questions · ⏱ Time: {time_display}\n\n"
                     f"<blockquote>🔗 External sharing link:</blockquote>\n"
-                    f"<tg-spoiler>https://t.me{bot_username}?start=quiz_{quiz_id}</tg-spoiler>"
+                    f"<tg-spoiler>https://t.me/{bot_username}?start=quiz_{quiz_id}</tg-spoiler>"
                 )
                 
                 inline_keyboard = [
-                    [InlineKeyboardButton("Start Private Chat 👤", url=f"https://t.me{bot_username}?start=quiz_{quiz_id}")],
-                    [InlineKeyboardButton("Start Quiz in Group 👥", url=f"https://t.me{bot_username}?startgroup=quiz_{quiz_id}")],
+                    [InlineKeyboardButton("Start Quiz In Private Chat 🎮", url=f"https://t.me/{bot_username}?start=quiz_{quiz_id}")],
+                    [InlineKeyboardButton("Start Quiz in Group 👥", url=f"https://t.me/{bot_username}?startgroup=quiz_{quiz_id}")],
                     [InlineKeyboardButton("Share Quiz 📢", switch_inline_query=f"quiz_{quiz_id}")]
                 ]
                 reply_markup = InlineKeyboardMarkup(inline_keyboard)
