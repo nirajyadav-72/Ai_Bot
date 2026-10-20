@@ -40,6 +40,8 @@ OWNER_ID = int(os.getenv("OWNER_ID")) if os.getenv("OWNER_ID") else None
 
 # 🔥 FIXED: .env se SUPPORT_GROUP_ID load karne ke liye ye line jodi hai
 SUPPORT_GROUP_ID = int(os.getenv("SUPPORT_GROUP_ID")) if os.getenv("SUPPORT_GROUP_ID") else None
+# 📢 NEW: .env se SUPPORT_CHANNEL_ID load karne ke liye ye line jodi hai
+SUPPORT_CHANNEL_ID = int(os.getenv("SUPPORT_CHANNEL_ID")) if os.getenv("SUPPORT_CHANNEL_ID") else None
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # ====================================================================
