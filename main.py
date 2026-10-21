@@ -3750,7 +3750,54 @@ async def send_next_group_poll(chat_id, context):
         game["current_q"] += 1
         current_q_num = game["current_q"]
         total_q_count = len(questions)
+        
+        if current_q_num % 3 == 0 and "non_joined_batch" in game and game["non_joined_batch"]:
+            try:
+                # 🔄 Purana bacha hua alert notice saaf (delete) karein
+                if "last_join_alert_id" in game and game["last_join_alert_id"]:
+                    try:
+                        await context.bot.delete_message(chat_id=chat_id, message_id=game["last_join_alert_id"])
+                        game["last_join_alert_id"] = None
+                    except Exception:
+                        pass
 
+                # Batch ke sabhi users ko HTML format me tag karne ke liye loop chalaen
+                mentions_list = []
+                for user_id in list(game["non_joined_batch"]):
+                    player_display = game["joined_users"].get(user_id, "Player")
+                    mentions_list.append(f"<a href='tg://user?id={user_id}'>{player_display}</a>")
+                
+                all_mentions_str = ", ".join(mentions_list)
+                
+                # Channel link metadata fetch criteria
+                try:
+                    chat_info = await context.bot.get_chat(chat_id=SUPPORT_CHANNEL_ID)
+                    channel_link = chat_info.invite_link or f"https://t.me/{chat_info.username}" if chat_info.username else None
+                except Exception:
+                    channel_link = None
+
+                join_keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("📢 Join Support Channel", url=channel_link)] if channel_link else [],
+                    [InlineKeyboardButton("🔄 Verify & Join Game", callback_data=f"ready_{quiz_id}")]
+                ])
+                
+                # Ek hi combined message me sabhi target users ko tag karke alert bhejein
+                alert_msg = await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"⚠️ <b>ATTENTION REQUIRED!</b>\n\n{all_mentions_str}\n\nAap sabhi ke answers pichle 3 questions se block kiye ja rahe hain kyunki aapne hamara support channel join nahi kiya hai. Apne points counted karwane ke liye niche diye button se channel join karein!",
+                    reply_markup=join_keyboard,
+                    parse_mode="HTML"
+                )
+                
+                # Naye message ID ko save karein taaki next 3 questions baad ise clean kiya ja sake
+                game["last_join_alert_id"] = alert_msg.message_id
+                
+                # Naya alert bhejne ke baad batch memory ko reset (clear) kar dein
+                game["non_joined_batch"].clear()
+
+            except Exception as batch_err:
+                logging.error(f"Failed to broadcast structured batch tag message: {batch_err}")
+                
         # 🎯 SEQUENCE CONDITION: हर 5वें सवाल के बाद बिना रुके बैकग्राउंड में लाइव रिजल्ट ट्रिगर करेगा
         if current_q_num < total_q_count and current_q_num % 5 == 0:
             await send_mid_game_leaderboard(chat_id, context, current_q_num, total_q_count)
@@ -3775,62 +3822,33 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 correct_idx = poll_info["correct_idx"]
                 question_idx = poll_info["question_index"]
                 
+                # Base structure initialization fixes
+                if "scores" not in game: game["scores"] = {}
+                if "user_answers" not in game: game["user_answers"] = {}
+                if "joined_users" not in game: game["joined_users"] = {}
+                if "non_joined_batch" not in game: game["non_joined_batch"] = set()
+                
                 # ====================================================================
-                # 🔒 NEW STRICT FILTER: BLOCK POLL RESPONSE IF NOT JOINED IN CHANNEL
+                # 🔒 STAGE 1: FORCE JOIN EVALUATION & BATCH STORAGE
                 # ====================================================================
                 is_joined = await check_channel_join(uid, context)
                 if not is_joined:
-                    logging.info(f"🚫 Discarded poll vote from non-joined user {uid} in chat {cid}")
+                    logging.info(f"🚫 Discarded vote from non-joined user {uid} in question {question_idx}")
                     
-                    # Live notification notice build criteria
-                    try:
-                        chat_info = await context.bot.get_chat(chat_id=SUPPORT_CHANNEL_ID)
-                        channel_link = chat_info.invite_link or f"https://t.me/{chat_info.username}" if chat_info.username else None
-                    except Exception:
-                        channel_link = None
-
-                    join_keyboard = InlineKeyboardMarkup([
-                        [InlineKeyboardButton("📢 Join Channel", url=channel_link)] if channel_link else [],
-                        [InlineKeyboardButton("🔄 Verify & Try Joining", callback_data=f"ready_{game.get('quiz_id')}")]
-                    ])
+                    # User ko target memory map me register karein aur batch me ID jodein
+                    if uid not in game["joined_users"]:
+                        game["joined_users"][uid] = user_name
+                    game["non_joined_batch"].add(uid)
                     
-                    try:
-                        # Purana temporary alert delete karein taaki group chat clean rahe
-                        if "last_join_alert_id" in game and game["last_join_alert_id"]:
-                            try:
-                                await context.bot.delete_message(chat_id=cid, message_id=game["last_join_alert_id"])
-                            except Exception:
-                                pass
-                        
-                        # Group chat me direct alert bhejkar user ka score record hone se rokein
-                        alert_msg = await context.bot.send_message(
-                            chat_id=cid,
-                            text=f"⚠️ {ans.user.mention_html()} aapka answer record nahi kiya gaya kyunki aapne hamara support channel join nahi kiya hai! Khelne ke liye pehle niche se join karein:",
-                            reply_markup=join_keyboard,
-                            parse_mode="HTML"
-                        )
-                        game["last_join_alert_id"] = alert_msg.message_id
-                    except Exception as e:
-                        logging.error(f"Failed to push poll anti-bypass alert: {e}")
-                        
-                    return # 🛑 STOP EXECUTION: User ka answer database/memory me record hi nahi hoga!
+                    # 🛑 RETURN IMMEDIATELY: Inka answer memory/score me save nahi hoga
+                    return 
                 # ====================================================================
                 
-                # Ensure base dictionary structures exist safely
-                if "scores" not in game:
-                    game["scores"] = {}
-                if "user_answers" not in game:
-                    game["user_answers"] = {}
-                if "joined_users" not in game:
-                    game["joined_users"] = {}
-                
+                # Verified user data insertion logic
                 if uid not in game["joined_users"]:
                     game["joined_users"][uid] = user_name
-                    logging.info(f"New participant added: {user_name} (ID: {uid})")
-                
                 if uid not in game["scores"]:
                     game["scores"][uid] = {"score": 0, "total_time": 0.0, "wrong": 0, "points": 0.0}
-                
                 if uid not in game["user_answers"]:
                     game["user_answers"][uid] = {}
                 
@@ -3841,7 +3859,6 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     "correct_idx": correct_idx,
                     "timestamp": datetime.now()
                 }
-                
                 game["consecutive_no_answers"] = 0
                 
     except Exception as e:
