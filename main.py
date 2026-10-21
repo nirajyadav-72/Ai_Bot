@@ -84,6 +84,23 @@ def is_authorized(update: Update):
         if user_id != OWNER_ID and user_id not in allowed_ids:
             return False
     return True
+
+async def check_channel_join(user_id: int, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Checks if the user is a member of the mandatory support channel"""
+    if not SUPPORT_CHANNEL_ID:
+        # Agar .env me ID configure nahi hai to restriction bypass ho jayegi
+        return True
+    try:
+        member = await context.bot.get_chat_member(chat_id=SUPPORT_CHANNEL_ID, user_id=user_id)
+        # Valid status: member, administrator, or creator
+        if member.status in ["member", "administrator", "creator"]:
+            return True
+        return False
+    except Exception as e:
+        logging.warning(f"Channel join check error for user {user_id}: {e}")
+        # Agar chat_member lookup fail hota hai (jaise user ne kabhi bot block kiya ya link error), default False karein
+        return False
+        
 # ====================================================================
 
 # Initialize Gemini Client if Key exists
