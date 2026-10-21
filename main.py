@@ -3186,8 +3186,11 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user_name = user.username or user.first_name or "Player"
         logging.info(f"handle_ready_click invoked: chat_id={chat_id} msg_id={message_id} user_id={user_id}")
 
+        # Active game memory snapshot pull karein
+        game = GROUP_GAMES.get(chat_id)
+
         # ====================================================================
-        # 📢 CRITICAL: SUPPORT CHANNEL JOIN CHECK (For Everyone)
+        # 📢 CRITICAL AREA: SUPPORT CHANNEL JOIN FILTER WITH AUTO-DELETE
         # ====================================================================
         is_joined = await check_channel_join(user_id, context)
         if not is_joined:
@@ -3203,21 +3206,46 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
             ])
             
             try:
-                # User ko strict browser pop-up screen notification alert trigger karein
-                await query.answer(text="⚠️ Please join the support channel to participate!", show_alert=True)
+                # 🔄 CONDITION CHECK: Try Again par click karte hi purana alert delete karein
+                if game and "last_join_alert_id" in game and game["last_join_alert_id"]:
+                    try:
+                        await context.bot.delete_message(chat_id=chat_id, message_id=game["last_join_alert_id"])
+                    except Exception:
+                        pass
                 
-                # Group me customized warning log alert post karein
-                await context.bot.send_message(
+                # User ki screen par temporary browser pop-up prompt bhejien
+                await query.answer(text="⚠️ Please join the support channel first!", show_alert=True)
+                
+                # Chat block area me fresh dynamic alert post karein
+                alert_msg = await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"⚠️ {user.mention_html()} aap chalte game ya countdown me tabhi shamil ho sakte hain jab aap hamare channel me join rahenge. Niche diye button se access lein:",
+                    text=f"⚠️ {user.mention_html()} aap game me tabhi shamil ho sakte hain jab aap hamare channel me join rahenge. Niche diye button se verify karein:",
                     reply_markup=join_keyboard,
                     parse_mode="HTML"
                 )
+                
+                # Naye warning message ki ID save karein taaki agli baar use clean kiya ja sake
+                if not game:
+                    GROUP_GAMES[chat_id] = {"last_join_alert_id": alert_msg.message_id}
+                else:
+                    game["last_join_alert_id"] = alert_msg.message_id
+                    
             except Exception as e:
-                logging.error(f"Failed to send running quiz join alert: {e}")
+                logging.error(f"Failed to execute dynamic join filter routine: {e}")
             return
+            
+        # 🎯 USER VERIFIED: Agar user ne channel join kar liya hai, to purana notice saaf kar dein
+        if game and "last_join_alert_id" in game and game["last_join_alert_id"]:
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=game["last_join_alert_id"])
+                game["last_join_alert_id"] = None
+            except Exception:
+                pass
         # ====================================================================
 
+        # ---- AGLE HISSE (PART 2) KA CODE ISKE THEEK NICHE RAHEGA ----
+        # ---- HISSA 1 KE NICHE YAHAN SE CONTINUED ----
+        
         # Parse callback data safely
         data = query.data or ""
         parts = data.split("_")
@@ -3230,7 +3258,6 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
             return
 
         # Ensure a game state exists and normalize it
-        game = GROUP_GAMES.get(chat_id)
         if game:
             try:
                 old_qid = int(game.get("quiz_id", 0))
@@ -3238,11 +3265,15 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 old_qid = None
             if (old_qid is not None and old_qid != quiz_id) and not game.get("quiz_started"):
                 logging.info(f"Clearing stale GROUP_GAMES entry for chat {chat_id}")
+                saved_alert_id = game.get("last_join_alert_id")
                 GROUP_GAMES.pop(chat_id, None)
+                if saved_alert_id:
+                    GROUP_GAMES[chat_id] = {"last_join_alert_id": saved_alert_id}
                 game = None
 
-        if not game:
-            # Create new in-memory game state
+        if not game or "quiz_id" not in game:
+            # Create new in-memory game state cleanly
+            saved_alert_id = game.get("last_join_alert_id") if game else None
             GROUP_GAMES[chat_id] = {
                 "quiz_id": quiz_id,
                 "joined_users": {},
@@ -3261,7 +3292,8 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 "quiz_paused": False,
                 "consecutive_no_answers": 0,
                 "previous_panel_message_id": None,
-                "start_lock": asyncio.Lock()
+                "start_lock": asyncio.Lock(),
+                "last_join_alert_id": saved_alert_id
             }
             game = GROUP_GAMES[chat_id]
 
@@ -3285,7 +3317,7 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
             except Exception: pass
             return
 
-        # 🔥 CHALTE GAME KI LOGIC: Agar game live hai aur user authenticated hai to check bypass hokar direct shamil hoga
+        # 🔥 LIVE CHALTE GAME KI LOGIC: Validated user session bypass hokar direct inject hoga
         if game.get("quiz_started"):
             if user_id not in game["joined_users"]:
                 game["joined_users"][user_id] = f"@{user_name}" if user.username else user_name
@@ -3308,6 +3340,7 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         is_private_chat = str(query.message.chat.type) == "private"
         min_ready_required = 1 if is_private_chat else 2
 
+        # 🏁 ATOMIC BENCHMARK MATCH: Start Quiz Animation Sequences
         if ready_count >= min_ready_required and not game.get("quiz_started"):
             lock = game["start_lock"]
             game["starting"] = True
@@ -3344,6 +3377,7 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 except Exception: pass
             return
 
+        # Live Player layout text monitoring
         if not game.get("quiz_started"):
             try:
                 base_text = game.get("setup_panel_text")
