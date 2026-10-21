@@ -4005,6 +4005,14 @@ async def compile_group_leaderboard(chat_id, context):
         game = GROUP_GAMES.get(chat_id)
         if not game:
             return
+        # ====================================================================
+        if "last_join_alert_id" in game and game["last_join_alert_id"]:
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=game["last_join_alert_id"])
+                game["last_join_alert_id"] = None
+                logging.info(f"🗑️ [Cleanup] Live support join alert message deleted in chat {chat_id}")
+            except Exception as delete_err:
+                logging.warning(f"Could not delete last join alert message during final leaderboard: {delete_err}")
         
         bot_username = context.bot.username if context.bot.username else "quiz_bot"
         
