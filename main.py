@@ -3477,6 +3477,13 @@ async def handle_stop_quiz_from_pause(update: Update, context: ContextTypes.DEFA
             text="❌ Quiz stopped!\n\n🏁 Final Result:",
             reply_markup=InlineKeyboardMarkup([])
         )
+
+        if "last_join_alert_id" in game and game["last_join_alert_id"]:
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=game["last_join_alert_id"])
+                game["last_join_alert_id"] = None
+            except Exception:
+                pass
         
         await compile_group_leaderboard(chat_id, context)
         
