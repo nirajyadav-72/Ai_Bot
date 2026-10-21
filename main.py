@@ -5804,12 +5804,12 @@ async def auto_quiz_summary_monitor(bot):
                     f"<blockquote>🔗 External sharing link:</blockquote>\n"
                     f"<tg-spoiler>https://t.me/{bot_username}?start=quiz_{quiz_id}</tg-spoiler>"
                 )
-                
+
                 inline_keyboard = [
                     [{"text": "Start Quiz In Private Chat 🎮", "url": f"https://t.me/{bot_username}?start=quiz_{quiz_id}", "style": "primary"}],
                     [{"text": "Start Quiz in Group 👥", "url": f"https://t.me/{bot_username}?startgroup=quiz_{quiz_id}", "style": "success"}],
-                    # 🔴 एरर फिक्स + आपके कोड के अनुसार डिक्शनरी स्टाइल सेट
-                    [{"text": "Share Quiz 📢", "switch_inline_query_current_chat": f"quiz_{quiz_id}", "style": "danger"}]
+                    # 🔥 FIXED: switch_inline_query_current_chat को हटाकर URL शेयर लिंक लगाया है जो चैनल में 100% काम करेगा
+                    [{"text": "Share Quiz 📢", "url": f"https://t.me/share/url?url=https://t.me/{bot_username}?start=quiz_{quiz_id}&text=Check%20out%20this%20awesome%20quiz!", "style": "danger"}]
                 ]
                 reply_markup = InlineKeyboardMarkup(inline_keyboard)
 
