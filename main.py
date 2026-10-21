@@ -5939,10 +5939,11 @@ async def auto_quiz_summary_monitor(bot):
                 escaped_desc = escape_markdown(description) if description else "No description"
                 
                 summary_text = (
-                    "<b>🤖 Ai AUTO QUIZ GENERATED!</b>\n\n"
-                    f"📒 <b>Title:</b> {escaped_title}\n"
-                    f"🫥 <b>Description:</b> {escaped_desc}\n"
-                    f"⚡ {total_q} questions · ⏱ Time/question: {time_display}\n\n"
+                    "🤖 <b>Ai AUTO QUIZ GENERATED!</b>\n\n"
+                    f"📒 <b>Title: {escaped_title}</b>\n"
+                    f"🫥 <b>Description: {escaped_desc}</b>\n"
+                    f"⚡ <b>Questions: {total_q}</b>\n"
+                    f"⏱ <b>Time/question: {time_display}</b>\n\n"
                     f"<blockquote>🔗 External sharing link:</blockquote>\n"
                     f"<pre><code>https://t.me/{bot_username}?start=quiz_{quiz_id}</code></pre>"
                 )
