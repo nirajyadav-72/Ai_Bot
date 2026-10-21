@@ -5944,7 +5944,7 @@ async def auto_quiz_summary_monitor(bot):
                     f"🫥 <b>Description:</b> {escaped_desc}\n"
                     f"⚡ {total_q} questions · ⏱ Time/question: {time_display}\n\n"
                     f"<blockquote>🔗 External sharing link:</blockquote>\n"
-                    f"<tg-spoiler>https://t.me/{bot_username}?start=quiz_{quiz_id}</tg-spoiler>"
+                    f"<pre><code>https://t.me/{bot_username}?start=quiz_{quiz_id}</code></pre>"
                 )
 
                 inline_keyboard = [
