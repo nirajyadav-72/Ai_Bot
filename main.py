@@ -3791,7 +3791,7 @@ async def send_next_group_poll(chat_id, context):
                 # Ek hi combined message me sabhi target users ko tag karke alert bhejein
                 alert_msg = await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"⚠️ <b>ATTENTION REQUIRED!</b>\n\n{all_mentions_str}\n\nAap sabhi ke answers pichle 3 questions se block kiye ja rahe hain kyunki aapne hamara support channel join nahi kiya hai. Apne points counted karwane ke liye niche diye button se channel join karein!",
+                    text=f"⚠️ <b>ATTENTION REQUIRED!</b>\n\n{all_mentions_str}\n\naap game me tabhi shamil ho sakte hain jab aap hamare channel me join rahenge.\nApne points counted karwane ke liye niche diye button se channel join karein!\njoin kar liye hai to verify botton se refresh kare!",
                     reply_markup=join_keyboard,
                     parse_mode="HTML"
                 )
