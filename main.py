@@ -3169,6 +3169,38 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         user_name = user.username or user.first_name or "Player"
         logging.info(f"handle_ready_click invoked: chat_id={chat_id} msg_id={message_id} user_id={user_id}")
 
+        # ====================================================================
+        # 📢 CRITICAL: SUPPORT CHANNEL JOIN CHECK (For Everyone)
+        # ====================================================================
+        is_joined = await check_channel_join(user_id, context)
+        if not is_joined:
+            try:
+                chat_info = await context.bot.get_chat(chat_id=SUPPORT_CHANNEL_ID)
+                channel_link = chat_info.invite_link or f"https://t.me/{chat_info.username}" if chat_info.username else None
+            except Exception:
+                channel_link = None
+
+            join_keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("📢 Join Channel", url=channel_link)] if channel_link else [],
+                [InlineKeyboardButton("🔄 Checked & Try Again", callback_data=query.data)]
+            ])
+            
+            try:
+                # User ko strict browser pop-up screen notification alert trigger karein
+                await query.answer(text="⚠️ Please join the support channel to participate!", show_alert=True)
+                
+                # Group me customized warning log alert post karein
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"⚠️ {user.mention_html()} aap chalte game ya countdown me tabhi shamil ho sakte hain jab aap hamare channel me join rahenge. Niche diye button se access lein:",
+                    reply_markup=join_keyboard,
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logging.error(f"Failed to send running quiz join alert: {e}")
+            return
+        # ====================================================================
+
         # Parse callback data safely
         data = query.data or ""
         parts = data.split("_")
@@ -3235,14 +3267,15 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
             try: await query.answer("Quiz is starting, please wait...", show_alert=False)
             except Exception: pass
             return
-        # If quiz already started, just add the user and ack
+
+        # 🔥 CHALTE GAME KI LOGIC: Agar game live hai aur user authenticated hai to check bypass hokar direct shamil hoga
         if game.get("quiz_started"):
             if user_id not in game["joined_users"]:
                 game["joined_users"][user_id] = f"@{user_name}" if user.username else user_name
                 game["scores"][user_id] = {"score": 0, "total_time": 0.0, "wrong": 0, "points": 0.0}
                 game["user_answers"][user_id] = {}
             game["ready_users"].add(user_id)
-            try: await query.answer("Aapko chalte countdown me shaamil kar liya gaya hai! ⚡", show_alert=False)
+            try: await query.answer("Aapko chalte countdown/quiz session me safely shaamil kar liya gaya hai! ⚡", show_alert=False)
             except Exception: pass
             return
 
@@ -3258,9 +3291,6 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         is_private_chat = str(query.message.chat.type) == "private"
         min_ready_required = 1 if is_private_chat else 2
 
-        # ====================================================================
-        # 🏁 QUIZ TARGET ACHIEVED: ATOMIC START & HIDE BUTTONS LOGIC
-        # ====================================================================
         if ready_count >= min_ready_required and not game.get("quiz_started"):
             lock = game["start_lock"]
             game["starting"] = True
@@ -3272,7 +3302,6 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     game.pop("starting", None)
                     return
 
-                # 🔥 मुख्य सुधार: 'I am ready' बटन को स्क्रीन से तुरंत और परमानेंट हाइड (रिमूव) करें
                 try: 
                     await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=message_id, reply_markup=None)
                 except Exception as e:
@@ -3282,7 +3311,6 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=game["previous_panel_message_id"], reply_markup=None)
                     except Exception: pass
 
-                # काउंटडाउन एनिमेशन लूप
                 try:
                     for count in ["🎲 The quiz is about to begin…", "3️⃣....", "2️⃣Ready...", "1️⃣ SET…", "Go..🚀"]:
                         cmsg = await context.bot.send_message(chat_id=chat_id, text=count)
@@ -3291,7 +3319,6 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                         except Exception: pass
                 except Exception: pass
 
-                # गेम फ्लैग को स्टार्ट मार्क करें
                 game["current_q"] = 0
                 game["quiz_started"] = True
                 game.pop("starting", None)
@@ -3300,9 +3327,6 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 except Exception: pass
             return
 
-        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        # 👥 LIVE COUNT: Update user count strictly inside message text
-        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         if not game.get("quiz_started"):
             try:
                 base_text = game.get("setup_panel_text")
@@ -3318,7 +3342,7 @@ async def handle_ready_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     chat_id=chat_id,
                     message_id=message_id,
                     text=updated_text,
-                    reply_markup=query.message.reply_markup, # जब तक गेम शुरू नहीं होता, ब्लिंकिंग जारी रहेगी
+                    reply_markup=query.message.reply_markup,
                     parse_mode="HTML"
                 )
             except Exception as e:
