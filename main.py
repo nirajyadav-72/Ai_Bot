@@ -5871,11 +5871,10 @@ async def auto_quiz_summary_monitor(bot):
                 escaped_desc = escape_markdown(description) if description else "No description"
                 
                 summary_text = (
-                    "<b>🤖 NEW AUTOMATIC QUIZ GENERATED! 🚀</b>\n"
-                    "यह क्विज़ ऑटोमैटिक जनरेट होकर डेटाबेस में सुरक्षित सेव हो चुकी है।\n\n"
+                    "<b>🤖 Ai AUTO QUIZ GENERATED!</b>\n\n"
                     f"📒 <b>Title:</b> {escaped_title}\n"
                     f"🫥 <b>Description:</b> {escaped_desc}\n"
-                    f"⚡ {total_q} questions · ⏱ Time: {time_display}\n\n"
+                    f"⚡ {total_q} questions · ⏱ Time/question: {time_display}\n\n"
                     f"<blockquote>🔗 External sharing link:</blockquote>\n"
                     f"<tg-spoiler>https://t.me/{bot_username}?start=quiz_{quiz_id}</tg-spoiler>"
                 )
