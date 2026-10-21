@@ -1659,12 +1659,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
 
                 init_text = (
-                    f"<blockquote><ins><b>🎲 Get ready for the quiz!</b></ins></blockquote>\n\n"
+                    f"<ins><b>🎲 Get ready for the quiz!</b></ins>\n\n"
                     f"<blockquote>📚 Title: {escape_markdown(title)}</blockquote>\n"
-                    f"<blockquote>🔥 Description: {escape_markdown(desc) if desc else 'No description'}</blockquote>\n"
-                    f"<blockquote>🖊️ Questions: {total_q}</blockquote>\n"
-                    f"<blockquote>⏱ Time per question: {time_disp}</blockquote>\n"
-                    f"<blockquote>📉 Negative Marking: `-{db_neg_val} Marks` per wrong answer</blockquote>\n\n"
+                    f"<pre><code>🔥 Description: {escape_markdown(desc) if desc else 'No description'}</code></pre>\n"
+                    f"<pre><code>🖊️ Questions: {total_q}</code></pre>\n"
+                    f"<pre><code>⏱ Time per question: {time_disp}</code></pre>\n"
+                    f"<pre><code>📉 Negative Marking: -{db_neg_val} Marks per wrong answer!</code></pre>\n\n"
                     "🏁 Click <b>'I am ready!'</b> to start the quiz.\n"
                     "The quiz will begin when at least 2 people are ready to play. Send /stop to stop it."
                 )
