@@ -5806,12 +5806,13 @@ async def auto_quiz_summary_monitor(bot):
                 )
                 
                 inline_keyboard = [
-                    [InlineKeyboardButton("Start Quiz In Private Chat 🎮", url=f"https://t.me/{bot_username}?start=quiz_{quiz_id}")],
-                    [InlineKeyboardButton("Start Quiz in Group 👥", url=f"https://t.me/{bot_username}?startgroup=quiz_{quiz_id}")],
-                    [InlineKeyboardButton("Share Quiz 📢", switch_inline_query=f"quiz_{quiz_id}")]
+                    [{"text": "Start Quiz In Private Chat 🎮", "url": f"https://t.me/{bot_username}?start=quiz_{quiz_id}", "style": "primary"}],
+                    [{"text": "Start Quiz in Group 👥", "url": f"https://t.me/{bot_username}?startgroup=quiz_{quiz_id}", "style": "success"}],
+                    # 🔴 एरर फिक्स + आपके कोड के अनुसार डिक्शनरी स्टाइल सेट
+                    [{"text": "Share Quiz 📢", "switch_inline_query_current_chat": f"quiz_{quiz_id}", "style": "danger"}]
                 ]
                 reply_markup = InlineKeyboardMarkup(inline_keyboard)
-                
+
                 # सपोर्ट चैनल/ग्रुप में समरी पैनल सेंड करें
                 await bot.send_message(
                     chat_id=SUPPORT_CHANNEL_ID, 
