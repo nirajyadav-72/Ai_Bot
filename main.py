@@ -2455,7 +2455,7 @@ async def show_summary_panel(query, context, quiz_id):
             f"🫥 <b>Description:</b> {escaped_desc}\n"
             f"⚡ {total_q[0]} questions · ⏱ Time: {time_display}\n\n"
             f"<blockquote>🔗 External sharing link:</blockquote>\n"
-            f"`https://t.me/{bot_username}?start=quiz_{quiz_id}`"
+            f"<pre><code>https://t.me/{bot_username}?start=quiz_{quiz_id}</code></pre>"
         )
         
         inline_keyboard = [
@@ -2498,7 +2498,7 @@ async def show_summary_panel_text(update, context, quiz_id):
             f"🫥 <b>Description:</b> {escaped_desc}\n"
             f"⚡ {total_q[0]} questions · ⏱ Time: {time_display}\n\n"
             f"<blockquote>🔗 External sharing link:</blockquote>\n"
-            f"`https://t.me/{bot_username}?start=quiz_{quiz_id}`"
+            f"<pre><code>https://t.me/{bot_username}?start=quiz_{quiz_id}</code></pre>"
         )
         
         inline_keyboard = [
