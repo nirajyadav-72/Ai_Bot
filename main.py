@@ -3775,7 +3775,48 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 correct_idx = poll_info["correct_idx"]
                 question_idx = poll_info["question_index"]
                 
-                # FIX 2: Sabse pehle ensure karein ki 'scores' aur 'user_answers' keys game me exist karti hain
+                # ====================================================================
+                # 🔒 NEW STRICT FILTER: BLOCK POLL RESPONSE IF NOT JOINED IN CHANNEL
+                # ====================================================================
+                is_joined = await check_channel_join(uid, context)
+                if not is_joined:
+                    logging.info(f"🚫 Discarded poll vote from non-joined user {uid} in chat {cid}")
+                    
+                    # Live notification notice build criteria
+                    try:
+                        chat_info = await context.bot.get_chat(chat_id=SUPPORT_CHANNEL_ID)
+                        channel_link = chat_info.invite_link or f"https://t.me/{chat_info.username}" if chat_info.username else None
+                    except Exception:
+                        channel_link = None
+
+                    join_keyboard = InlineKeyboardMarkup([
+                        [InlineKeyboardButton("📢 Join Channel", url=channel_link)] if channel_link else [],
+                        [InlineKeyboardButton("🔄 Verify & Try Joining", callback_data=f"ready_{game.get('quiz_id')}")]
+                    ])
+                    
+                    try:
+                        # Purana temporary alert delete karein taaki group chat clean rahe
+                        if "last_join_alert_id" in game and game["last_join_alert_id"]:
+                            try:
+                                await context.bot.delete_message(chat_id=cid, message_id=game["last_join_alert_id"])
+                            except Exception:
+                                pass
+                        
+                        # Group chat me direct alert bhejkar user ka score record hone se rokein
+                        alert_msg = await context.bot.send_message(
+                            chat_id=cid,
+                            text=f"⚠️ {ans.user.mention_html()} aapka answer record nahi kiya gaya kyunki aapne hamara support channel join nahi kiya hai! Khelne ke liye pehle niche se join karein:",
+                            reply_markup=join_keyboard,
+                            parse_mode="HTML"
+                        )
+                        game["last_join_alert_id"] = alert_msg.message_id
+                    except Exception as e:
+                        logging.error(f"Failed to push poll anti-bypass alert: {e}")
+                        
+                    return # 🛑 STOP EXECUTION: User ka answer database/memory me record hi nahi hoga!
+                # ====================================================================
+                
+                # Ensure base dictionary structures exist safely
                 if "scores" not in game:
                     game["scores"] = {}
                 if "user_answers" not in game:
@@ -3787,15 +3828,12 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     game["joined_users"][uid] = user_name
                     logging.info(f"New participant added: {user_name} (ID: {uid})")
                 
-                # Agar user pehle se joined nahi tha ya uski entry scores me miss ho gayi thi
                 if uid not in game["scores"]:
                     game["scores"][uid] = {"score": 0, "total_time": 0.0, "wrong": 0, "points": 0.0}
                 
                 if uid not in game["user_answers"]:
                     game["user_answers"][uid] = {}
                 
-                # FIX 5: ans.option_ids ek list hoti hai, isliye pehla element nikalenge
-                # 🌟 OTHERS FIX: Agar user answer retract/unvote karta hai, toh option_ids empty ([]) ho jati hai, use safely -1 handle kiya
                 selected_idx = ans.option_ids[0] if ans.option_ids else -1
                 
                 game["user_answers"][uid][question_idx] = {
@@ -3804,11 +3842,10 @@ async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     "timestamp": datetime.now()
                 }
                 
-                # 🌟 ANTI-RACE SYSTEM DEFLATOR: User response active benchmarks ko increment karta hai
                 game["consecutive_no_answers"] = 0
                 
     except Exception as e:
-        logging.error(f"Error in track_poll_answers: {e}")
+        logging.error(f"Error in track_poll_answers verification layer: {e}")
 
 async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_questions):
     """गेम के बीच में हर 5 सवाल के बाद Live Top 5 Result दिखाने के लिए फ़ंक्शन"""
