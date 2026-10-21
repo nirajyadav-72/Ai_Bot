@@ -5770,7 +5770,7 @@ async def auto_quiz_summary_monitor(bot):
             # हर 5 सेकंड में चेक करेगा कि कोई नई क्विज़ बनी है या नहीं
             await asyncio.sleep(5)
             
-            if not SUPPORT_GROUP_ID:
+            if not SUPPORT_CHANNEL_ID:
                 continue
 
             conn = sqlite3.connect(DB_FILE)
@@ -5814,7 +5814,7 @@ async def auto_quiz_summary_monitor(bot):
                 
                 # सपोर्ट चैनल/ग्रुप में समरी पैनल सेंड करें
                 await bot.send_message(
-                    chat_id=SUPPORT_GROUP_ID, 
+                    chat_id=SUPPORT_CHANNEL_ID, 
                     text=summary_text, 
                     reply_markup=reply_markup, 
                     parse_mode="HTML"
