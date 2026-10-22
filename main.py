@@ -1660,8 +1660,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 init_text = (
                     f"🎲 <ins><b>Get ready for the quiz!</b></ins> 🎮\n\n"
-                    f"<blockquote>📚 Title: {escape_markdown(title)}</blockquote>\n"
-                    f"<pre><b>🔥 Description: {escape_markdown(desc) if desc else 'No description'}</b></pre>\n"
+                    f"<blockquote>📚 <b>Title: {escape_markdown(title)}</b></blockquote>\n"
+                    f"<blockquote>🔥 <b>Description: {escape_markdown(desc) if desc else 'No description'}</b></blockquote>\n"
                     f"<pre><b>🖊️ Questions: {total_q}</b></pre>\n"
                     f"<pre><b>⏱ Time per question: {time_disp}</b></pre>\n"
                     f"<pre><b>📉 Negative Marking: -{db_neg_val} Marks per wrong answer!</b></pre>\n\n"
