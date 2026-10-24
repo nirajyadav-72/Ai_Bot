@@ -1845,12 +1845,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def quizzes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Display user's quizzes with a limit of 10 per page"""
     try:
-        if update.effective_chat.type in ['group', 'supergroup']:
-            await update.message.reply_text(
-                "⚠️ यह कमांड केवल प्राइवेट चैट में काम करती है। कृपया मुझे पर्सनल मैसेज (DM) में `/quizzes` भेजें।"
-            )
-            return
-
+    
         if check_active_quiz_creation(update.message.from_user.id, context):
             await update.message.reply_text(
                 "⚠️ *You have an unfinished quiz.* Please finish creating your quiz or send /cancel.\n\n"
