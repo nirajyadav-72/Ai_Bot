@@ -3785,7 +3785,7 @@ async def send_next_group_poll(chat_id, context):
                 # Ek hi combined message me sabhi target users ko tag karke alert bhejein
                 alert_msg = await context.bot.send_message(
                     chat_id=chat_id,
-                    text=f"⚠️ <b>ATTENTION REQUIRED!</b>\n\n{all_mentions_str}\n\naap game me tabhi shamil ho sakte hain jab aap hamare channel me join rahenge.\nApne points counted karwane ke liye niche diye button se channel join karein!\njoin kar liye hai to verify botton se refresh kare!",
+                    text=f"⚠️ <b>ATTENTION REQUIRED!</b>\n\n{all_mentions_str}\n<b>आप क्विज में तभी शामिल हो सकते हैं जब आप हमारे चैनल को ज्वाइन करेंगे ! अपने सही प्रश्नो के पॉइंट काउंट करवाने के लिए नीचे दिए गए बटन से चैनल ज्वाइन करें!</b>\n<b>अगर आप चैनल ज्वाइन नही करते है तो आपका नाम result लिस्ट में नही आएगा।</b>\n\n<b>चैनल ज्वाइन करने के बाद भी यह alert message दिख रहा हैं तो verify बटन से refresh करें!</b>",
                     reply_markup=join_keyboard,
                     parse_mode="HTML"
                 )
