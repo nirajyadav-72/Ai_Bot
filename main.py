@@ -1624,7 +1624,7 @@ async def start_quiz_via_command(update: Update, context: ContextTypes.DEFAULT_T
         logging.error(f"Error in start_quiz_via_command solo layer: {e}", exc_info=True)
 
 async def send_solo_timerless_poll(session_key, context):
-    """Generates the timerless poll first, and then attaches the control button dashboard underneath it."""
+    """Generates a clean timerless poll interface by deleting the previous poll and buttons beforehand."""
     try:
         session = SOLO_QUIZZES.get(session_key)
         if not session: return
@@ -1641,6 +1641,17 @@ async def send_solo_timerless_poll(session_key, context):
 
         # 📊 CHECK END OF QUIZ -> Compile personal result metrics
         if current_q >= len(questions) or current_q < 0:
+            # फाइनल रिजल्ट देने से पहले भी आखिरी बटन और पोल को डिलीट कर दें
+            if session.get("last_control_msg_id"):
+                try: await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
+                except Exception: pass
+            
+            # पिछले सवाल का इंडेक्स निकालकर पोल डिलीट करें (यदि अंत में हो)
+            prev_q = current_q - 1
+            if "poll_message_ids" in session and prev_q in session["poll_message_ids"]:
+                try: await context.bot.delete_message(chat_id=chat_id, message_id=session["poll_message_ids"][prev_q])
+                except Exception: pass
+
             await compile_solo_personal_result(session_key, context, len(questions))
             return
 
@@ -1655,9 +1666,26 @@ async def send_solo_timerless_poll(session_key, context):
             try: correct_idx = options.index(str(correct_ans))
             except ValueError: correct_idx = 0
 
+        # 1. पुराना बटन कंट्रोल मैसेज डिलीट करें
+        if session.get("last_control_msg_id"):
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
+                session["last_control_msg_id"] = None
+            except Exception:
+                pass
+
+        # 2. पिछले सभी भेजे गए पोल्स (यदि कोई चैट में बचे हों) को खोजकर डिलीट करें
+        if "poll_message_ids" in session:
+            for q_idx, old_poll_mid in list(session["poll_message_ids"].items()):
+                try:
+                    await context.bot.delete_message(chat_id=chat_id, message_id=old_poll_mid)
+                    del session["poll_message_ids"][q_idx] # मेमोरी से भी साफ करें
+                except Exception:
+                    pass
+
         max_attempts = 3
 
-        # 📤 स्टेप A: पहले बिना टाइमर का पोल (Poll) भेजें ताकि यह ऊपर रहे
+        # 📤 स्टेप A: नया बिना टाइमर का पोल (Poll) भेजें
         for attempt in range(max_attempts):
             try:
                 poll_msg = await context.bot.send_poll(
@@ -1697,17 +1725,10 @@ async def send_solo_timerless_poll(session_key, context):
         else:
             nav_buttons.append(InlineKeyboardButton("Finish 🏁", callback_data=f"slnav_next_{session_key}"))
 
-        control_text = f"👤 <b>Solo Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is game ko control kar rahe hain.</i>"
+        control_text = f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is Quiz ko Attend kar rahe hain.</i>"
         reply_markup = InlineKeyboardMarkup([nav_buttons])
 
-        # पुराने कंट्रोल बटन्स साफ़ करें ताकि स्क्रीन कचरा न दिखे
-        if session.get("last_control_msg_id"):
-            try:
-                await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
-            except Exception:
-                pass
-
-        # 📨 स्टेप B: अब पोल के ठीक नीचे कंट्रोल बटन्स वाला मैसेज भेजें
+        # 📨 स्टेप B: पोल के ठीक नीचे नया कंट्रोल बटन्स वाला मैसेज भेजें
         for attempt in range(max_attempts):
             try:
                 control_msg = await context.bot.send_message(
@@ -1722,7 +1743,6 @@ async def send_solo_timerless_poll(session_key, context):
                     retry_after = 5
                     match = re.search(r'retry in (\d+)', str(flood_err).lower())
                     if match: retry_after = int(match.group(1))
-                    logging.warning(f"⚠️ Flood control hit! Sleeping for {retry_after} seconds...")
                     await asyncio.sleep(retry_after)
                     continue
                 else:
