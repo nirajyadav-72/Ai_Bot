@@ -114,6 +114,8 @@ DB_FILE = "quiz_bot.db"
 
 # Global dictionary for active group games memory
 GROUP_GAMES = {}
+# 👤 Single-User /startquiz isolated memory engine
+SOLO_QUIZZES = {}
 
 # In-memory map for autorun asyncio tasks: key = autorun_id, value = asyncio.Task
 AUTORUN_TASKS = {}
