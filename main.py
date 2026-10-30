@@ -1644,6 +1644,9 @@ async def send_solo_timerless_poll(session_key, context):
             await compile_solo_personal_result(session_key, context, len(questions))
             return
 
+        # 🟩 FIXED LINE: लिस्ट में से वर्तमान सवाल (current_q) को 'q' वेरिएबल में असाइन किया
+        q = questions[current_q]
+        
         q_text, options_json, correct_ans, explanation = q
         options = json.loads(options_json)
 
@@ -1654,15 +1657,15 @@ async def send_solo_timerless_poll(session_key, context):
             try: correct_idx = options.index(str(correct_ans))
             except ValueError: correct_idx = 0
 
-        # पुराने बटन्स साफ़ करें
+        # Remove previous control dashboard buttons to preserve UI clean structure
         if session.get("last_control_msg_id"):
             try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=session["last_control_msg_id"], reply_markup=None)
             except Exception: pass
 
-        # नैविगेशन बटन्स
+        # Build structural inline dashboards
         nav_buttons = []
         if current_q > 0:
-            nav_buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"slnav_back_{session_key}"))
+            nav_buttons.append(InlineKeyboardButton("Brief Back ⬅️", callback_data=f"slnav_back_{session_key}"))
         
         nav_buttons.append(InlineKeyboardButton("🛑 Stop", callback_data=f"slnav_stop_{session_key}"))
         
@@ -1671,7 +1674,7 @@ async def send_solo_timerless_poll(session_key, context):
         else:
             nav_buttons.append(InlineKeyboardButton("Finish 🏁", callback_data=f"slnav_next_{session_key}"))
 
-        control_text = f"👤 <b>Solo Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is game ko khel aur control kar rahe hain.</i>"
+        control_text = f"👤 <b>Solo Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is game ko control kar rahe hain.</i>"
         control_msg = await context.bot.send_message(chat_id=chat_id, text=control_text, reply_markup=InlineKeyboardMarkup([nav_buttons]), parse_mode="HTML")
         session["last_control_msg_id"] = control_msg.message_id
 
