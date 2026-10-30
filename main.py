@@ -1713,17 +1713,34 @@ async def send_solo_timerless_poll(session_key, context):
                 else:
                     raise poll_flood_err
 
-        # 🎛️ नैविगेशन बटन्स तैयार करें
+        # 🎛️ 🔥 NATIVE COLORED BUTTON STRUCTURE EXTRACTION
         nav_buttons = []
-        if current_q > 0:
-            nav_buttons.append(InlineKeyboardButton("Brief Back ⬅️", callback_data=f"slnav_back_{session_key}"))
         
-        nav_buttons.append(InlineKeyboardButton("🛑 Stop", callback_data=f"slnav_stop_{session_key}"))
+        if current_q > 0:
+            nav_buttons.append({
+                "text": "Previous Ques..", 
+                "callback_data": f"slnav_back_{session_key}", 
+                "style": "primary"
+            })
+        
+        nav_buttons.append({
+            "text": "Stop Quiz", 
+            "callback_data": f"slnav_stop_{session_key}", 
+            "style": "danger"
+        })
         
         if current_q < len(questions) - 1:
-            nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"slnav_next_{session_key}"))
+            nav_buttons.append({
+                "text": "Next ques..", 
+                "callback_data": f"slnav_next_{session_key}", 
+                "style": "success"
+            })
         else:
-            nav_buttons.append(InlineKeyboardButton("Finish 🏁", callback_data=f"slnav_next_{session_key}"))
+            nav_buttons.append({
+                "text": "Finish 🏁", 
+                "callback_data": f"slnav_next_{session_key}", 
+                "style": "success"
+            })
 
         control_text = f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is Quiz ko Attend kar rahe hain.</i>"
         reply_markup = InlineKeyboardMarkup([nav_buttons])
