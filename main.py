@@ -1624,7 +1624,7 @@ async def start_quiz_via_command(update: Update, context: ContextTypes.DEFAULT_T
         logging.error(f"Error in start_quiz_via_command solo layer: {e}", exc_info=True)
 
 async def send_solo_timerless_poll(session_key, context):
-    """Generates the timerless poll and personal button dashboard for the single host user."""
+    """Generates the timerless poll first, and then attaches the control button dashboard underneath it."""
     try:
         session = SOLO_QUIZZES.get(session_key)
         if not session: return
@@ -1644,9 +1644,7 @@ async def send_solo_timerless_poll(session_key, context):
             await compile_solo_personal_result(session_key, context, len(questions))
             return
 
-        # 🟩 FIXED LINE: लिस्ट में से वर्तमान सवाल (current_q) को 'q' वेरिएबल में असाइन किया
         q = questions[current_q]
-        
         q_text, options_json, correct_ans, explanation = q
         options = json.loads(options_json)
 
@@ -1657,12 +1655,37 @@ async def send_solo_timerless_poll(session_key, context):
             try: correct_idx = options.index(str(correct_ans))
             except ValueError: correct_idx = 0
 
-        # Remove previous control dashboard buttons to preserve UI clean structure
-        if session.get("last_control_msg_id"):
-            try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=session["last_control_msg_id"], reply_markup=None)
-            except Exception: pass
+        max_attempts = 3
 
-        # Build structural inline dashboards
+        # 📤 स्टेप A: पहले बिना टाइमर का पोल (Poll) भेजें ताकि यह ऊपर रहे
+        for attempt in range(max_attempts):
+            try:
+                poll_msg = await context.bot.send_poll(
+                    chat_id=chat_id, question=f"[{current_q + 1}] {q_text}", options=options, 
+                    type="quiz", correct_option_id=correct_idx, 
+                    explanation=explanation.strip() if explanation else None, 
+                    is_anonymous=False, open_period=None  
+                )
+                
+                session["poll_message_ids"][current_q] = poll_msg.message_id
+                session["poll_map"][poll_msg.poll.id] = {
+                    "correct_idx": correct_idx,
+                    "question_index": current_q
+                }
+                break
+                
+            except Exception as poll_flood_err:
+                if "429" in str(poll_flood_err) or "retry in" in str(poll_flood_err).lower():
+                    import re
+                    retry_after = 5
+                    match = re.search(r'retry in (\d+)', str(poll_flood_err).lower())
+                    if match: retry_after = int(match.group(1))
+                    await asyncio.sleep(retry_after)
+                    continue
+                else:
+                    raise poll_flood_err
+
+        # 🎛️ नैविगेशन बटन्स तैयार करें
         nav_buttons = []
         if current_q > 0:
             nav_buttons.append(InlineKeyboardButton("Brief Back ⬅️", callback_data=f"slnav_back_{session_key}"))
@@ -1675,22 +1698,35 @@ async def send_solo_timerless_poll(session_key, context):
             nav_buttons.append(InlineKeyboardButton("Finish 🏁", callback_data=f"slnav_next_{session_key}"))
 
         control_text = f"👤 <b>Solo Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is game ko control kar rahe hain.</i>"
-        control_msg = await context.bot.send_message(chat_id=chat_id, text=control_text, reply_markup=InlineKeyboardMarkup([nav_buttons]), parse_mode="HTML")
-        session["last_control_msg_id"] = control_msg.message_id
+        reply_markup = InlineKeyboardMarkup([nav_buttons])
 
-        # Telegram Poll sending execution with NO TIMER (open_period=None)
-        poll_msg = await context.bot.send_poll(
-            chat_id=chat_id, question=f"[{current_q + 1}] {q_text}", options=options, 
-            type="quiz", correct_option_id=correct_idx, 
-            explanation=explanation.strip() if explanation else None, 
-            is_anonymous=False, open_period=None  
-        )
+        # पुराने कंट्रोल बटन्स साफ़ करें ताकि स्क्रीन कचरा न दिखे
+        if session.get("last_control_msg_id"):
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
+            except Exception:
+                pass
 
-        session["poll_message_ids"][current_q] = poll_msg.message_id
-        session["poll_map"][poll_msg.poll.id] = {
-            "correct_idx": correct_idx,
-            "question_index": current_q
-        }
+        # 📨 स्टेप B: अब पोल के ठीक नीचे कंट्रोल बटन्स वाला मैसेज भेजें
+        for attempt in range(max_attempts):
+            try:
+                control_msg = await context.bot.send_message(
+                    chat_id=chat_id, text=control_text, reply_markup=reply_markup, parse_mode="HTML"
+                )
+                session["last_control_msg_id"] = control_msg.message_id
+                break
+                
+            except Exception as flood_err:
+                if "429" in str(flood_err) or "retry in" in str(flood_err).lower():
+                    import re
+                    retry_after = 5
+                    match = re.search(r'retry in (\d+)', str(flood_err).lower())
+                    if match: retry_after = int(match.group(1))
+                    logging.warning(f"⚠️ Flood control hit! Sleeping for {retry_after} seconds...")
+                    await asyncio.sleep(retry_after)
+                    continue
+                else:
+                    raise flood_err
 
     except Exception as e:
         logging.error(f"Error in send_solo_timerless_poll: {e}", exc_info=True)
