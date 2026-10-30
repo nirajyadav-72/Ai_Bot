@@ -1558,6 +1558,276 @@ async def repeat_ready_button_color_worker(chat_id: int, message_id: int, quiz_i
     except Exception as error:
         logging.debug(f"Silenced worker error: {error}")
 
+# =====================================================================
+# 👤 COMPLETED ISOLATED SOLO QUIZ ENGINE (FOR /startquiz ONLY)
+# =====================================================================
+
+async def start_quiz_via_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Entry point for /startquiz <id> - strictly locks to the sender only."""
+    try:
+        message = update.message
+        if not message: return
+
+        chat_id = message.chat_id
+        user_id = message.from_user.id
+        user_name = message.from_user.first_name or "Player"
+
+        args = context.args or []
+        if len(args) < 1:
+            await message.reply_text("💡 <b>Usage:</b> <code>/startquiz <quiz_id></code>", parse_mode="HTML")
+            return
+
+        try:
+            quiz_id = int(args[0])
+        except ValueError:
+            await message.reply_text("❌ Quiz ID numeric होनी चाहिए। Example: <code>/startquiz 5</code>", parse_mode="HTML")
+            return
+
+        # Fetch data from DB
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT title, description, negative_value FROM quizzes WHERE quiz_id = ?", (quiz_id,))
+        quiz_data = cursor.fetchone()
+        conn.close()
+
+        if not quiz_data:
+            await message.reply_text("❌ यह Quiz ID डेटाबेस में नहीं मिली।", parse_mode="HTML")
+            return
+
+        title, desc, neg_val = quiz_data
+        
+        # Unique session key (Chat ID + User ID combination)
+        session_key = f"{chat_id}_{user_id}"
+        
+        # Initialize pure isolated data state
+        SOLO_QUIZZES[session_key] = {
+            "quiz_id": quiz_id,
+            "user_id": user_id,
+            "user_name": user_name,
+            "chat_id": chat_id,
+            "current_q": 0,
+            "right": 0,
+            "wrong": 0,
+            "start_time": datetime.now(),
+            "poll_message_ids": {},
+            "last_control_msg_id": None,
+            "poll_map": {},
+            "neg_multiplier": neg_val if neg_val is not None else 0.0
+        }
+
+        # सीधे बिना किसी 'Ready' बटन के पहले सवाल पर ले जाएं
+        await send_solo_timerless_poll(session_key, context)
+
+    except Exception as e:
+        logging.error(f"Error in start_quiz_via_command solo layer: {e}", exc_info=True)
+
+async def send_solo_timerless_poll(session_key, context):
+    """Generates the timerless poll and personal button dashboard for the single host user."""
+    try:
+        session = SOLO_QUIZZES.get(session_key)
+        if not session: return
+
+        chat_id = session["chat_id"]
+        quiz_id = session["quiz_id"]
+        current_q = session["current_q"]
+
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT question_text, options, correct_answer, explanation FROM questions WHERE quiz_id = ?", (quiz_id,))
+        questions = cursor.fetchall()
+        conn.close()
+
+        # 📊 CHECK END OF QUIZ -> Compile personal result metrics
+        if current_q >= len(questions) or current_q < 0:
+            await compile_solo_personal_result(session_key, context, len(questions))
+            return
+
+        q_text, options_json, correct_ans, explanation = q
+        options = json.loads(options_json)
+
+        try:
+            correct_idx = int(correct_ans)
+            if correct_idx < 0 or correct_idx >= len(options): correct_idx = 0
+        except (ValueError, TypeError):
+            try: correct_idx = options.index(str(correct_ans))
+            except ValueError: correct_idx = 0
+
+        # पुराने बटन्स साफ़ करें
+        if session.get("last_control_msg_id"):
+            try: await context.bot.edit_message_reply_markup(chat_id=chat_id, message_id=session["last_control_msg_id"], reply_markup=None)
+            except Exception: pass
+
+        # नैविगेशन बटन्स
+        nav_buttons = []
+        if current_q > 0:
+            nav_buttons.append(InlineKeyboardButton("⬅️ Back", callback_data=f"slnav_back_{session_key}"))
+        
+        nav_buttons.append(InlineKeyboardButton("🛑 Stop", callback_data=f"slnav_stop_{session_key}"))
+        
+        if current_q < len(questions) - 1:
+            nav_buttons.append(InlineKeyboardButton("Next ➡️", callback_data=f"slnav_next_{session_key}"))
+        else:
+            nav_buttons.append(InlineKeyboardButton("Finish 🏁", callback_data=f"slnav_next_{session_key}"))
+
+        control_text = f"👤 <b>Solo Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is game ko khel aur control kar rahe hain.</i>"
+        control_msg = await context.bot.send_message(chat_id=chat_id, text=control_text, reply_markup=InlineKeyboardMarkup([nav_buttons]), parse_mode="HTML")
+        session["last_control_msg_id"] = control_msg.message_id
+
+        # Telegram Poll sending execution with NO TIMER (open_period=None)
+        poll_msg = await context.bot.send_poll(
+            chat_id=chat_id, question=f"[{current_q + 1}] {q_text}", options=options, 
+            type="quiz", correct_option_id=correct_idx, 
+            explanation=explanation.strip() if explanation else None, 
+            is_anonymous=False, open_period=None  
+        )
+
+        session["poll_message_ids"][current_q] = poll_msg.message_id
+        session["poll_map"][poll_msg.poll.id] = {
+            "correct_idx": correct_idx,
+            "question_index": current_q
+        }
+
+    except Exception as e:
+        logging.error(f"Error in send_solo_timerless_poll: {e}", exc_info=True)
+
+async def handle_solo_quiz_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Manages dashboard callbacks exclusively for the logged host instance."""
+    query = update.callback_query
+    data = query.data
+
+    # slnav_action_sessionKey
+    parts = data.split("_")
+    action = parts[1]
+    session_key = f"{parts[2]}_{parts[3]}"
+
+    session = SOLO_QUIZZES.get(session_key)
+    if not session:
+        await query.answer("❌ Session expired or not active.", show_alert=True)
+        return
+
+    # Strict ownership verification lookup
+    if query.from_user.id != session["user_id"]:
+        await query.answer("⚠️ Aap is solo session ke owner nahi hain!", show_alert=True)
+        return
+
+    await query.answer()
+    current_q = session["current_q"]
+
+    # चालू पोल क्लोज करें
+    try:
+        if current_q in session["poll_message_ids"]:
+            await context.bot.stop_poll(chat_id=session["chat_id"], message_id=session["poll_message_ids"][current_q])
+    except Exception: pass
+
+    if action == "next":
+        session["current_q"] += 1
+        await send_solo_timerless_poll(session_key, context)
+    elif action == "back":
+        if session["current_q"] > 0:
+            session["current_q"] -= 1
+            await send_solo_timerless_poll(session_key, context)
+    elif action == "stop":
+        if session.get("last_control_msg_id"):
+            try: await context.bot.edit_message_reply_markup(chat_id=session["chat_id"], message_id=session["last_control_msg_id"], reply_markup=None)
+            except Exception: pass
+        
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM questions WHERE quiz_id = ?", (session["quiz_id"],))
+        total_qs = c.fetchone()[0]
+        conn.close()
+        
+        await compile_solo_personal_result(session_key, context, total_qs)
+
+async def track_solo_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Independent hook to listen for poll clicks. Returns True if handled by solo engine."""
+    try:
+        ans = update.poll_answer
+        pid = ans.poll_id
+        uid = ans.user.id
+
+        # Check if this poll belongs to any active solo session
+        for session_key, session in list(SOLO_QUIZZES.items()):
+            if "poll_map" in session and pid in session["poll_map"]:
+                # 🔒 LOCK: अगर क्लिक करने वाला वो नहीं है जिसने कमांड दी, तो पूरी तरह रिजेक्ट
+                if uid != session["user_id"]:
+                    return True 
+
+                poll_info = session["poll_map"][pid]
+                correct_idx = poll_info["correct_idx"]
+                question_idx = poll_info["question_index"]
+
+                if question_idx == session["current_q"]:
+                    selected_idx = ans.option_ids[0] if ans.option_ids else -1
+                    
+                    if selected_idx == correct_idx:
+                        session["right"] += 1
+                    else:
+                        session["wrong"] += 1
+
+                    # 🔄 AUTO NEXT HOOK ON RESPONSE
+                    await asyncio.sleep(1.8)
+                    try:
+                        if question_idx in session["poll_message_ids"]:
+                            await context.bot.stop_poll(chat_id=session["chat_id"], message_id=session["poll_message_ids"][question_idx])
+                    except Exception: pass
+
+                    session["current_q"] += 1
+                    asyncio.create_task(send_solo_timerless_poll(session_key, context))
+                return True
+        return False
+    except Exception as e:
+        logging.error(f"Error in track_solo_poll_answers: {e}")
+        return False
+        
+async def compile_solo_personal_result(session_key, context, total_qs):
+    """Builds and delivers a structured personal report card layout for the user."""
+    try:
+        session = SOLO_QUIZZES.pop(session_key, None)
+        if not session: return
+
+        chat_id = session["chat_id"]
+        right = session["right"]
+        wrong = session["wrong"]
+        neg_mult = session["neg_multiplier"]
+        
+        # 🟢 SAFETY FIX: अगर total_qs डेटाबेस से टुपल (tuple) के रूप में आ रहा है, तो उसकी पहली वैल्यू निकालें
+        if isinstance(total_qs, tuple):
+            total_questions_count = total_qs[0]
+        else:
+            total_questions_count = total_qs
+            
+        total_attempted = right + wrong
+        final_points = float(right) - (float(wrong) * float(neg_mult))
+        
+        duration = datetime.now() - session["start_time"]
+        minutes, seconds = divmod(duration.seconds, 60)
+        time_taken = f"{minutes}m {seconds}s" if minutes > 0 else f"{seconds}s"
+        
+        accuracy = (right / total_attempted * 100) if total_attempted > 0 else 0.0
+
+        report_card = (
+            f"🎯 <b>PERSONAL QUIZ REPORT CARD</b> 📊\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 <b>Player Name:</b> {escape_markdown(session['user_name'])}\n"
+            f"📋 <b>Total Syllabus Questions:</b> {total_questions_count}\n"
+            f"📝 <b>Total Attempted:</b> {total_attempted}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"✅ <b>Correct Answers:</b> {right}\n"
+            f"❌ <b>Wrong Answers:</b> {wrong}\n"
+            f"📈 <b>Accuracy Rate:</b> {accuracy:.2f}%\n"
+            f"⏱ <b>Total Time Taken:</b> {time_taken}\n"
+            f"📉 <b>Negative Marking Multiplier:</b> -{neg_mult}\n"
+            f"🏆 <b>FINAL SCORE:</b> <code>{final_points:.2f} Points</code>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🎉 <i>Quiz completely finished! Shandar prayas!</i>"
+        )
+
+        await context.bot.send_message(chat_id=chat_id, text=report_card, parse_mode="HTML")
+
+    except Exception as e:
+        logging.error(f"Error in compile_solo_personal_result: {e}", exc_info=True)
+
 # start handler 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
