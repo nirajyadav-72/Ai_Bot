@@ -6122,6 +6122,9 @@ async def main():
         app.add_handler(CommandHandler("broadcast", broadcast_command))
         app.add_handler(CallbackQueryHandler(execute_broadcast_callback, pattern="^bcast_"))
         app.add_handler(CommandHandler("send", send_to_support_group))
+
+        app.add_handler(CommandHandler("startquiz", start_quiz_via_command))
+        app.add_handler(CallbackQueryHandler(handle_solo_quiz_navigation, pattern="^slnav_"))
         
         app.add_handler(CallbackQueryHandler(handle_pause_quiz, pattern="^pausequiz_"))
         app.add_handler(CallbackQueryHandler(handle_stop_quiz_from_pause, pattern="^stopquiz_"))
