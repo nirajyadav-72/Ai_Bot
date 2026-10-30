@@ -3812,6 +3812,10 @@ async def send_next_group_poll(chat_id, context):
 
 async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
+        # 🔥 INTERCEPTING LAYER: If solo quiz poll hook matches, consume event completely
+        if await track_solo_poll_answers(update, context):
+            return
+            
         ans = update.poll_answer
         pid = ans.poll_id
         uid = ans.user.id
