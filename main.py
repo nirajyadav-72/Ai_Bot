@@ -1781,7 +1781,7 @@ async def track_solo_poll_answers(update: Update, context: ContextTypes.DEFAULT_
         return False
         
 async def compile_solo_personal_result(session_key, context, total_qs):
-    """Builds and delivers a structured personal report card layout for the user."""
+    """Builds and delivers a structured personal report card layout for the user with dynamic badges."""
     try:
         session = SOLO_QUIZZES.pop(session_key, None)
         if not session: return
@@ -1791,7 +1791,7 @@ async def compile_solo_personal_result(session_key, context, total_qs):
         wrong = session["wrong"]
         neg_mult = session["neg_multiplier"]
         
-        # 🟢 SAFETY FIX: अगर total_qs डेटाबेस से टुपल (tuple) के रूप में आ रहा है, तो उसकी पहली वैल्यू निकालें
+        # SAFETY FIX: टुपल अनपैकिंग
         if isinstance(total_qs, tuple):
             total_questions_count = total_qs[0]
         else:
@@ -1806,10 +1806,25 @@ async def compile_solo_personal_result(session_key, context, total_qs):
         
         accuracy = (right / total_attempted * 100) if total_attempted > 0 else 0.0
 
+        # 🔥 DYNAMIC BADGE & ROAST/PRAISE LOGIC BASED ON ACCURACY
+        if accuracy >= 85:
+            badge = "🏆 Pro Leader (Ultimate Accuracy!) 🥇"
+            closing_remark = "💥 <i>Mind-blowing performance! Aapne to pure rules hi badal diye! Excellent!</i>"
+        elif accuracy >= 60:
+            badge = "⭐ Rising Star (Consistent Player) 🥈"
+            closing_remark = "✨ <i>Shandar prayas! Thodi si aur mehnat aur aap agle Topper hain!</i>"
+        elif accuracy >= 35:
+            badge = "🔰 Dedicated Learner (Good Effort) 🥉"
+            closing_remark = "👍 <i>Accha prayas hai, har galti se ek naya sabaq milta hai. Keep it up!</i>"
+        else:
+            badge = "🥚 Beginner Mode (Needs Practice) 📉"
+            closing_remark = "📚 <i>Koi baat nahi! Dubara koshish karein aur is bar thoda dhyan se padhein.</i>"
+
         report_card = (
             f"🎯 <b>PERSONAL QUIZ REPORT CARD</b> 📊\n"
             f"━━━━━━━━━━━━━━━━━━━━━━\n"
             f"👤 <b>Player Name:</b> {escape_markdown(session['user_name'])}\n"
+            f"🎖️ <b>Earned Badge:</b> <code>{badge}</code>\n"
             f"📋 <b>Total Syllabus Questions:</b> {total_questions_count}\n"
             f"📝 <b>Total Attempted:</b> {total_attempted}\n"
             f"━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -1817,10 +1832,10 @@ async def compile_solo_personal_result(session_key, context, total_qs):
             f"❌ <b>Wrong Answers:</b> {wrong}\n"
             f"📈 <b>Accuracy Rate:</b> {accuracy:.2f}%\n"
             f"⏱ <b>Total Time Taken:</b> {time_taken}\n"
-            f"📉 <b>Negative Marking Multiplier:</b> -{neg_mult}\n"
+            f"📉 <b>Negative Schema applied:</b> -{neg_mult}\n"
             f"🏆 <b>FINAL SCORE:</b> <code>{final_points:.2f} Points</code>\n"
             f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"🎉 <i>Quiz completely finished! Shandar prayas!</i>"
+            f"{closing_remark}"
         )
 
         await context.bot.send_message(chat_id=chat_id, text=report_card, parse_mode="HTML")
