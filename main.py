@@ -1678,13 +1678,11 @@ async def send_solo_timerless_poll(session_key, context):
                     del session["poll_message_ids"][q_idx]
                 except Exception: pass
 
-        # ====================================================================
-        # 🔒 STRICT CHARACTER LIMITS & FALLBACK LOGIC
-        # ====================================================================
+        # ================================================================
         full_question_text = f"[{current_q + 1}/{len(questions)}] {q_text}"
         
-        is_question_too_long = len(full_question_text) > 300
-        is_any_option_too_long = any(len(str(opt)) > 100 for opt in options)
+        is_question_too_long = len(full_question_text) > 280
+        is_any_option_too_long = any(len(str(opt)) > 90 for opt in options)
         
         poll_question = full_question_text
         poll_options = options
@@ -1703,7 +1701,7 @@ async def send_solo_timerless_poll(session_key, context):
             poll_options = [f"Option {i+1}" for i in range(len(options))]
 
         clean_explanation = explanation.strip() if explanation and str(explanation).strip() else None
-        if clean_explanation and len(clean_explanation) > 200:
+        if clean_explanation and len(clean_explanation) > 180:
             clean_explanation = None
         # ====================================================================
 
@@ -1737,19 +1735,36 @@ async def send_solo_timerless_poll(session_key, context):
                 else:
                     raise poll_flood_err
 
-        # 🎛️ नैविगेशन बटन्स तैयार करें
+        # 🎛️ 🔥 NATIVE COLORED BUTTON STRUCTURE EXTRACTION
         nav_buttons = []
-        if current_q > 0:
-            nav_buttons.append({"text": "Brief Back ⬅️", "callback_data": f"slnav_back_{session_key}", "style": "primary"})
         
-        nav_buttons.append({"text": "🛑 Stop", "callback_data": f"slnav_stop_{session_key}", "style": "danger"})
+        if current_q > 0:
+            nav_buttons.append({
+                "text": "Previous Ques..", 
+                "callback_data": f"slnav_back_{session_key}", 
+                "style": "primary"
+            })
+        
+        nav_buttons.append({
+            "text": "Stop Quiz", 
+            "callback_data": f"slnav_stop_{session_key}", 
+            "style": "danger"
+        })
         
         if current_q < len(questions) - 1:
-            nav_buttons.append({"text": "Next ➡️", "callback_data": f"slnav_next_{session_key}", "style": "success"})
+            nav_buttons.append({
+                "text": "Skip ques..", 
+                "callback_data": f"slnav_next_{session_key}", 
+                "style": "success"
+            })
         else:
-            nav_buttons.append({"text": "Finish 🏁", "callback_data": f"slnav_next_{session_key}", "style": "success"})
+            nav_buttons.append({
+                "text": "Finish 🏁", 
+                "callback_data": f"slnav_next_{session_key}", 
+                "style": "success"
+            })
 
-        control_text = f"👤 <b>Solo Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is game ko control kar rahe hain.</i>"
+        control_text = f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is Quiz ko Attend kar rahe hain.</i>"
         reply_markup = InlineKeyboardMarkup([nav_buttons])
 
         # 📨 स्टेप B: पोल के ठीक नीचे नया कंट्रोल संदेश भेजें
