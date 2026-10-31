@@ -6313,7 +6313,7 @@ async def auto_quiz_summary_monitor(bot):
     while True:
         try:
             # हर 5 सेकंड में चेक करेगा कि कोई नई क्विज़ बनी है या नहीं
-            await asyncio.sleep(5)
+            await asyncio.sleep(1800)
             
             if not SUPPORT_CHANNEL_ID:
                 continue
