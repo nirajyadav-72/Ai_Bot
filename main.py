@@ -1790,6 +1790,30 @@ async def send_solo_timerless_poll(session_key, context):
     except Exception as e:
         logging.error(f"Error in send_solo_timerless_poll: {e}", exc_info=True)
 
+async def solo_timeout_worker(session_key, question_index, timeout_seconds, context):
+    """Waits for the question timer to expire, then handles auto-advance cleanly."""
+    await asyncio.sleep(timeout_seconds)
+    
+    session = SOLO_QUIZZES.get(session_key)
+    # अगर सेशन डिलीट हो चुका है या यूज़र पहले ही आगे बढ़ चुका है तो टास्क रोकें
+    if not session or session["current_q"] != question_index:
+        return
+        
+    chat_id = session["chat_id"]
+    
+    # चालू पोल को क्लोज करें
+    try:
+        if question_index in session["poll_message_ids"]:
+            await context.bot.stop_poll(chat_id=chat_id, message_id=session["poll_message_ids"][question_index])
+    except Exception: pass
+
+    # टाइम आउट होने के कारण गलत उत्तर मानकर स्कोर रिकॉर्ड अपडेट करें (Optional)
+    session["wrong"] += 1
+    
+    # अगले सवाल पर बढ़ें
+    session["current_q"] += 1
+    asyncio.create_task(send_solo_timerless_poll(session_key, context))
+
 async def handle_solo_quiz_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Manages dashboard callbacks exclusively for the logged host instance."""
     query = update.callback_query
@@ -1820,12 +1844,19 @@ async def handle_solo_quiz_navigation(update: Update, context: ContextTypes.DEFA
     except Exception: pass
 
     if action == "next":
-        session["current_q"] += 1
-        await send_solo_timerless_poll(session_key, context)
+        # ⏳ बटन दबाने पर भी 10 सेकंड का अनिवार्य वेटिंग टाइमर
+        await query.edit_message_text("⏳ <i>Next question generation in progress (Waiting 10s)...</i>", parse_mode="HTML")
+        await asyncio.sleep(10.0)
+        
+        if session_key in SOLO_QUIZZES:
+            SOLO_QUIZZES[session_key]["current_q"] += 1
+            await send_solo_timerless_poll(session_key, context)
+            
     elif action == "back":
         if session["current_q"] > 0:
             session["current_q"] -= 1
             await send_solo_timerless_poll(session_key, context)
+            
     elif action == "stop":
         if session.get("last_control_msg_id"):
             try: await context.bot.edit_message_reply_markup(chat_id=session["chat_id"], message_id=session["last_control_msg_id"], reply_markup=None)
@@ -1865,15 +1896,19 @@ async def track_solo_poll_answers(update: Update, context: ContextTypes.DEFAULT_
                     else:
                         session["wrong"] += 1
 
-                    # 🔄 AUTO NEXT HOOK ON RESPONSE
-                    await asyncio.sleep(1.8)
+                    # 🔄 10 SECONDS MANADATORY DELAY FOR USER READING
                     try:
                         if question_idx in session["poll_message_ids"]:
                             await context.bot.stop_poll(chat_id=session["chat_id"], message_id=session["poll_message_ids"][question_idx])
                     except Exception: pass
 
-                    session["current_q"] += 1
-                    asyncio.create_task(send_solo_timerless_poll(session_key, context))
+                    # 🔥 यूज़र को व्याख्या और उत्तर देखने के लिए 10 सेकंड का समय दें
+                    await asyncio.sleep(10.0)
+
+                    # सुरक्षा जाँच: कहीं इस 10 सेकंड के दौरान यूज़र ने क्विज़ स्टॉप तो नहीं कर दी
+                    if session_key in SOLO_QUIZZES and SOLO_QUIZZES[session_key]["current_q"] == question_idx:
+                        SOLO_QUIZZES[session_key]["current_q"] += 1
+                        asyncio.create_task(send_solo_timerless_poll(session_key, context))
                 return True
         return False
     except Exception as e:
