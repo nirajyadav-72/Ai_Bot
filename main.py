@@ -1798,7 +1798,7 @@ async def handle_solo_quiz_navigation(update: Update, context: ContextTypes.DEFA
 
     # Strict ownership verification lookup
     if query.from_user.id != session["user_id"]:
-        await query.answer("⚠️ Aap is solo session ke owner nahi hain!", show_alert=True)
+        await query.answer("⚠️ Aapne is practice Quiz session ko start nahi kiya hain!", show_alert=True)
         return
 
     await query.answer()
