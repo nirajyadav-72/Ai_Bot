@@ -1883,19 +1883,6 @@ async def track_solo_poll_answers(update: Update, context: ContextTypes.DEFAULT_
 async def compile_solo_personal_result(session_key, context, total_qs):
     """Builds and delivers the final quiz report with Player/Badge in text and score metrics in buttons."""
     try:
-        # 🗑️ ABSOLUTE CLEANUP LAYER: DELETE OLD POLL & BUTTON MESSAGE FIRST
-        if session.get("last_control_msg_id"):
-            try:
-                await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
-                session["last_control_msg_id"] = None
-            except Exception: pass
-
-        if "poll_message_ids" in session:
-            for q_idx, old_poll_mid in list(session["poll_message_ids"].items()):
-                try:
-                    await context.bot.delete_message(chat_id=chat_id, message_id=old_poll_mid)
-                    del session["poll_message_ids"][q_idx]
-                except Exception: pass
 
         session = SOLO_QUIZZES.pop(session_key, None)
         if not session: return
