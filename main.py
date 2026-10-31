@@ -1796,7 +1796,6 @@ async def handle_solo_quiz_navigation(update: Update, context: ContextTypes.DEFA
     query = update.callback_query
     data = query.data
 
-    # slnav_action_sessionKey
     parts = data.split("_")
     action = parts[1]
     session_key = f"{parts[2]}_{parts[3]}"
@@ -1814,16 +1813,18 @@ async def handle_solo_quiz_navigation(update: Update, context: ContextTypes.DEFA
     await query.answer()
     current_q = session["current_q"]
 
-    # चालू पोल क्लोज करें
-    try:
-        if current_q in session["poll_message_ids"]:
-            await context.bot.stop_poll(chat_id=session["chat_id"], message_id=session["poll_message_ids"][current_q])
-    except Exception: pass
+    # 🛑 पोल क्लोज करने का लॉजिक (stop_poll) यहाँ से पूरी तरह हटा दिया गया है ताकि पोल खुला रहे।
 
     if action == "next":
-        # ⏳ बटन दबाने पर भी 10 सेकंड का अनिवार्य वेटिंग टाइमर
-        await query.edit_message_text("⏳ <i>Next question generation in progress (Waiting 10s)...</i>", parse_mode="HTML")
-        await asyncio.sleep(10.0)
+        # 1. बटन क्लिक होते ही केवल पुराना बटन मैसेज डिलीट करें
+        if session.get("last_control_msg_id"):
+            try:
+                await context.bot.delete_message(chat_id=session["chat_id"], message_id=session["last_control_msg_id"])
+                session["last_control_msg_id"] = None
+            except Exception: pass
+
+        # 🔥 5 SECONDS DELAY AFTER BUTTON DELETION
+        await asyncio.sleep(5.0)
         
         if session_key in SOLO_QUIZZES:
             SOLO_QUIZZES[session_key]["current_q"] += 1
@@ -1835,14 +1836,15 @@ async def handle_solo_quiz_navigation(update: Update, context: ContextTypes.DEFA
             await send_solo_timerless_poll(session_key, context)
             
     elif action == "stop":
+        # स्टॉप करने पर भी पोल ओपन रहेगा, केवल बटन हटेगा
         if session.get("last_control_msg_id"):
-            try: await context.bot.edit_message_reply_markup(chat_id=session["chat_id"], message_id=session["last_control_msg_id"], reply_markup=None)
+            try: await context.bot.delete_message(chat_id=session["chat_id"], message_id=session["last_control_msg_id"])
             except Exception: pass
         
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
         c.execute("SELECT COUNT(*) FROM questions WHERE quiz_id = ?", (session["quiz_id"],))
-        total_qs = c.fetchone()[0]
+        total_qs = c.fetchone()
         conn.close()
         
         await compile_solo_personal_result(session_key, context, total_qs)
@@ -1873,29 +1875,16 @@ async def track_solo_poll_answers(update: Update, context: ContextTypes.DEFAULT_
                     else:
                         session["wrong"] += 1
 
-                    # 1. पहले पोल को स्टॉप करें ताकि सही/गलत उत्तर और एक्सप्लेनेशन दिख सके
-                    try:
-                        if question_idx in session["poll_message_ids"]:
-                            await context.bot.stop_poll(chat_id=session["chat_id"], message_id=session["poll_message_ids"][question_idx])
-                    except Exception: pass
+                    # 1. पोल को क्लोज करने का लॉजिक (stop_poll) यहाँ से पूरी तरह हटा दिया गया है। पोल ओपन रहेगा।
 
-                    # यूज़र को उत्तर देखने के लिए छोटा सा समय (जैसे 2 सेकंड) देकर तुरंत मैसेजेस डिलीट करें
-                    await asyncio.sleep(10)
-
-                    # 2. पुराने मैसेजेस को डिलीट (साफ़) करना
+                    # 2. केवल पुराने बटन (Control Message) को तुरंत डिलीट करें
                     if session.get("last_control_msg_id"):
                         try:
                             await context.bot.delete_message(chat_id=session["chat_id"], message_id=session["last_control_msg_id"])
                             session["last_control_msg_id"] = None
                         except Exception: pass
 
-                    if question_idx in session["poll_message_ids"]:
-                        try:
-                            await context.bot.delete_message(chat_id=session["chat_id"], message_id=session["poll_message_ids"][question_idx])
-                            del session["poll_message_ids"][question_idx]
-                        except Exception: pass
-
-                    # 🔥 CRITICAL 5 SECONDS MANDATORY DELAY AFTER CLEANUP
+                    # 🔥 5 SECONDS MANDATORY DELAY AFTER BUTTON DELETION
                     await asyncio.sleep(5.0)
 
                     # सुरक्षा जाँच: 5 सेकंड के बाद नया सवाल बढ़ाएं और भेजें
@@ -1907,7 +1896,7 @@ async def track_solo_poll_answers(update: Update, context: ContextTypes.DEFAULT_
     except Exception as e:
         logging.error(f"Error in track_solo_poll_answers: {e}")
         return False
-        
+
 async def compile_solo_personal_result(session_key, context, total_qs):
     """Builds and delivers the final quiz report with Player/Badge in text and score metrics in buttons."""
     try:
