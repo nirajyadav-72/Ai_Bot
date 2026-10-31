@@ -1947,11 +1947,10 @@ async def compile_solo_personal_result(session_key, context, total_qs):
 
         # 📨 प्लेयर नाम और बैज को सीधे मुख्य मैसेज बॉडी के अंदर जोड़ दिया गया है
         report_text = (
-            f"🏁 <b>MANUAL QUIZ FINISHED</b> 🎉\n"
-            f"━━━━━━━━━━━━━━━\n"
+            f"🏁 <b>PRACTICE QUIZ FINISHED</b>\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
             f"👤 <b>Player Name:</b> {escape_markdown(session['user_name'])}\n"
-            f"🎖️ <b>Earned Badge:</b> {badge}\n"
-            f"━━━━━━━━━━━━━━━\n\n"
+            f"🪷 <b>Earned Badge:</b> {badge}\n\n"
             f"{closing_remark}\n\n"
             f"<i>Aapke score metrics:</i>"
         )
