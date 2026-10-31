@@ -1624,7 +1624,8 @@ async def start_quiz_via_command(update: Update, context: ContextTypes.DEFAULT_T
         logging.error(f"Error in start_quiz_via_command solo layer: {e}", exc_info=True)
 
 async def send_solo_timerless_poll(session_key, context):
-    """Generates the timerless poll with strict Telegram length restriction checks and text fallbacks."""
+    """Generates the timerless poll with strict Telegram length restriction checks, 
+    text fallbacks, and resilient network connection retry logic."""
     try:
         session = SOLO_QUIZZES.get(session_key)
         if not session: return
@@ -1645,7 +1646,6 @@ async def send_solo_timerless_poll(session_key, context):
                 try: await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
                 except Exception: pass
             
-            # यहाँ से पोल डिलीट करने का लॉजिक हटा दिया गया है
             await compile_solo_personal_result(session_key, context, len(questions))
             return
 
@@ -1660,15 +1660,12 @@ async def send_solo_timerless_poll(session_key, context):
             try: correct_idx = options.index(str(correct_ans))
             except ValueError: correct_idx = 0
 
-        # 🗑️ ONLY BUTTON CLEANUP LAYER: केवल पुराना बटन मैसेज डिलीट होगा
+        # 🗑️ ONLY BUTTON CLEANUP LAYER: केवल पुराना बटन मैसेज डिलीट होगा (पोल डिलीट नहीं होगा)
         if session.get("last_control_msg_id"):
             try:
                 await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
                 session["last_control_msg_id"] = None
             except Exception: pass
-
-        # FIXED: पुराना पोल डिलीट करने वाला "for q_idx, old_poll_mid in list(session['poll_message_ids'].items()):" 
-        # वाला लूप यहाँ से पूरी तरह हटा दिया गया है ताकि पुराना पोल डिलीट न हो।
 
         # ================================================================
         full_question_text = f"[{current_q + 1}/{len(questions)}] {q_text}"
@@ -1696,9 +1693,11 @@ async def send_solo_timerless_poll(session_key, context):
             clean_explanation = None
         # ====================================================================
 
+        # 🔥 NEW: NETWORK RESILIENT RETRY LOGIC FOR POLL SENDING
         max_attempts = 5
+        retry_delay = 2.0  # शुरुआती 2 सेकंड का वेट एरर आने पर
+        poll_msg = None
 
-        # 📤 नया पोल (Poll) भेजें
         for attempt in range(max_attempts):
             try:
                 poll_msg = await context.bot.send_poll(
@@ -1713,13 +1712,21 @@ async def send_solo_timerless_poll(session_key, context):
                     "correct_idx": correct_idx,
                     "question_index": current_q
                 }
-                break
+                break  # सफलता मिलने पर लूप से बाहर निकलें
                 
-            except Exception as poll_flood_err:
-                if "429" in str(poll_flood_err) or "retry in" in str(poll_flood_err).lower():
-                    await asyncio.sleep(10)
-                    continue
-                else: raise poll_flood_err
+            except Exception as net_err:
+                logging.warning(f"⚠️ Solo Poll Attempt {attempt + 1} Failed (Network/API Alert): {net_err}")
+                
+                # अगर आखिरी अटेम्प्ट भी फेल हो जाए
+                if attempt == max_attempts - 1:
+                    try:
+                        await context.bot.send_message(chat_id=chat_id, text="❌ <b>Network Connection Error:</b> Bot Telegram server से कनेक्ट नहीं हो पा रहा है। कृपया इंटरनेट चेक करें।", parse_mode="HTML")
+                    except Exception: pass
+                    return
+
+                # Exponential backoff delay (2s -> 4s -> 8s -> 16s)
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2.0
 
         # 🎛️ BUTTON STRUCTURE
         nav_buttons = []
@@ -1736,7 +1743,8 @@ async def send_solo_timerless_poll(session_key, context):
         control_text = f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is Quiz ko Attend kar rahe hain.</i>"
         reply_markup = InlineKeyboardMarkup([nav_buttons])
 
-        # 📨 पोल के ठीक नीचे नया कंट्रोल संदेश भेजें
+        # 🔥 NEW: NETWORK RESILIENT RETRY LOGIC FOR BUTTON MESSAGE SENDING
+        retry_delay_btn = 2.0
         for attempt in range(max_attempts):
             try:
                 control_msg = await context.bot.send_message(
@@ -1744,7 +1752,12 @@ async def send_solo_timerless_poll(session_key, context):
                 )
                 session["last_control_msg_id"] = control_msg.message_id
                 break
-            except Exception: pass
+            except Exception as net_err_btn:
+                logging.warning(f"⚠️ Solo Control Msg Attempt {attempt + 1} Failed: {net_err_btn}")
+                if attempt == max_attempts - 1:
+                    return
+                await asyncio.sleep(retry_delay_btn)
+                retry_delay_btn *= 2.0
 
     except Exception as e:
         logging.error(f"Error in send_solo_timerless_poll: {e}", exc_info=True)
