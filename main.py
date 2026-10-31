@@ -1859,7 +1859,7 @@ async def track_solo_poll_answers(update: Update, context: ContextTypes.DEFAULT_
         return False
         
 async def compile_solo_personal_result(session_key, context, total_qs):
-    """Builds and delivers a structured personal report card layout for the user with dynamic badges."""
+    """Builds and delivers the final quiz report with Player/Badge in text and score metrics in buttons."""
     try:
         session = SOLO_QUIZZES.pop(session_key, None)
         if not session: return
@@ -1884,39 +1884,57 @@ async def compile_solo_personal_result(session_key, context, total_qs):
         
         accuracy = (right / total_attempted * 100) if total_attempted > 0 else 0.0
 
-        # 🔥 DYNAMIC BADGE & ROAST/PRAISE LOGIC BASED ON ACCURACY
+        # Performance Badges & Remarks
         if accuracy >= 85:
-            badge = "🏆 Pro Leader (Ultimate Accuracy!) 🥇"
-            closing_remark = "💥 <i>Mind-blowing performance! Aapne to pure rules hi badal diye! Excellent!</i>"
+            badge = "🏆 Pro Leader 🥇"
+            closing_remark = "💥 <b>Mind-blowing performance! Aapne to record tod diya! Excellent!</b>"
         elif accuracy >= 60:
-            badge = "⭐ Rising Star (Consistent Player) 🥈"
-            closing_remark = "✨ <i>Shandar prayas! Thodi si aur mehnat aur aap agle Topper hain!</i>"
+            badge = "⭐ Rising Star 🥈"
+            closing_remark = "✨ <b>Shandar prayas! Thodi si aur mehnat aur aap Pro ban jayenge!</b>"
         elif accuracy >= 35:
-            badge = "🔰 Dedicated Learner (Good Effort) 🥉"
-            closing_remark = "👍 <i>Accha prayas hai, har galti se ek naya sabaq milta hai. Keep it up!</i>"
+            badge = "🔰 Dedicated Learner 🥉"
+            closing_remark = "👍 <b>Accha prayas hai, har galti se ek naya sabaq milta hai.</b>"
         else:
-            badge = "🥚 Beginner Mode (Needs Practice) 📉"
-            closing_remark = "📚 <i>Koi baat nahi! Dubara koshish karein aur is bar thoda dhyan se padhein.</i>"
+            badge = "🥚 Beginner Mode 📉"
+            closing_remark = "📚 <b>Koi baat nahi! Dubara koshish karein aur is bar thoda dhyan se padhein.</b>"
 
-        report_card = (
-            f"🎯 <b>PERSONAL QUIZ REPORT CARD</b> 📊\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        # 🎛️ 🔥 RE-ARRANGED DUMMY BUTTON REPORT CARD STRUCTURE (Without Name and Badge)
+        result_buttons = [
+            # रो 1: कुल सवाल और अटेम्पटेड सवाल (Blue Buttons)
+            [
+                {"text": f"📋 Total Qs: {total_questions_count}", "callback_data": "dummy_click", "style": "primary"},
+                {"text": f"📝 Attempted: {total_attempted}", "callback_data": "dummy_click", "style": "primary"}
+            ],
+            # रो 2: सही (GREEN) और गलत (RED) का लाइव काउंट बटन
+            [
+                {"text": f"✅ Correct: {right}", "callback_data": "dummy_click", "style": "success"},
+                {"text": f"❌ Wrong: {wrong}", "callback_data": "dummy_click", "style": "danger"}
+            ],
+            # रो 3: एक्यूरेसी और लगा हुआ समय (Blue Buttons)
+            [
+                {"text": f"📈 Accuracy: {accuracy:.2f}%", "callback_data": "dummy_click", "style": "primary"},
+                {"text": f"⏱ Time: {time_taken}", "callback_data": "dummy_click", "style": "primary"}
+            ],
+            # रो 4: फाइनल स्कोर बटन (Highlighted in Green Layout)
+            [
+                {"text": f"🏆 FINAL SCORE: {final_points:.2f} Points 🏆", "callback_data": "dummy_click", "style": "success"}
+            ]
+        ]
+
+        reply_markup = InlineKeyboardMarkup(result_buttons)
+
+        # 📨 प्लेयर नाम और बैज को सीधे मुख्य मैसेज बॉडी के अंदर जोड़ दिया गया है
+        report_text = (
+            f"🏁 <b>MANUAL QUIZ FINISHED</b> 🎉\n"
+            f"━━━━━━━━━━━━━━━\n"
             f"👤 <b>Player Name:</b> {escape_markdown(session['user_name'])}\n"
-            f"🎖️ <b>Earned Badge:</b> <code>{badge}</code>\n"
-            f"📋 <b>Total Syllabus Questions:</b> {total_questions_count}\n"
-            f"📝 <b>Total Attempted:</b> {total_attempted}\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"✅ <b>Correct Answers:</b> {right}\n"
-            f"❌ <b>Wrong Answers:</b> {wrong}\n"
-            f"📈 <b>Accuracy Rate:</b> {accuracy:.2f}%\n"
-            f"⏱ <b>Total Time Taken:</b> {time_taken}\n"
-            f"📉 <b>Negative Schema applied:</b> -{neg_mult}\n"
-            f"🏆 <b>FINAL SCORE:</b> <code>{final_points:.2f} Points</code>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"{closing_remark}"
+            f"🎖️ <b>Earned Badge:</b> {badge}\n"
+            f"━━━━━━━━━━━━━━━\n\n"
+            f"{closing_remark}\n\n"
+            f"<i>Aapke score metrics:</i>"
         )
 
-        await context.bot.send_message(chat_id=chat_id, text=report_card, parse_mode="HTML")
+        await context.bot.send_message(chat_id=chat_id, text=report_text, reply_markup=reply_markup, parse_mode="HTML")
 
     except Exception as e:
         logging.error(f"Error in compile_solo_personal_result: {e}", exc_info=True)
@@ -6488,7 +6506,8 @@ async def main():
 
         app.add_handler(CommandHandler("startquiz", start_quiz_via_command))
         app.add_handler(CallbackQueryHandler(handle_solo_quiz_navigation, pattern="^slnav_"))
-        
+        app.add_handler(CallbackQueryHandler(lambda u, c: u.callback_query.answer(), pattern="^dummy_click$"))
+
         app.add_handler(CallbackQueryHandler(handle_pause_quiz, pattern="^pausequiz_"))
         app.add_handler(CallbackQueryHandler(handle_stop_quiz_from_pause, pattern="^stopquiz_"))
         app.add_handler(CommandHandler("autorun", autorun_command))
