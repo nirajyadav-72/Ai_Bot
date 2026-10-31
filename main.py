@@ -1873,16 +1873,32 @@ async def track_solo_poll_answers(update: Update, context: ContextTypes.DEFAULT_
                     else:
                         session["wrong"] += 1
 
-                    # 🔄 10 SECONDS MANADATORY DELAY FOR USER READING
+                    # 1. पहले पोल को स्टॉप करें ताकि सही/गलत उत्तर और एक्सप्लेनेशन दिख सके
                     try:
                         if question_idx in session["poll_message_ids"]:
                             await context.bot.stop_poll(chat_id=session["chat_id"], message_id=session["poll_message_ids"][question_idx])
                     except Exception: pass
 
-                    # 🔥 यूज़र को व्याख्या और उत्तर देखने के लिए 10 सेकंड का समय दें
-                    await asyncio.sleep(10.0)
+                    # यूज़र को उत्तर देखने के लिए छोटा सा समय (जैसे 2 सेकंड) देकर तुरंत मैसेजेस डिलीट करें
+                    await asyncio.sleep(10)
 
-                    # सुरक्षा जाँच: कहीं इस 10 सेकंड के दौरान यूज़र ने क्विज़ स्टॉप तो नहीं कर दी
+                    # 2. पुराने मैसेजेस को डिलीट (साफ़) करना
+                    if session.get("last_control_msg_id"):
+                        try:
+                            await context.bot.delete_message(chat_id=session["chat_id"], message_id=session["last_control_msg_id"])
+                            session["last_control_msg_id"] = None
+                        except Exception: pass
+
+                    if question_idx in session["poll_message_ids"]:
+                        try:
+                            await context.bot.delete_message(chat_id=session["chat_id"], message_id=session["poll_message_ids"][question_idx])
+                            del session["poll_message_ids"][question_idx]
+                        except Exception: pass
+
+                    # 🔥 CRITICAL 5 SECONDS MANDATORY DELAY AFTER CLEANUP
+                    await asyncio.sleep(5.0)
+
+                    # सुरक्षा जाँच: 5 सेकंड के बाद नया सवाल बढ़ाएं और भेजें
                     if session_key in SOLO_QUIZZES and SOLO_QUIZZES[session_key]["current_q"] == question_idx:
                         SOLO_QUIZZES[session_key]["current_q"] += 1
                         asyncio.create_task(send_solo_timerless_poll(session_key, context))
