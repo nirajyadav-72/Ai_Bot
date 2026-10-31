@@ -1624,7 +1624,7 @@ async def start_quiz_via_command(update: Update, context: ContextTypes.DEFAULT_T
         logging.error(f"Error in start_quiz_via_command solo layer: {e}", exc_info=True)
 
 async def send_solo_timerless_poll(session_key, context):
-    """Generates the solo poll with strict timer limits and auto-next functionality."""
+    """Generates the timerless poll with strict Telegram length restriction checks and text fallbacks."""
     try:
         session = SOLO_QUIZZES.get(session_key)
         if not session: return
@@ -1635,11 +1635,6 @@ async def send_solo_timerless_poll(session_key, context):
 
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        # 🔥 FIXED: Quizzes table से timer वैल्यू भी साथ में निकाली
-        cursor.execute("SELECT timer FROM quizzes WHERE quiz_id = ?", (quiz_id,))
-        quiz_meta = cursor.fetchone()
-        quiz_timer = quiz_meta[0] if (quiz_meta and quiz_meta[0]) else 30 # Default 30s fallback
-        
         cursor.execute("SELECT question_text, options, correct_answer, explanation FROM questions WHERE quiz_id = ?", (quiz_id,))
         questions = cursor.fetchall()
         conn.close()
@@ -1650,11 +1645,7 @@ async def send_solo_timerless_poll(session_key, context):
                 try: await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
                 except Exception: pass
             
-            prev_q = current_q - 1
-            if "poll_message_ids" in session and prev_q in session["poll_message_ids"]:
-                try: await context.bot.delete_message(chat_id=chat_id, message_id=session["poll_message_ids"][prev_q])
-                except Exception: pass
-
+            # यहाँ से पोल डिलीट करने का लॉजिक हटा दिया गया है
             await compile_solo_personal_result(session_key, context, len(questions))
             return
 
@@ -1669,19 +1660,15 @@ async def send_solo_timerless_poll(session_key, context):
             try: correct_idx = options.index(str(correct_ans))
             except ValueError: correct_idx = 0
 
-        # 🗑️ ABSOLUTE CLEANUP LAYER: DELETE OLD POLL & BUTTON MESSAGE FIRST
+        # 🗑️ ONLY BUTTON CLEANUP LAYER: केवल पुराना बटन मैसेज डिलीट होगा
         if session.get("last_control_msg_id"):
             try:
                 await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
                 session["last_control_msg_id"] = None
             except Exception: pass
 
-        if "poll_message_ids" in session:
-            for q_idx, old_poll_mid in list(session["poll_message_ids"].items()):
-                try:
-                    await context.bot.delete_message(chat_id=chat_id, message_id=old_poll_mid)
-                    del session["poll_message_ids"][q_idx]
-                except Exception: pass
+        # FIXED: पुराना पोल डिलीट करने वाला "for q_idx, old_poll_mid in list(session['poll_message_ids'].items()):" 
+        # वाला लूप यहाँ से पूरी तरह हटा दिया गया है ताकि पुराना पोल डिलीट न हो।
 
         # ================================================================
         full_question_text = f"[{current_q + 1}/{len(questions)}] {q_text}"
@@ -1710,17 +1697,15 @@ async def send_solo_timerless_poll(session_key, context):
         # ====================================================================
 
         max_attempts = 5
-        raw_timer = quiz_timer if quiz_timer >= 10 else 10 # Minimum 10 seconds telegram rule
 
-        # 📤 स्टेप A: टाइमर के साथ पोल भेजें (open_period=raw_timer)
-        poll_msg = None
+        # 📤 नया पोल (Poll) भेजें
         for attempt in range(max_attempts):
             try:
                 poll_msg = await context.bot.send_poll(
                     chat_id=chat_id, question=poll_question, options=poll_options, 
                     type="quiz", correct_option_id=correct_idx, 
                     explanation=clean_explanation, 
-                    is_anonymous=False, open_period=raw_timer  # 🔥 Added open_period
+                    is_anonymous=False, open_period=None  
                 )
                 
                 session["poll_message_ids"][current_q] = poll_msg.message_id
@@ -1732,11 +1717,11 @@ async def send_solo_timerless_poll(session_key, context):
                 
             except Exception as poll_flood_err:
                 if "429" in str(poll_flood_err) or "retry in" in str(poll_flood_err).lower():
-                    await asyncio.sleep(5)
+                    await asyncio.sleep(10)
                     continue
                 else: raise poll_flood_err
 
-        # 🎛️ NATIVE COLORED BUTTON STRUCTURE EXTRACTION
+        # 🎛️ BUTTON STRUCTURE
         nav_buttons = []
         if current_q > 0:
             nav_buttons.append({"text": "Previous Ques..", "callback_data": f"slnav_back_{session_key}", "style": "primary"})
@@ -1748,10 +1733,10 @@ async def send_solo_timerless_poll(session_key, context):
         else:
             nav_buttons.append({"text": "Finish 🏁", "callback_data": f"slnav_next_{session_key}", "style": "success"})
 
-        control_text = f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n⏱ <b>Time Left:</b> {raw_timer}s\n👉 <i>Sirf aap hi is Quiz ko Attend kar rahe hain.</i>"
+        control_text = f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is Quiz ko Attend kar rahe hain.</i>"
         reply_markup = InlineKeyboardMarkup([nav_buttons])
 
-        # 📨 स्टेप B: कंट्रोल संदेश भेजें
+        # 📨 पोल के ठीक नीचे नया कंट्रोल संदेश भेजें
         for attempt in range(max_attempts):
             try:
                 control_msg = await context.bot.send_message(
@@ -1760,9 +1745,6 @@ async def send_solo_timerless_poll(session_key, context):
                 session["last_control_msg_id"] = control_msg.message_id
                 break
             except Exception: pass
-
-        # 🔥 TIMEOUT WORKER: टाइमर खत्म होने का बैकग्राउंड इंतज़ार (अगर यूजर क्लिक न करे तो ऑटो-नेक्स्ट)
-        asyncio.create_task(solo_timeout_worker(session_key, current_q, raw_timer, context))
 
     except Exception as e:
         logging.error(f"Error in send_solo_timerless_poll: {e}", exc_info=True)
