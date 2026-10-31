@@ -1705,7 +1705,7 @@ async def send_solo_timerless_poll(session_key, context):
             clean_explanation = None
         # ====================================================================
 
-        max_attempts = 3
+        max_attempts = 5
 
         # 📤 स्टेप A: नया बिना टाइमर का पोल (Poll) भेजें
         for attempt in range(max_attempts):
@@ -1727,7 +1727,7 @@ async def send_solo_timerless_poll(session_key, context):
             except Exception as poll_flood_err:
                 if "429" in str(poll_flood_err) or "retry in" in str(poll_flood_err).lower():
                     import re
-                    retry_after = 5
+                    retry_after = 10
                     match = re.search(r'retry in (\d+)', str(poll_flood_err).lower())
                     if match: retry_after = int(match.group(1))
                     await asyncio.sleep(retry_after)
@@ -1779,7 +1779,7 @@ async def send_solo_timerless_poll(session_key, context):
             except Exception as flood_err:
                 if "429" in str(flood_err) or "retry in" in str(flood_err).lower():
                     import re
-                    retry_after = 5
+                    retry_after = 10
                     match = re.search(r'retry in (\d+)', str(flood_err).lower())
                     if match: retry_after = int(match.group(1))
                     await asyncio.sleep(retry_after)
