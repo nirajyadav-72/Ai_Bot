@@ -1623,8 +1623,8 @@ async def start_quiz_via_command(update: Update, context: ContextTypes.DEFAULT_T
     except Exception as e:
         logging.error(f"Error in start_quiz_via_command solo layer: {e}", exc_info=True)
 
-async def send_solo_timerless_poll(session_key, context):
-    """Generates a clean timerless poll interface by deleting the previous poll and buttons beforehand."""
+ async def send_solo_timerless_poll(session_key, context):
+    """Generates the timerless poll with strict Telegram length restriction checks and text fallbacks."""
     try:
         session = SOLO_QUIZZES.get(session_key)
         if not session: return
@@ -1641,12 +1641,10 @@ async def send_solo_timerless_poll(session_key, context):
 
         # 📊 CHECK END OF QUIZ -> Compile personal result metrics
         if current_q >= len(questions) or current_q < 0:
-            # फाइनल रिजल्ट देने से पहले भी आखिरी बटन और पोल को डिलीट कर दें
             if session.get("last_control_msg_id"):
                 try: await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
                 except Exception: pass
             
-            # पिछले सवाल का इंडेक्स निकालकर पोल डिलीट करें (यदि अंत में हो)
             prev_q = current_q - 1
             if "poll_message_ids" in session and prev_q in session["poll_message_ids"]:
                 try: await context.bot.delete_message(chat_id=chat_id, message_id=session["poll_message_ids"][prev_q])
@@ -1666,32 +1664,64 @@ async def send_solo_timerless_poll(session_key, context):
             try: correct_idx = options.index(str(correct_ans))
             except ValueError: correct_idx = 0
 
-        # 1. पुराना बटन कंट्रोल मैसेज डिलीट करें
+        # 🗑️ ABSOLUTE CLEANUP LAYER: DELETE OLD POLL & BUTTON MESSAGE FIRST
         if session.get("last_control_msg_id"):
             try:
                 await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
                 session["last_control_msg_id"] = None
-            except Exception:
-                pass
+            except Exception: pass
 
-        # 2. पिछले सभी भेजे गए पोल्स (यदि कोई चैट में बचे हों) को खोजकर डिलीट करें
         if "poll_message_ids" in session:
             for q_idx, old_poll_mid in list(session["poll_message_ids"].items()):
                 try:
                     await context.bot.delete_message(chat_id=chat_id, message_id=old_poll_mid)
-                    del session["poll_message_ids"][q_idx] # मेमोरी से भी साफ करें
-                except Exception:
-                    pass
+                    del session["poll_message_ids"][q_idx]
+                except Exception: pass
+
+        # ====================================================================
+        # 🔒 STRICT CHARACTER LIMITS & FALLBACK LOGIC
+        # ====================================================================
+        full_question_text = f"[{current_q + 1}/{len(questions)}] {q_text}"
+        
+        # टेलीग्राम सीमाएँ जाँचें
+        is_question_too_long = len(full_question_text) > 280
+        is_any_option_too_long = any(len(str(opt)) > 90 for opt in options)
+        
+        poll_question = full_question_text
+        poll_options = options
+
+        # 🚨 अगर सवाल 300 या कोई ऑप्शन 100 अक्षर से बड़ा है, तो टेक्स्ट फॉलबैक ट्रिगर करें
+        if is_question_too_long or is_any_option_too_long:
+            fallback_text = f"<blockquote>📝 <b>प्रश्न [{current_q + 1}/{len(questions)}]:</b> {q_text}</blockquote>\n\n<blockquote><b>विकल्प (Options):</b></blockquote>\n"
+            for i, opt in enumerate(options):
+                fallback_text += f"<blockquote>{i+1}️⃣ {opt}</blockquote>\n"
+                
+            try:
+                # पूरा बड़ा सवाल पहले चैट में भेजें
+                await context.bot.send_message(chat_id=chat_id, text=fallback_text, parse_mode="HTML")
+            except Exception:
+                pass
+            
+            # पोल को छोटा और सुरक्षित करें ताकि एरर न आए
+            poll_question = f"[{current_q + 1}] ऊपर दिए गए प्रश्न का सही उत्तर चुनें:"
+            poll_options = [f"Option {i+1}" for i in range(len(options))]
+
+        # 🚨 स्पष्टीकरण (Explanation) की 200 अक्षर सीमा की जाँच
+        clean_explanation = explanation.strip() if explanation and str(explanation).strip() else None
+        if clean_explanation and len(clean_explanation) > 180:
+            # यदि 200 से बड़ा है, तो इसे पोल से हटा दें ताकि टेलीग्राम रिजेक्ट न करे
+            clean_explanation = None
+        # ====================================================================
 
         max_attempts = 3
 
-        # 📤 स्टेप A: नया बिना टाइमर का पोल (Poll) भेजें
+        # 📤 स्टेप A: बिना टाइमर का सुरक्षित पोल (Poll) भेजें
         for attempt in range(max_attempts):
             try:
                 poll_msg = await context.bot.send_poll(
-                    chat_id=chat_id, question=f"[{current_q + 1}] {q_text}", options=options, 
+                    chat_id=chat_id, question=poll_question, options=poll_options, 
                     type="quiz", correct_option_id=correct_idx, 
-                    explanation=explanation.strip() if explanation else None, 
+                    explanation=clean_explanation, 
                     is_anonymous=False, open_period=None  
                 )
                 
@@ -1713,39 +1743,22 @@ async def send_solo_timerless_poll(session_key, context):
                 else:
                     raise poll_flood_err
 
-        # 🎛️ 🔥 NATIVE COLORED BUTTON STRUCTURE EXTRACTION
+        # 🎛️ नैविगेशन बटन्स तैयार करें
         nav_buttons = []
-        
         if current_q > 0:
-            nav_buttons.append({
-                "text": "Previous Ques..", 
-                "callback_data": f"slnav_back_{session_key}", 
-                "style": "primary"
-            })
+            nav_buttons.append({"text": "Previous Ques..", "callback_data": f"slnav_back_{session_key}", "style": "primary"})
         
-        nav_buttons.append({
-            "text": "Stop Quiz", 
-            "callback_data": f"slnav_stop_{session_key}", 
-            "style": "danger"
-        })
+        nav_buttons.append({"text": "Stop Quiz", "callback_data": f"slnav_stop_{session_key}", "style": "danger"})
         
         if current_q < len(questions) - 1:
-            nav_buttons.append({
-                "text": "Next ques..", 
-                "callback_data": f"slnav_next_{session_key}", 
-                "style": "success"
-            })
+            nav_buttons.append({"text": "Skip Ques..", "callback_data": f"slnav_next_{session_key}", "style": "success"})
         else:
-            nav_buttons.append({
-                "text": "Finish 🏁", 
-                "callback_data": f"slnav_next_{session_key}", 
-                "style": "success"
-            })
+            nav_buttons.append({"text": "Finish 🏁", "callback_data": f"slnav_next_{session_key}", "style": "success"})
 
-        control_text = f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is Quiz ko Attend kar rahe hain.</i>"
+        control_text = f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is Quiz ko attend kar rahe hain.</i>"
         reply_markup = InlineKeyboardMarkup([nav_buttons])
 
-        # 📨 स्टेप B: पोल के ठीक नीचे नया कंट्रोल बटन्स वाला मैसेज भेजें
+        # 📨 स्टेप B: पोल के ठीक नीचे रंगीन कंट्रोल बटन्स वाला संदेश भेजें
         for attempt in range(max_attempts):
             try:
                 control_msg = await context.bot.send_message(
