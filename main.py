@@ -1624,7 +1624,7 @@ async def start_quiz_via_command(update: Update, context: ContextTypes.DEFAULT_T
         logging.error(f"Error in start_quiz_via_command solo layer: {e}", exc_info=True)
 
 async def send_solo_timerless_poll(session_key, context):
-    """Generates the timerless poll with strict Telegram length restriction checks and text fallbacks."""
+    """Generates the solo poll with strict timer limits and auto-next functionality."""
     try:
         session = SOLO_QUIZZES.get(session_key)
         if not session: return
@@ -1635,6 +1635,11 @@ async def send_solo_timerless_poll(session_key, context):
 
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
+        # 🔥 FIXED: Quizzes table से timer वैल्यू भी साथ में निकाली
+        cursor.execute("SELECT timer FROM quizzes WHERE quiz_id = ?", (quiz_id,))
+        quiz_meta = cursor.fetchone()
+        quiz_timer = quiz_meta[0] if (quiz_meta and quiz_meta[0]) else 30 # Default 30s fallback
+        
         cursor.execute("SELECT question_text, options, correct_answer, explanation FROM questions WHERE quiz_id = ?", (quiz_id,))
         questions = cursor.fetchall()
         conn.close()
@@ -1694,8 +1699,7 @@ async def send_solo_timerless_poll(session_key, context):
                 
             try:
                 await context.bot.send_message(chat_id=chat_id, text=fallback_text, parse_mode="HTML")
-            except Exception:
-                pass
+            except Exception: pass
             
             poll_question = f"[{current_q + 1}] ऊपर दिए गए प्रश्न का सही उत्तर चुनें:"
             poll_options = [f"Option {i+1}" for i in range(len(options))]
@@ -1706,15 +1710,17 @@ async def send_solo_timerless_poll(session_key, context):
         # ====================================================================
 
         max_attempts = 5
+        raw_timer = quiz_timer if quiz_timer >= 10 else 10 # Minimum 10 seconds telegram rule
 
-        # 📤 स्टेप A: नया बिना टाइमर का पोल (Poll) भेजें
+        # 📤 स्टेप A: टाइमर के साथ पोल भेजें (open_period=raw_timer)
+        poll_msg = None
         for attempt in range(max_attempts):
             try:
                 poll_msg = await context.bot.send_poll(
                     chat_id=chat_id, question=poll_question, options=poll_options, 
                     type="quiz", correct_option_id=correct_idx, 
                     explanation=clean_explanation, 
-                    is_anonymous=False, open_period=None  
+                    is_anonymous=False, open_period=raw_timer  # 🔥 Added open_period
                 )
                 
                 session["poll_message_ids"][current_q] = poll_msg.message_id
@@ -1726,48 +1732,26 @@ async def send_solo_timerless_poll(session_key, context):
                 
             except Exception as poll_flood_err:
                 if "429" in str(poll_flood_err) or "retry in" in str(poll_flood_err).lower():
-                    import re
-                    retry_after = 10
-                    match = re.search(r'retry in (\d+)', str(poll_flood_err).lower())
-                    if match: retry_after = int(match.group(1))
-                    await asyncio.sleep(retry_after)
+                    await asyncio.sleep(5)
                     continue
-                else:
-                    raise poll_flood_err
+                else: raise poll_flood_err
 
-        # 🎛️ 🔥 NATIVE COLORED BUTTON STRUCTURE EXTRACTION
+        # 🎛️ NATIVE COLORED BUTTON STRUCTURE EXTRACTION
         nav_buttons = []
-        
         if current_q > 0:
-            nav_buttons.append({
-                "text": "Previous Ques..", 
-                "callback_data": f"slnav_back_{session_key}", 
-                "style": "primary"
-            })
+            nav_buttons.append({"text": "Previous Ques..", "callback_data": f"slnav_back_{session_key}", "style": "primary"})
         
-        nav_buttons.append({
-            "text": "Stop Quiz", 
-            "callback_data": f"slnav_stop_{session_key}", 
-            "style": "danger"
-        })
+        nav_buttons.append({"text": "Stop Quiz", "callback_data": f"slnav_stop_{session_key}", "style": "danger"})
         
         if current_q < len(questions) - 1:
-            nav_buttons.append({
-                "text": "Skip ques..", 
-                "callback_data": f"slnav_next_{session_key}", 
-                "style": "success"
-            })
+            nav_buttons.append({"text": "Skip ques..", "callback_data": f"slnav_next_{session_key}", "style": "success"})
         else:
-            nav_buttons.append({
-                "text": "Finish 🏁", 
-                "callback_data": f"slnav_next_{session_key}", 
-                "style": "success"
-            })
+            nav_buttons.append({"text": "Finish 🏁", "callback_data": f"slnav_next_{session_key}", "style": "success"})
 
-        control_text = f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is Quiz ko Attend kar rahe hain.</i>"
+        control_text = f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n⏱ <b>Time Left:</b> {raw_timer}s\n👉 <i>Sirf aap hi is Quiz ko Attend kar rahe hain.</i>"
         reply_markup = InlineKeyboardMarkup([nav_buttons])
 
-        # 📨 स्टेप B: पोल के ठीक नीचे नया कंट्रोल संदेश भेजें
+        # 📨 स्टेप B: कंट्रोल संदेश भेजें
         for attempt in range(max_attempts):
             try:
                 control_msg = await context.bot.send_message(
@@ -1775,17 +1759,10 @@ async def send_solo_timerless_poll(session_key, context):
                 )
                 session["last_control_msg_id"] = control_msg.message_id
                 break
-                
-            except Exception as flood_err:
-                if "429" in str(flood_err) or "retry in" in str(flood_err).lower():
-                    import re
-                    retry_after = 10
-                    match = re.search(r'retry in (\d+)', str(flood_err).lower())
-                    if match: retry_after = int(match.group(1))
-                    await asyncio.sleep(retry_after)
-                    continue
-                else:
-                    raise flood_err
+            except Exception: pass
+
+        # 🔥 TIMEOUT WORKER: टाइमर खत्म होने का बैकग्राउंड इंतज़ार (अगर यूजर क्लिक न करे तो ऑटो-नेक्स्ट)
+        asyncio.create_task(solo_timeout_worker(session_key, current_q, raw_timer, context))
 
     except Exception as e:
         logging.error(f"Error in send_solo_timerless_poll: {e}", exc_info=True)
