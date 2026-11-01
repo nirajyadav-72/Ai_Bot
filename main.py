@@ -2034,7 +2034,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # ✅ FIXED: Extracting the first element [0] index to stop the List AttributeError
         if context.args and len(context.args) > 0:
             first_arg = context.args[0]  # 🛑 मुख्य सुधार: लिस्ट से असली स्ट्रिंग टेक्स्ट को बाहर निकाला!
-            
+
+            # router trigger hoga aur bina reload ke game process ko forward karega.
+            if first_arg.startswith("slnav_"):
+                parts = first_arg.split("_")
+                action = parts[1]
+                # Session key build karein (chat_id aur user_id ko wapas jod kar)
+                session_key = f"{parts[2]}_{parts[3]}"
+                
+                # Ek proxy structure taiyar karein taaki aapka purana core navigation logic crash na ho
+                class MockQuery:
+                    def __init__(self, user, message, raw_data):
+                        self.from_user = user
+                        self.message = message
+                        self.data = raw_data
+                    async def answer(self, text=None, show_alert=False):
+                        pass
+                
+                # Dynamic update handler state injection
+                mock_query = MockQuery(update.message.from_user, update.message, f"slnav_{action}_{session_key}")
+                update.callback_query = mock_query
+                
+                # Seedhe aapke navigation engine handler ko fire kar dega
+                await handle_solo_quiz_navigation(update, context)
+                
+                # User ki screen clean aur responsive rakhne ke liye host commands ko background me delete karein
+                try:
+                    await update.message.delete()
+                except Exception:
+                    pass
+                return
+
             if first_arg.startswith("quiz_"):
                 if not is_private and chat_id in GROUP_GAMES:
                     # यदि मेमोरी पूरी तरह साफ़ कर रहे हैं, तो पुराने टास्क को भी बंद करें
