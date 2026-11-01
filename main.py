@@ -1733,7 +1733,7 @@ async def send_solo_timerless_poll(session_key, context):
         control_links.append(f"<a href='https://t.me/{bot_username}?start=slnav_stop_{session_key}'>⏹️ Stop</a>")
         
         if current_q < len(questions) - 1:
-            control_links.append(f"<a href='https://t.me/{bot_username}?start=slnav_next_{session_key}'>⏩ Skip</a>")
+            control_links.append(f"<code><a href='https://t.me/{bot_username}?start=slnav_next_{session_key}'>⏩ Skip</a></code>")
         else:
             control_links.append(f"<a href='https://t.me/{bot_username}?start=slnav_next_{session_key}'>🏁 Finish</a>")
             
