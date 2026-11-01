@@ -1605,8 +1605,8 @@ async def start_quiz_via_command(update: Update, context: ContextTypes.DEFAULT_T
         logging.error(f"Error in start_quiz_via_command solo layer: {e}", exc_info=True)
 
 async def send_solo_timerless_poll(session_key, context):
-    """Generates the timerless poll with strict Telegram length restriction checks, 
-    text fallbacks, and resilient network connection retry logic."""
+    """Generates the timerless poll with strict Telegram length restriction checks, text fallbacks, 
+    and seamless embedded hyperlink text controls instead of bulky separate button blocks."""
     try:
         session = SOLO_QUIZZES.get(session_key)
         if not session: return
@@ -1614,6 +1614,7 @@ async def send_solo_timerless_poll(session_key, context):
         chat_id = session["chat_id"]
         quiz_id = session["quiz_id"]
         current_q = session["current_q"]
+        bot_username = context.bot.username if context.bot.username else "quiz_bot"
 
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
@@ -1627,6 +1628,11 @@ async def send_solo_timerless_poll(session_key, context):
                 try: await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
                 except Exception: pass
             
+            prev_q = current_q - 1
+            if "poll_message_ids" in session and prev_q in session["poll_message_ids"]:
+                try: await context.bot.delete_message(chat_id=chat_id, message_id=session["poll_message_ids"][prev_q])
+                except Exception: pass
+
             await compile_solo_personal_result(session_key, context, len(questions))
             return
 
@@ -1641,12 +1647,19 @@ async def send_solo_timerless_poll(session_key, context):
             try: correct_idx = options.index(str(correct_ans))
             except ValueError: correct_idx = 0
 
-        # 🗑️ ONLY BUTTON CLEANUP LAYER: केवल पुराना बटन मैसेज डिलीट होगा (पोल डिलीट नहीं होगा)
+        # 🗑️ ABSOLUTE CLEANUP LAYER: DELETE OLD POLL & BUTTON MESSAGE FIRST
         if session.get("last_control_msg_id"):
             try:
                 await context.bot.delete_message(chat_id=chat_id, message_id=session["last_control_msg_id"])
                 session["last_control_msg_id"] = None
             except Exception: pass
+
+        if "poll_message_ids" in session:
+            for q_idx, old_poll_mid in list(session["poll_message_ids"].items()):
+                try:
+                    await context.bot.delete_message(chat_id=chat_id, message_id=old_poll_mid)
+                    del session["poll_message_ids"][q_idx]
+                except Exception: pass
 
         # ================================================================
         full_question_text = f"[{current_q + 1}/{len(questions)}] {q_text}"
@@ -1664,7 +1677,8 @@ async def send_solo_timerless_poll(session_key, context):
                 
             try:
                 await context.bot.send_message(chat_id=chat_id, text=fallback_text, parse_mode="HTML")
-            except Exception: pass
+            except Exception:
+                pass
             
             poll_question = f"[{current_q + 1}] ऊपर दिए गए प्रश्न का सही उत्तर चुनें:"
             poll_options = [f"Option {i+1}" for i in range(len(options))]
@@ -1674,11 +1688,9 @@ async def send_solo_timerless_poll(session_key, context):
             clean_explanation = None
         # ====================================================================
 
-        # 🔥 NEW: NETWORK RESILIENT RETRY LOGIC FOR POLL SENDING
         max_attempts = 5
-        retry_delay = 2.0  # शुरुआती 2 सेकंड का वेट एरर आने पर
-        poll_msg = None
 
+        # 📤 स्टेप A: नया बिना टाइमर का पोल (Poll) भेजें
         for attempt in range(max_attempts):
             try:
                 poll_msg = await context.bot.send_poll(
@@ -1693,52 +1705,64 @@ async def send_solo_timerless_poll(session_key, context):
                     "correct_idx": correct_idx,
                     "question_index": current_q
                 }
-                break  # सफलता मिलने पर लूप से बाहर निकलें
+                break
                 
-            except Exception as net_err:
-                logging.warning(f"⚠️ Solo Poll Attempt {attempt + 1} Failed (Network/API Alert): {net_err}")
-                
-                # अगर आखिरी अटेम्प्ट भी फेल हो जाए
-                if attempt == max_attempts - 1:
-                    try:
-                        await context.bot.send_message(chat_id=chat_id, text="❌ <b>Network Connection Error:</b> Bot Telegram server से कनेक्ट नहीं हो पा रहा है। कृपया इंटरनेट चेक करें।", parse_mode="HTML")
-                    except Exception: pass
-                    return
+            except Exception as poll_flood_err:
+                if "429" in str(poll_flood_err) or "retry in" in str(poll_flood_err).lower():
+                    import re
+                    retry_after = 10
+                    match = re.search(r'retry in (\d+)', str(poll_flood_err).lower())
+                    if match: retry_after = int(match.group(1))
+                    await asyncio.sleep(retry_after)
+                    continue
+                else:
+                    raise poll_flood_err
 
-                # Exponential backoff delay (2s -> 4s -> 8s -> 16s)
-                await asyncio.sleep(retry_delay)
-                retry_delay *= 2.0
-
-        # 🎛️ BUTTON STRUCTURE
-        nav_buttons = []
-        if current_q > 0:
-            nav_buttons.append({"text": "Previous Ques..", "callback_data": f"slnav_back_{session_key}", "style": "primary"})
+        # 🎛️ 🔥 SEAMLESS HYPERLINK TEXT CONTROLS (Music Bot Bubble Style)
+        # Yeh pure text ke sath attach ho kar bina separate box ke display hoga
+        control_text = (
+            f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n"
+            f"👉 <i>Sirf aap hi is Quiz ko Attend kar rahe hain.</i>\n\n"
+            f"🎛️ <b>Controls:</b>  "
+        )
         
-        nav_buttons.append({"text": "Stop Quiz", "callback_data": f"slnav_stop_{session_key}", "style": "danger"})
+        control_links = []
+        if current_q > 0:
+            control_links.append(f"<a href='https://t.me/{bot_username}?start=slnav_back_{session_key}'>🔄 Prev</a>")
+        
+        control_links.append(f"<a href='https://t.me/{bot_username}?start=slnav_stop_{session_key}'>⏹️ Stop</a>")
         
         if current_q < len(questions) - 1:
-            nav_buttons.append({"text": "Skip ques..", "callback_data": f"slnav_next_{session_key}", "style": "success"})
+            control_links.append(f"<a href='https://t.me/{bot_username}?start=slnav_next_{session_key}'>⏩ Skip</a>")
         else:
-            nav_buttons.append({"text": "Finish 🏁", "callback_data": f"slnav_next_{session_key}", "style": "success"})
+            control_links.append(f"<a href='https://t.me/{bot_username}?start=slnav_next_{session_key}'>🏁 Finish</a>")
+            
+        # Saare strings ko split pipe (|) syntax ke sath barabar tight chain karein
+        control_text += "   |   ".join(control_links)
 
-        control_text = f"👤 <b>Practice Mode:</b> [{current_q + 1}/{len(questions)}]\n👉 <i>Sirf aap hi is Quiz ko Attend kar rahe hain.</i>"
-        reply_markup = InlineKeyboardMarkup([nav_buttons])
-
-        # 🔥 NEW: NETWORK RESILIENT RETRY LOGIC FOR BUTTON MESSAGE SENDING
-        retry_delay_btn = 2.0
+        # 📨 स्टेप B: पोल के ठीक नीचे seamless HTML कंट्रोल संदेश भेजें (No reply_markup dabba)
         for attempt in range(max_attempts):
             try:
                 control_msg = await context.bot.send_message(
-                    chat_id=chat_id, text=control_text, reply_markup=reply_markup, parse_mode="HTML"
+                    chat_id=chat_id, 
+                    text=control_text, 
+                    reply_markup=None,  # 👈 No bulky gray button blocks!
+                    parse_mode="HTML",
+                    disable_web_page_preview=True  # Dynamic page link thumbnail hide karne ke liye
                 )
                 session["last_control_msg_id"] = control_msg.message_id
                 break
-            except Exception as net_err_btn:
-                logging.warning(f"⚠️ Solo Control Msg Attempt {attempt + 1} Failed: {net_err_btn}")
-                if attempt == max_attempts - 1:
-                    return
-                await asyncio.sleep(retry_delay_btn)
-                retry_delay_btn *= 2.0
+                
+            except Exception as flood_err:
+                if "429" in str(flood_err) or "retry in" in str(flood_err).lower():
+                    import re
+                    retry_after = 10
+                    match = re.search(r'retry in (\d+)', str(flood_err).lower())
+                    if match: retry_after = int(match.group(1))
+                    await asyncio.sleep(retry_after)
+                    continue
+                else:
+                    raise flood_err
 
     except Exception as e:
         logging.error(f"Error in send_solo_timerless_poll: {e}", exc_info=True)
