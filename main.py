@@ -289,36 +289,18 @@ def generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt):
         return None
     
     # 🇮🇳 Dynamic Date-Time Handler (IST Timezone Base)
-    # Isse har request me current month aur year dynamically prompt me jayega
     now_ist = datetime.now(tz=IST)
-    current_date_str = now_ist.strftime("%B %Y")  # Output Example: "October 2026"
+    current_date_str = now_ist.strftime("%B %Y")  # Example: "November 2026"
     current_year = now_ist.year
     
-    # 🔎 EXAM DETECTION LOGIC: Check if topic contains popular exam keywords
-    exam_keywords = ["ssc", "gd", "chsl", "cgl", "mts", "railway", "ntpc", "group d", "banking", "ibps", "upsc", "police", "pet"]
-    is_exam_detected = any(keyword in topic.lower() for keyword in exam_keywords)
-    
-    # 🎯 DYNAMIC PROMPT EXTRACTION WITH CURRENT TIME CONTEXT
-    if is_exam_detected:
-        exam_instruction = f"""
-CRITICAL CONTEXT FOR COMPETITIVE EXAMS (PYQs):
-The user has specified an exam-related topic: "{topic}". 
-You MUST strictly generate ONLY actual Previous Year Questions (PYQs) or highly accurate mock questions that perfectly match the official syllabus, standard, and weightage of that specific exam ({topic}). 
-Do NOT generate generic questions. The questions must mimic the exact language, format, and difficulty level seen in real past papers of this exam. 
-If the exam has a current affairs section, ensure the data is verified up to the current date: {current_date_str}.
-"""
-    else:
-        exam_instruction = f"""
-CRITICAL CONTEXT FOR CURRENT AFFAIRS & GENERAL KNOWLEDGE:
-If the topic is "Current Affairs", "General Knowledge", "News", or related to recent events, you MUST focus on the latest national and international events, awards, sports, appointments, and developments up to the current date: {current_date_str} (Year {current_year}). 
-Ensure all facts are updated, highly accurate, non-speculative, and reflect the real-world status as of {current_date_str}. Do NOT generate outdated historical current affairs.
-"""
-
-    # 📝 MAIN SYSTEM PROMPT (Embedded with dynamic date)
+    # 📝 AUTOMATED EXAM FORMAT SELECTION SYSTEM PROMPT
     prompt = f"""Generate exactly {count} unique quiz questions ONLY in {lang} language about "{topic}".
 Current Evaluation Date Context: {current_date_str}
 
-{exam_instruction}
+CRITICAL CONTEXT & EXAM FORMATTING RULE:
+The user has provided a general static or syllabus study topic: "{topic}".
+As an expert AI exam evaluator, you must AUTOMATICALLY select ONE major relevant government competitive exam (e.g., SSC CGL, SSC CHSL, SSC GD, Railway NTPC, Railway Group D, State Police Bharti, Banking, or UPSC Prelims) where this topic "{topic}" holds high weightage.
+You must strictly generate questions that mimic the exact difficulty level, vocabulary standard, pattern, and weightage of that automatically chosen exam. Do NOT mention the exam name in the question text, but strictly apply its question paper standard.
 
 Topic: {topic}
 Language: {lang}
@@ -341,19 +323,18 @@ CRITICAL RULES:
 3. Do NOT put correct answer always at position 0 or position 1
 4. For {options_cnt} options: "correct" can be ANY value from 0 to {options_cnt-1}
 5. Each question must have correct answer at DIFFERENT random position
-6. Example: Q1 correct=1, Q2 correct=3, Q3 correct=0, Q4 correct=2 (varied!)
-7. All options must be DIFFERENT and meaningful
-8. Questions must strictly relate to {topic}
-9. NO sample/dummy questions
-10. Each item MUST include an "explanation" string (one or two sentences) explaining the correct answer
-11. Return ONLY JSON array"""
+6. All options must be DIFFERENT and meaningful
+7. Questions must strictly relate to {topic}
+8. NO sample/dummy questions
+9. Each item MUST include an "explanation" string (one or two sentences) explaining the correct answer
+10. Return ONLY JSON array"""
 
     max_retries = 3
     retry_delay = 2  # सेकंड
 
     for attempt in range(max_retries):
         try:
-            logging.info(f"🤖 Requesting AI for {count} questions on {topic} (Time Context: {current_date_str})...")
+            logging.info(f"🤖 Requesting AI for {count} questions on {topic} (Auto-Exam Mapping Active)...")
             
             response = ai_client.interactions.create(
                 model='gemini-3.5-flash-lite',
