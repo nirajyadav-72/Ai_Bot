@@ -2035,14 +2035,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if context.args and len(context.args) > 0:
             first_arg = context.args[0]  # 🛑 मुख्य सुधार: लिस्ट से असली स्ट्रिंग टेक्स्ट को बाहर निकाला!
 
-            # router trigger hoga aur bina reload ke game process ko forward karega.
+            # ====================================================================
             if first_arg.startswith("slnav_"):
                 parts = first_arg.split("_")
                 action = parts[1]
                 # Session key build karein (chat_id aur user_id ko wapas jod kar)
                 session_key = f"{parts[2]}_{parts[3]}"
                 
-                # Ek proxy structure taiyar karein taaki aapka purana core navigation logic crash na ho
+                # Ek proper robust proxy mockup class banayein jo `query.message` ko correct framework de
                 class MockQuery:
                     def __init__(self, user, message, raw_data):
                         self.from_user = user
@@ -2050,15 +2050,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         self.data = raw_data
                     async def answer(self, text=None, show_alert=False):
                         pass
-                
-                # Dynamic update handler state injection
+
+                # Dynamic update object parsing logic 
+                # `update.message` ko hi `mock_query` ka message structure banana zaroori hai
                 mock_query = MockQuery(update.message.from_user, update.message, f"slnav_{action}_{session_key}")
                 update.callback_query = mock_query
                 
-                # Seedhe aapke navigation engine handler ko fire kar dega
+                # Deep tracking log verification
+                logging.info(f"Hyperlink Interceptor Successfully Fired: Action={action}, Session={session_key}")
+                
+                # Seedhe solo handler navigation function ko execute kar dega
                 await handle_solo_quiz_navigation(update, context)
                 
-                # User ki screen clean aur responsive rakhne ke liye host commands ko background me delete karein
+                # Command click text message ko clean karne ke liye delete layer trigger karein
                 try:
                     await update.message.delete()
                 except Exception:
