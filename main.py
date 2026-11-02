@@ -1712,12 +1712,12 @@ async def send_solo_timerless_poll(session_key, context):
         # 🎛️ BUTTON STRUCTURE
         nav_buttons = []
         if current_q > 0:
-            nav_buttons.append({"text": "                       Previous                     ", "callback_data": f"slnav_back_{session_key}", "style": "primary"})
+            nav_buttons.append({"text": "Prev Ques..", "callback_data": f"slnav_back_{session_key}", "style": "primary"})
         
-        nav_buttons.append({"text": "                      Stop                         ", "callback_data": f"slnav_stop_{session_key}", "style": "danger"})
+        nav_buttons.append({"text": "Stop Quiz", "callback_data": f"slnav_stop_{session_key}", "style": "danger"})
         
         if current_q < len(questions) - 1:
-            nav_buttons.append({"text": "                    Skip                      ", "callback_data": f"slnav_next_{session_key}", "style": "success"})
+            nav_buttons.append({"text": "Skip Ques..", "callback_data": f"slnav_next_{session_key}", "style": "success"})
         else:
             nav_buttons.append({"text": "Finish 🏁", "callback_data": f"slnav_next_{session_key}", "style": "success"})
 
