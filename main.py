@@ -2574,6 +2574,10 @@ async def handle_negative_selection(update: Update, context: ContextTypes.DEFAUL
 
         await show_summary_panel_text(query, context, qid)
         return ConversationHandler.END
+
+    except Exception as e:
+        logging.error(f"Error in handle_negative_selection: {e}")
+        return ConversationHandler.END
     
 async def handle_confirm_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Confirm and start private quiz with 1 user"""
