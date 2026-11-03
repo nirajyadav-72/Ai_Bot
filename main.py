@@ -1261,6 +1261,10 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
         await show_summary_panel_text(query, context, quiz_id)
         return ConversationHandler.END
 
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("❌ Quiz setup processing setup abandoned.", reply_markup=ReplyKeyboardRemove())
+    return ConversationHandler.END
+
 async def global_continuous_polling_worker(app: Application):
     global POLLING_LOOP_ACTIVE
     logging.info("Background Global Continuous Polling Worker started.")
