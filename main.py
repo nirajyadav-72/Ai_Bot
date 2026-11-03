@@ -5765,91 +5765,80 @@ async def send_to_support_group(update: Update, context: ContextTypes.DEFAULT_TY
         except Exception:
             pass
 
-async def auto_quiz_summary_monitor(bot):
+ async def send_any_quiz_summary_to_channel(bot, quiz_id):
     """
-    नया स्वतंत्र फ़ंक्शन: यह बैकग्राउंड में डेटाबेस को मॉनिटर करता है।
-    जैसे ही autorun_worker कोई नई क्विज़ सेव करता है, यह बिना पुराना कोड बदले 
-    उसकी समरी सीधे सपोर्ट चैनल (SUPPORT_GROUP_ID) में भेज देता है।
+    Natively fetches ANY newly generated quiz parameters (Auto or Manual by Owner) 
+    and sends a structured Summary Panel layout directly to the Owner's Quiz Channel.
     """
-    logging.info("🚀 Background Auto-Quiz Summary Monitor started successfully.")
-    
-    # सबसे आखरी क्विज़ आईडी का पता लगाएं ताकि सिर्फ नए वाले ही चैनल पर जाएं
-    last_known_quiz_id = 0
+    if not SUPPORT_CHANNEL_ID:
+        logging.warning("⚠️ [Channel Forwarder] SUPPORT_CHANNEL_ID not configured in .env. Skipping broadcast.")
+        return False
+
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        cursor.execute("SELECT MAX(quiz_id) FROM quizzes")
-        row = cursor.fetchone()
-        if row and row[0]:
-            last_known_quiz_id = int(row[0])
-        conn.close()
-    except Exception as e:
-        logging.error(f"Error initializing monitor baseline ID: {e}")
-
-    while True:
-        try:
-            # हर 5 सेकंड में चेक करेगा कि कोई नई क्विज़ बनी है या नहीं
-            await asyncio.sleep(1800)
-            
-            if not SUPPORT_CHANNEL_ID:
-                continue
-
-            conn = sqlite3.connect(DB_FILE)
-            cursor = conn.cursor()
-            
-            # सिर्फ वही क्विज़ उठाएं जो ऑटोमैटिक जनरेट हुई हैं (Auto AI Quiz वाली)
-            cursor.execute(
-                "SELECT quiz_id, title, description, timer FROM quizzes WHERE quiz_id > ? AND title LIKE 'Auto AI Quiz:%' ORDER BY quiz_id ASC", 
-                (last_known_quiz_id,)
-            )
-            new_quizzes = cursor.fetchall()
-            
-            for quiz_id, title, description, timer in new_quizzes:
-                # कुल प्रश्नों की संख्या निकालें
-                cursor.execute("SELECT COUNT(*) FROM questions WHERE quiz_id = ?", (quiz_id,))
-                total_q = cursor.fetchone()[0]
-                
-                time_display = f"{timer} sec" if timer < 60 else f"{timer // 60} min"
-                bot_username = bot.username if bot.username else "quiz_bot"
-                
-                # HTML के लिए टाइटल और डिस्क्रिप्शन को सुरक्षित करें
-                escaped_title = escape_markdown(title)
-                escaped_desc = escape_markdown(description) if description else "No description"
-                
-                summary_text = (
-                    "🤖 <b>Ai AUTO QUIZ GENERATED!</b>\n\n"
-                    f"📒 <b>Title: {escaped_title}</b>\n"
-                    f"🫥 <b>Description: {escaped_desc}</b>\n"
-                    f"⚡ <b>Questions: {total_q}</b>\n"
-                    f"⏱ <b>Time/question: {time_display}</b>\n\n"
-                    f"<blockquote>🔗 External sharing link:</blockquote>\n"
-                    f"<pre><code>https://t.me/{bot_username}?start=quiz_{quiz_id}</code></pre>"
-                )
-
-                inline_keyboard = [
-                    [{"text": "Start Quiz In Private Chat 🎮", "url": f"https://t.me/{bot_username}?start=quiz_{quiz_id}", "style": "primary"}],
-                    [{"text": "Start Quiz in Group 👥", "url": f"https://t.me/{bot_username}?startgroup=quiz_{quiz_id}", "style": "success"}],
-                    # 🔥 FIXED: switch_inline_query_current_chat को हटाकर URL शेयर लिंक लगाया है जो चैनल में 100% काम करेगा
-                    [{"text": "Share Quiz 📢", "url": f"https://t.me/share/url?url=https://t.me/{bot_username}?start=quiz_{quiz_id}&text=Check%20out%20this%20awesome%20quiz!", "style": "danger"}]
-                ]
-                reply_markup = InlineKeyboardMarkup(inline_keyboard)
-
-                # सपोर्ट चैनल/ग्रुप में समरी पैनल सेंड करें
-                await bot.send_message(
-                    chat_id=SUPPORT_CHANNEL_ID, 
-                    text=summary_text, 
-                    reply_markup=reply_markup, 
-                    parse_mode="HTML"
-                )
-                logging.info(f"✨ [Monitor] Successfully sent Quiz ID {quiz_id} Summary Panel to Support Channel.")
-                
-                # बेसलाइन आईडी अपडेट करें ताकि दोबारा सेम मैसेज न जाए
-                last_known_quiz_id = quiz_id
-                
+        
+        # 1. Fetch Quiz details from database
+        cursor.execute("SELECT title, description, timer, negative_value, creator_id FROM quizzes WHERE quiz_id = ?", (quiz_id,))
+        quiz_data = cursor.fetchone()
+        
+        if not quiz_data:
+            logging.error(f"❌ [Channel Forwarder] Quiz ID {quiz_id} not found in DB.")
             conn.close()
+            return False
             
-        except Exception as monitor_err:
-            logging.error(f"Error inside auto_quiz_summary_monitor loop: {monitor_err}", exc_info=True)
+        title, description, timer, negative_value, creator_id = quiz_data
+        
+        # 2. Fetch total questions count mapped to this quiz
+        cursor.execute("SELECT COUNT(*) FROM questions WHERE quiz_id = ?", (quiz_id,))
+        total_q = cursor.fetchone()[0]
+        conn.close()
+
+        # ONLY forward if it's generated by the system/autorun OR explicitly by the Bot Owner
+        if creator_id != OWNER_ID:
+            logging.info(f"ℹ️ [Channel Forwarder] Skipping Quiz ID {quiz_id} as it was not generated by the Bot Owner.")
+            return False
+
+        # Formatting values for user view
+        time_display = f"{timer} sec" if timer < 60 else f"{timer // 60} min"
+        neg_display = "Disabled" if negative_value == 0.0 else f"-{negative_value} per wrong response"
+        bot_username = bot.username if bot.username else "quiz_bot"
+        
+        escaped_title = escape_markdown(title)
+        escaped_desc = escape_markdown(description) if description else "No description"
+        
+        # 3. Build Aesthetic HTML Content Layout Block
+        summary_text = (
+            "🤖 <b>Ai AUTO QUIZ GENERATED!</b>\n\n"
+            f"📒 <b>Title: {escaped_title}</b>\n"
+            f"🫥 <b>Description: {escaped_desc}</b>\n"
+            f"⚡ <b>Questions: {total_q}</b>\n"
+            f"⏱ <b>Time/question: {time_display}</b>\n\n"
+            f"<blockquote>🔗 External sharing link:</blockquote>\n"
+            f"<pre><code>https://t.me/{bot_username}?start=quiz_{quiz_id}</code></pre>"
+        )
+
+        # 4. Generate clickable buttons layout (Channel compatible share links)
+        inline_keyboard = [
+            [{"text": "Start In Private Chat 🎮", "url": f"https://t.me/{bot_username}?start=quiz_{quiz_id}", "style": "primary"}],
+            [{"text": "Start in Group 👥", "url": f"https://t.me/{bot_username}?startgroup=quiz_{quiz_id}", "style": "success"}],
+            [{"text": "Share Quiz 📢", "url": f"https://t.me/share/url?url=https://t.me/{bot_username}?start=quiz_{quiz_id}&text=Check%20out%20this%20awesome%20quiz!", "style": "danger"}]
+        ]
+        reply_markup = InlineKeyboardMarkup(inline_keyboard)
+
+        # 5. Dispatch payload to Owner's Quiz Channel
+        await bot.send_message(
+            chat_id=SUPPORT_CHANNEL_ID, 
+            text=summary_text, 
+            reply_markup=reply_markup, 
+            parse_mode="HTML"
+        )
+        logging.info(f"✨ [Channel Forwarder] Successfully sent Quiz ID {quiz_id} Summary to Owner's Quiz Channel.")
+        return True
+        
+    except Exception as channel_err:
+        logging.error(f"❌ [Channel Forwarder] General transmission error: {channel_err}", exc_info=True)
+        return False
 
 # =====================================================================
 
