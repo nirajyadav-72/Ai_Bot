@@ -2562,10 +2562,13 @@ async def handle_negative_selection(update: Update, context: ContextTypes.DEFAUL
         neg_display = "Disabled" if neg_val == 0.0 else f"-{neg_val} per wrong answer"
         await query.message.reply_text(f"✅ Quiz Created Successfully!\n⏱ Timer: {quiz['timer']}s\n📉 Negative Marking: {neg_display}")
         
+        # 🔥 ADD THIS LINE HERE: 
+        try:
+            await send_any_quiz_summary_to_channel(context.bot, qid)
+        except Exception as e:
+            logging.error(f"Failed sending manual quiz from selection to channel: {e}")
+
         await show_summary_panel_text(query, context, qid)
-        return ConversationHandler.END
-    except Exception as e:
-        logging.error(f"Error in handle_negative_selection: {e}")
         return ConversationHandler.END
     
 async def handle_confirm_private(update: Update, context: ContextTypes.DEFAULT_TYPE):
