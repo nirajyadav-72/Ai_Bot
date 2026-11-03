@@ -1260,6 +1260,10 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
         # ✅ SHOW SUMMARY PANEL
         await show_summary_panel_text(query, context, quiz_id)
         return ConversationHandler.END
+    
+    except Exception as e:
+        logging.error(f"Error in handle_negative_and_finish: {e}", exc_info=True)
+        return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("❌ Quiz setup processing setup abandoned.", reply_markup=ReplyKeyboardRemove())
