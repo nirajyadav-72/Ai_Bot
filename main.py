@@ -1251,13 +1251,14 @@ async def handle_negative_and_finish(update: Update, context: ContextTypes.DEFAU
             f"✅ Quiz Created Successfully!\n⏱ Timer: {quiz_build.get('timer', 30)}s\n📉 Negative Marking: {neg_display}"
         )
         
+        # 🔥 ADD THIS LINE HERE: Owner ki manually generated quiz channel me bhejne ke liye
+        try:
+            await send_any_quiz_summary_to_channel(context.bot, quiz_id)
+        except Exception as e:
+            logging.error(f"Failed sending manual quiz to channel: {e}")
+            
         # ✅ SHOW SUMMARY PANEL
         await show_summary_panel_text(query, context, quiz_id)
-        
-        return ConversationHandler.END
-        
-    except Exception as e:
-        logging.error(f"Error in handle_negative_and_finish: {e}", exc_info=True)
         return ConversationHandler.END
         
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
