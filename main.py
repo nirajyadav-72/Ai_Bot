@@ -1018,11 +1018,12 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     
     msg_target = query.message
 
-    # 🚀 पहला पैनल: हमेशा दिखेगा
+    # 🚀 Step 1: 10% Progress Button Animation Panel
+    btn_10 = InlineKeyboardMarkup([[{"text": "⏳ Generating: 10%", "callback_data": "dummy_anim", "style": "danger"}]])
     generating_msg = await query.edit_message_text(
         text="<b>🚀 AI Quiz Generator</b>\n\n⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜\n🔎 <b>Researching your topic...</b>\n⏳ <b>please wait...</b>",
         parse_mode="HTML",
-        reply_markup=None
+        reply_markup=btn_10
     )
     
     try:
@@ -1031,31 +1032,36 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         ))
         
         try:
-            # 🟢 पहला एनिमेशन: 3 सेकंड का अनिवार्य वेट
+            # 🟢 Step 2: 40% Progress Button Animation Panel
             await asyncio.sleep(4)
+            btn_40 = InlineKeyboardMarkup([[{"text": "⏳ Generating: 40%", "callback_data": "dummy_anim", "style": "primary"}]])
             await generating_msg.edit_text(
                 "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪⬜⬜⬜⬜⬜⬜⬜\n🧠 <b>Crafting questions...</b>\n⏳ <b>please wait...</b>",
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=btn_40
             )
                 
-            # 🟢 दूसरा एनिमेशन: अगला 4 सेकंड का अनिवार्य वेट
+            # 🟢 Step 3: 70% Progress Button Animation Panel
             await asyncio.sleep(4)
+            btn_70 = InlineKeyboardMarkup([[{"text": "⏳ Generating: 70%", "callback_data": "dummy_anim", "style": "primary"}]])
             await generating_msg.edit_text(
                 "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪⬜⬜⬜⬜\n✍️ <b>Writing options...</b>\n⏳ <b>please wait...</b>",
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=btn_70
             )
                 
-            # 🟢 तीसरा एनिमेशन बदलाव: अगला 4 सेकंड का अनिवार्य वेट (कंडीशन हटा दी गई है, यह भी हर हाल में दिखेगा)
+            # 🟢 Step 4: 90% Progress Button Animation Panel
             await asyncio.sleep(4)
+            btn_90 = InlineKeyboardMarkup([[{"text": "⏳ Generating: 90%", "callback_data": "dummy_anim", "style": "primary"}]])
             await generating_msg.edit_text(
                 "<b>🚀 AI Quiz Generator</b>\n\n🟪🟪🟪🟪🟪🟪🟪🟪🟪⬜\n📟 <b>Verifying answers...</b>\n⏳ <b>please wait...</b>",
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=btn_90
             )
         except Exception as msg_err:
             logging.warning(f"Animation message sequence alert: {msg_err}")
 
-        # 🔥 मुख्य बदलाव: तीनों एनिमेशन दिखने के बाद बोट यहाँ आकर AI टास्क के खत्म होने का इंतज़ार करेगा। 
-        # अगर AI को 11 सेकंड से ज़्यादा का समय लग रहा है, तो स्क्रीन इसी तीसरे एनिमेशन पर रुकी रहेगी।
+        # AI Task complete hone ka wait karega
         ai_questions = await task
         
         if ai_questions is None or len(ai_questions) == 0:
@@ -1067,10 +1073,13 @@ async def handle_time_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             return ConversationHandler.END
             
         try:
+            # 🟢 Step 5: 100% Success Button Animation Panel
+            btn_100 = InlineKeyboardMarkup([[{"text": "✅ Completed: 100%", "callback_data": "dummy_anim", "style": "success"}]])
             await generating_msg.edit_text(
                 "<b>🚀 AI Quiz Generator</b>\n\n🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩\n"
                 "<b>Verified Answer's</b> ✅\n💯 <b>Done generated...</b>",
-                parse_mode="HTML"
+                parse_mode="HTML",
+                reply_markup=btn_100
             )
             await asyncio.sleep(3)
             await generating_msg.delete()
