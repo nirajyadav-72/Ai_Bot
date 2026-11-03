@@ -4800,6 +4800,14 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 conn.commit()
                 conn.close()
 
+                # 🔥 UPDATE THIS FUNCTION NAME INSIDE AUTORUN_WORKER:
+                try:
+                    # Trigger transmission to owner's channel
+                    await send_any_quiz_summary_to_channel(app.bot, new_quiz_id)
+                except Exception as trigger_err:
+                    logging.error(f"Failed to auto-trigger channel forward sequence: {trigger_err}")
+    
+
                 # 📤 ग्रुप में घोषणा पैनल भेजें और उसे पिन करें
                 init_text = (
                     f"<blockquote>🤖 <b><ins>DAILY AUTOMATIC LIVE QUIZ</ins></b> 🚀</blockquote>\n\n"
