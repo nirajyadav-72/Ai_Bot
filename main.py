@@ -6030,7 +6030,6 @@ async def main():
         await app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
         await load_autoruns_on_startup(app)
         asyncio.create_task(global_continuous_polling_worker(app))
-        asyncio.create_task(auto_quiz_summary_monitor(app.bot)) 
         await asyncio.Event().wait()
 
     except Exception as e:
