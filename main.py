@@ -286,22 +286,17 @@ def check_active_quiz_creation(user_id, context):
 
 # AI Question Generator helper
 def generate_bulk_questions_ai(topic, count, lang, difficulty, options_cnt):
-    if not ai_client:
-        logging.warning("⚠️ AI CLIENT NOT INITIALIZED - Returning None")
-        logging.warning(f"GEMINI_API_KEY present: {bool(GEMINI_API_KEY)}")
+    if not AI_CLIENTS:
+        logging.warning("⚠️ NO AI CLIENTS INITIALIZED - Returning None")
         return None
     
-    # 🇮🇳 Dynamic Date-Time Handler (IST Timezone Base)
-    # Isse har request me current month aur year dynamically prompt me jayega
     now_ist = datetime.now(tz=IST)
-    current_date_str = now_ist.strftime("%B %Y")  # Output Example: "October 2026"
+    current_date_str = now_ist.strftime("%B %Y")
     current_year = now_ist.year
     
-    # 🔎 EXAM DETECTION LOGIC: Check if topic contains popular exam keywords
     exam_keywords = ["ssc", "gd", "chsl", "cgl", "mts", "railway", "ntpc", "group d", "banking", "ibps", "upsc", "police", "pet"]
     is_exam_detected = any(keyword in topic.lower() for keyword in exam_keywords)
     
-    # 🎯 DYNAMIC PROMPT EXTRACTION WITH CURRENT TIME CONTEXT
     if is_exam_detected:
         exam_instruction = f"""
 CRITICAL CONTEXT FOR COMPETITIVE EXAMS (PYQs):
@@ -317,7 +312,6 @@ If the topic is "Current Affairs", "General Knowledge", "News", or related to re
 Ensure all facts are updated, highly accurate, non-speculative, and reflect the real-world status as of {current_date_str}. Do NOT generate outdated historical current affairs.
 """
 
-    # 📝 MAIN SYSTEM PROMPT (Embedded with dynamic date)
     prompt = f"""Generate exactly {count} unique quiz questions ONLY in {lang} language about "{topic}".
 Current Evaluation Date Context: {current_date_str}
 
@@ -351,57 +345,69 @@ CRITICAL RULES:
 10. Each item MUST include an "explanation" string (one or two sentences) explaining the correct answer
 11. Return ONLY JSON array"""
 
-    max_retries = 3
-    retry_delay = 2  # सेकंड
+    questions = None
 
-    for attempt in range(max_retries):
-        try:
-            logging.info(f"🤖 Requesting AI for {count} questions on {topic} (Time Context: {current_date_str})...")
-            
-            response = ai_client.interactions.create(
-                model='gemini-3.5-flash-lite',
-                input=prompt,
-            )
-            
-            if not response.output_text:
-                logging.warning("⚠️ AI returned empty output_text")
-                return None
+    # हर API Key के लिए बारी-बारी से प्रयास करें
+    for client_idx, client in enumerate(AI_CLIENTS):
+        max_retries = 3
+        retry_delay = 2
 
-            logging.info(f"📝 Response received: {response.output_text[:100]}...")
-            clean_text = response.output_text.strip()
-            
-            # Clean markdown
-            clean_text = clean_text.replace("```json", "").replace("```", "").strip()
-            
-            # Advanced Regex cleaning to extract only JSON array
-            match = re.search(r'\[.*\]', clean_text, re.DOTALL)
-            if match:
-                clean_text = match.group(0)
+        for attempt in range(max_retries):
+            try:
+                logging.info(f"🤖 Requesting AI (Key #{client_idx + 1}) for {count} questions on {topic}...")
                 
-            questions = json.loads(clean_text)
-            break  # सफलता मिलने पर रीतराई लूप से बाहर निकलें
+                response = client.interactions.create(
+                    model='gemini-3.5-flash-lite',
+                    input=prompt,
+                )
+                
+                if not response.output_text:
+                    logging.warning(f"⚠️ AI (Key #{client_idx + 1}) returned empty output_text")
+                    break
 
-        except Exception as e:
-            if "503" in str(e) or "UNAVAILABLE" in str(e):
-                if attempt < max_retries - 1:
-                    logging.warning(f"🔄 AI बिजी है (503)। {retry_delay} सेकंड में दोबारा प्रयास कर रहे हैं...")
-                    time.sleep(retry_delay)
-                    retry_delay *= 2  # एक्सपोनेंशियल बैकऑफ़
-                    continue
+                clean_text = response.output_text.strip()
+                clean_text = clean_text.replace("```json", "").replace("```", "").strip()
+                
+                match = re.search(r'\[.*\]', clean_text, re.DOTALL)
+                if match:
+                    clean_text = match.group(0)
+                    
+                questions = json.loads(clean_text)
+                break  # सफलता मिलने पर इस Key के लूप से बाहर निकलें
+
+            except Exception as e:
+                err_str = str(e).lower()
+                # यदि Daily Limit (429 / Quota) खत्म हो जाए, तो तुरंत अगली API Key पर जाएं
+                if "429" in err_str or "quota" in err_str or "resource_exhausted" in err_str:
+                    logging.warning(f"⚠️ API Key #{client_idx + 1} का कोटा खत्म हो गया है! अगली API Key पर स्विच कर रहे हैं...")
+                    break
+                
+                if "503" in err_str or "unavailable" in err_str:
+                    if attempt < max_retries - 1:
+                        logging.warning(f"🔄 AI बिजी है (503)। {retry_delay} सेकंड में दोबारा प्रयास कर रहे हैं...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
+                        continue
+                
+                logging.error(f"❌ AI Generation Error on Key #{client_idx + 1}: {e}", exc_info=True)
+                break
+
+        # अगर इस API Key से सवाल मिल गए हैं, तो दूसरी Key चेक करने की ज़रूरत नहीं है
+        if questions:
+            break
+
+    if not questions:
+        logging.error("❌ सभी उपलब्ध API Keys से क्विज़ जनरेट करने में विफल रहा।")
+        return None
             
-            logging.error(f"❌ AI Generation Error: {e}", exc_info=True)
-            return None
-            
-    # Validation Loop
+    # Validation Loop (यह हिस्सा पहले जैसा ही रहेगा)
     valid_questions = []
     for idx, q in enumerate(questions):
         try:
             if not q.get("question") or not q.get("options"):
-                logging.warning(f"Skipping invalid question: {q}")
                 continue
             
             correct_idx = q.get("correct", 0)
-            
             if not isinstance(correct_idx, int):
                 try:
                     correct_idx = int(correct_idx)
@@ -409,28 +415,20 @@ CRITICAL RULES:
                     correct_idx = 0
             
             if correct_idx < 0 or correct_idx >= len(q["options"]):
-                logging.warning(f"Q{idx}: Invalid index {correct_idx}, using 0")
                 correct_idx = 0
             
             q["correct"] = correct_idx
-            
             if "explanation" not in q or not q["explanation"]:
                 q["explanation"] = f"The correct answer is option {correct_idx + 1}."
                 
             valid_questions.append(q)
-            logging.info(f"✅ Q{len(valid_questions)}: '{q['question'][:40]}...' | Correct at index {correct_idx}")
-            
-        except Exception as q_err:
-            logging.warning(f"Question parse error: {q_err}")
+        except Exception:
             continue
     
     min_required = min(10, count)
-    
     if len(valid_questions) >= min_required:
-        logging.info(f"✅ Minimum threshold met. Proceeding with {len(valid_questions)} questions.")
         return valid_questions[:count]
     else:
-        logging.warning(f"⚠️ Only {len(valid_questions)} questions received. Less than minimum {min_required}. Cancelling.")
         return None
         
 # --- BOT ROUTINES & HANDLERS ---
