@@ -6410,104 +6410,58 @@ async def daily_current_affairs_worker(bot):
             logging.error(f"Error in daily_current_affairs_worker: {e}")
             await asyncio.sleep(300)
 
-def strip_news_urls(text: str) -> str:
-    """Google grounded response se URL/source section ko remove karta hai."""
-    if not text:
-        return text
-
-    # Bare URLs remove
-    text = re.sub(r'https?://\S+|www\.\S+', '', text, flags=re.IGNORECASE)
-
-    # Source / Sources / References / Website lines remove
-    text = re.sub(
-        r'(?im)^\s*(source|sources|references|reference|website|websites|स्रोत)\s*[:\-]?\s*.*$',
-        '',
-        text
-    )
-
-    # Common source line patterns
-    text = re.sub(
-        r'(?im)^\s*[-•]\s*(source|url|website)\s*[:\-]?\s*.*$',
-        '',
-        text
-    )
-
-    # Extra blank lines cleanup
-    text = re.sub(r'\n{3,}', '\n\n', text).strip()
-    return text
-
-
 async def generate_and_send_current_affairs(bot):
-    """Google Search verify karega, par message me URL nahi dikhega"""
+    """Gemini AI से आज के ताज़ा Current Affairs हिंदी में जनरेट करके Support Group में भेजता है"""
     if not ai_client or not SUPPORT_GROUP_ID:
         logging.warning("AI Client or SUPPORT_GROUP_ID missing for Current Affairs.")
         return False
 
     now_ist = datetime.now(tz=IST)
     current_date_str = now_ist.strftime("%d %B %Y")
-    current_time_str = now_ist.strftime("%I:%M %p")
 
-    prompt = f"""आप भारत के competitive exams के लिए current-affairs editor हैं।
+    prompt = f"""You are a Daily Current Affairs Expert for Indian Competitive Exams (SSC, UPSC, Banking, Railway).
+Current Date: {current_date_str}
 
-आज की तारीख और समय: {current_date_str}, {current_time_str} IST.
+Generate top 8-10 most important and latest National & International Current Affairs highlights of today/this week strictly in HINDI language (हिंदी भाषा).
 
-Google Search का उपयोग करके verification करें, लेकिन final response में किसी भी URL,
-source link, website, reference, या “स्रोत” section को नहीं दिखाना है।
-Sirf news summary, short headings, and 1-2 line explanation Hindi me dijiye.
-
-नियम:
-1. केवल recent, verified, relevant current affairs बनाएं.
-2. पुराने/अस्पष्ट topic को न डालें.
-3. URL, links, website names, source references, "Source:" lines बिल्कुल न लिखें.
-4. Output में केवल plain Hindi news message ho.
-5. Telegram HTML के लिए valid tags <b> और <i> ही use करें.
-6. कुल उत्तर 2500-3500 chars ke andar रखें.
-
-"""
+⚠️ CRITICAL TELEGRAM HTML FORMATTING RULES:
+1. DO NOT use markdown symbols like **, ###, or __ anywhere.
+2. Use ONLY valid Telegram HTML tags: <b>bold</b>, <i>italic</i>, <blockquote>quote</blockquote>.
+3. Structure each news item cleanly with bullet points (🔹) and a short 1-2 line exam-oriented explanation.
+4. Keep the total length under 3800 characters."""
 
     try:
         response = await asyncio.to_thread(
             ai_client.interactions.create,
-            model="gemini-3.5-flash-lite",
+            model='gemini-3.5-flash-lite',
             input=prompt,
-            tools=[{"type": "google_search"}],
         )
 
         if not response or not response.output_text:
-            logging.warning("Gemini returned empty response for current affairs.")
             return False
 
-        raw_text = response.output_text.strip()
-        clean_news = strip_news_urls(raw_text)
-
-        if not clean_news:
-            logging.warning("After stripping URLs, final news message became empty.")
-            return False
-
+        news_content = response.output_text.strip()
+        
         final_message = (
             f"📰 <b>DAILY CURRENT AFFAIRS UPDATE</b> 🇮🇳\n"
-            f"📅 <b>दिनांक:</b> {current_date_str} (IST)\n"
-            f"━━━━━━━━━━━━━━━━\n\n"
-            f"{clean_news}\n\n"
-            f"━━━━━━━━━━━━━━━━\n"
-            f"🤖 <i>Google Search से verified • Gemini AI</i>"
+            f"📅 <b>दिनांक:</b> {current_date_str}\n"
+            f"━━━━━━━━━━━━━━━━━\n\n"
+            f"{news_content}\n\n"
+            f"━━━━━━━━━━━━━━━━━\n"
+            f"🤖 <i>Powered by Gemini AI • अपनी तैयारी जारी रखें!</i>"
         )
 
-        if len(final_message) > 4000:
-            final_message = final_message[:4000]
-
+        # Support Group में मैसेज भेजें
         await bot.send_message(
             chat_id=SUPPORT_GROUP_ID,
-            text=final_message,
-            parse_mode="HTML",
-            link_preview_options={"is_disabled": True}
+            text=final_message[:4090], # Telegram 4096 character limit safety
+            parse_mode="HTML"
         )
-
-        logging.info("✅ Current affairs message sent without URLs.")
+        logging.info("✅ Daily Current Affairs successfully sent to SUPPORT_GROUP_ID.")
         return True
 
     except Exception as e:
-        logging.error(f"Error generating current affairs without URLs: {e}", exc_info=True)
+        logging.error(f"Error generating/sending current affairs: {e}", exc_info=True)
         return False
 
 async def send_news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
