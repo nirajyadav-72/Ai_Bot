@@ -43,6 +43,7 @@ SUPPORT_GROUP_ID = int(os.getenv("SUPPORT_GROUP_ID")) if os.getenv("SUPPORT_GROU
 # 📢 NEW: .env se SUPPORT_CHANNEL_ID load karne ke liye ye line jodi hai
 SUPPORT_CHANNEL_ID = int(os.getenv("SUPPORT_CHANNEL_ID")) if os.getenv("SUPPORT_CHANNEL_ID") else None
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY_2 = os.getenv("GEMINI_API_KEY_2")
 
 # ====================================================================
 # 🔒 NEW: ALLOWED USERS PARSING & SECURITY LOGIC
@@ -104,10 +105,12 @@ async def check_channel_join(user_id: int, context: ContextTypes.DEFAULT_TYPE) -
 # ====================================================================
 
 # Initialize Gemini Client if Key exists
-ai_client = None
+AI_CLIENTS = []
 if GEMINI_API_KEY:
-    ai_client = genai.Client(api_key=GEMINI_API_KEY)
-
+    AI_CLIENTS.append(genai.Client(api_key=GEMINI_API_KEY))
+if GEMINI_API_KEY_2:
+    AI_CLIENTS.append(genai.Client(api_key=GEMINI_API_KEY_2))
+    
 # ... इसके नीचे आपका बाकी का पुराना कोड चलता रहेगा (DB_FILE = "quiz_bot.db" आदि) ...
 
 DB_FILE = "quiz_bot.db"
