@@ -4234,62 +4234,63 @@ async def send_next_group_poll(chat_id, context):
 
 async def track_poll_answers(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        # 🔥 INTERCEPTING LAYER: If solo quiz poll hook matches, consume event completely
+        # 🔥 Solo quiz ko pehle handle karein
         if await track_solo_poll_answers(update, context):
             return
-            
+
         ans = update.poll_answer
         pid = ans.poll_id
         uid = ans.user.id
         user_name = ans.user.first_name or "Player"
-        
+
         for cid, game in list(GROUP_GAMES.items()):
             if "poll_map" in game and pid in game["poll_map"]:
                 poll_info = game["poll_map"][pid]
                 correct_idx = poll_info["correct_idx"]
                 question_idx = poll_info["question_index"]
-                
-                # Base structure initialization fixes
-                if "scores" not in game: game["scores"] = {}
-                if "user_answers" not in game: game["user_answers"] = {}
-                if "joined_users" not in game: game["joined_users"] = {}
-                if "non_joined_batch" not in game: game["non_joined_batch"] = set()
-                
-                # ====================================================================
-                # 🔒 STAGE 1: FORCE JOIN EVALUATION & BATCH STORAGE
-                # ====================================================================
+
+                # Channel join check — failure par sirf user ko reject karein
                 is_joined = await check_channel_join(uid, context)
+
                 if not is_joined:
-                    logging.info(f"🚫 Discarded vote from non-joined user {uid} in question {question_idx}")
-                    
-                    # User ko target memory map me register karein aur batch me ID jodein
-                    if uid not in game["joined_users"]:
-                        game["joined_users"][uid] = user_name
-                    game["non_joined_batch"].add(uid)
-                    
-                    # 🛑 RETURN IMMEDIATELY: Inka answer memory/score me save nahi hoga
-                    return 
-                # ====================================================================
-                
-                # Verified user data insertion logic
+                    logging.info(
+                        f"🚫 User {uid} is not joined the channel "
+                        f"for question {question_idx}"
+                    )
+                    return
+
+                # Group me sirf verified player ko hi add karein
+                game.setdefault("scores", {})
+                game.setdefault("user_answers", {})
+                game.setdefault("joined_users", {})
+                game.setdefault("non_joined_batch", set())
+
                 if uid not in game["joined_users"]:
                     game["joined_users"][uid] = user_name
-                if uid not in game["scores"]:
-                    game["scores"][uid] = {"score": 0, "total_time": 0.0, "wrong": 0, "points": 0.0}
-                if uid not in game["user_answers"]:
-                    game["user_answers"][uid] = {}
-                
+
+                game["scores"].setdefault(
+                    uid,
+                    {"score": 0, "total_time": 0.0, "wrong": 0, "points": 0.0}
+                )
+                game["user_answers"].setdefault(uid, {})
+
                 selected_idx = ans.option_ids[0] if ans.option_ids else -1
-                
+                now = datetime.now()
+
                 game["user_answers"][uid][question_idx] = {
-                    "selected": selected_idx,  
+                    "selected": selected_idx,
                     "correct_idx": correct_idx,
-                    "timestamp": datetime.now()
+                    "timestamp": now
                 }
+
                 game["consecutive_no_answers"] = 0
-                
+                return
+
     except Exception as e:
-        logging.error(f"Error in track_poll_answers verification layer: {e}")
+        logging.error(
+            f"Error in track_poll_answers channel verification: {e}",
+            exc_info=True
+        )
 
 async def send_mid_game_leaderboard(chat_id, context, current_q_num, total_questions):
     """गेम के बीच में हर 5 सवाल के बाद Live Top 5 Result दिखाने के लिए फ़ंक्शन"""
