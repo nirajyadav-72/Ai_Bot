@@ -87,20 +87,26 @@ def is_authorized(update: Update):
     return True
 
 async def check_channel_join(user_id: int, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """Checks if the user is a member of the mandatory support channel"""
     if not SUPPORT_CHANNEL_ID:
-        # Agar .env me ID configure nahi hai to restriction bypass ho jayegi
         return True
-    try:
-        member = await context.bot.get_chat_member(chat_id=SUPPORT_CHANNEL_ID, user_id=user_id)
-        # Valid status: member, administrator, or creator
-        if member.status in ["member", "administrator", "creator"]:
-            return True
-        return False
-    except Exception as e:
-        logging.warning(f"Channel join check error for user {user_id}: {e}")
-        # Agar chat_member lookup fail hota hai (jaise user ne kabhi bot block kiya ya link error), default False karein
-        return False
+
+    for attempt in range(3):
+        try:
+            member = await context.bot.get_chat_member(
+                chat_id=SUPPORT_CHANNEL_ID,
+                user_id=user_id
+            )
+            return member.status in ["member", "administrator", "creator"]
+
+        except Exception as e:
+            logging.warning(
+                f"Join check attempt {attempt + 1} failed "
+                f"for user {user_id}: {e}"
+            )
+            await asyncio.sleep(1)
+
+    # Temporary API failure ko user-not-joined treat na karein
+    return True
         
 # ====================================================================
 
