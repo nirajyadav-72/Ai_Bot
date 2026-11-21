@@ -4132,7 +4132,7 @@ async def send_next_group_poll(chat_id, context):
                 )
 
                 if attempt < max_retries - 1:
-                    await asyncio.sleep(15)
+                    await asyncio.sleep(7)
 
                 else:
                     logging.error(
@@ -4147,7 +4147,7 @@ async def send_next_group_poll(chat_id, context):
                             chat_id=chat_id,
                             text=(
                                 "⚠️ <b>Poll भेजने की 3 attempts विफल रहीं।</b>\n"
-                                "15 सेकंड बाद final leaderboard भेजा जाएगा..."
+                                "Quiz Stop कर final result eaderboard भेजा जा रहा है..."
                             ),
                             parse_mode="HTML"
                         )
@@ -4157,7 +4157,7 @@ async def send_next_group_poll(chat_id, context):
                             f"{message_error}"
                         )
 
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(120)
 
                     await compile_group_leaderboard(chat_id, context)
                     GROUP_GAMES.pop(chat_id, None)
