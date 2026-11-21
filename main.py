@@ -4132,7 +4132,7 @@ async def send_next_group_poll(chat_id, context):
                 )
 
                 if attempt < max_retries - 1:
-                    await asyncio.sleep(4)
+                    await asyncio.sleep(15)
 
                 else:
                     logging.error(
