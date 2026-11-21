@@ -5471,7 +5471,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 try:
                     generation_alert_msg = await app.bot.send_message(
                         chat_id=SUPPORT_GROUP_ID,
-                        text=f"🔍 <b>Gemini AI आपके लिए प्रश्न जनरेट कर रहा है...</b>\n\n🎯 <b>विषय (Topic):</b> <code>{selected_topic}</code>\n⏳ कृपया प्रतीक्षा करें, क्विज़ कुछ ही देर में लाइव होने वाली है! 🚀",
+                        text=f"🔍 <b>Gemini AI आपके लिए प्रश्न जनरेट कर रहा है...</b>\n\n🎯 <b>विषय (Topic):</b> <code>{selected_topic}</code>\n⏳ कृपया प्रतीक्षा करें, क्विज़ कुछ ही देर में लाइव होने वाली है! 🚀\n<b>(Owner⁠)⁠!⁠→ Niraj</b> ✨",
                         parse_mode="HTML"
                     )
                 except Exception as alert_err:
@@ -5479,7 +5479,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
 
                 # 🧠 Gemini AI से 50 फ्रेश सवाल हिंदी भाषा में बनवाएं
                 ai_questions = await asyncio.to_thread(
-                    generate_bulk_questions_ai, selected_topic, 50, "Hindi", "Hard", 4
+                    generate_bulk_questions_ai, selected_topic, 60, "Hindi", "Medium", 2
                 )
                 
                 # (यह कोड नीचे दिए गए 'भाग B' में जारी रहेगा)
