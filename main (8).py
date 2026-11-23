@@ -124,6 +124,7 @@ SOLO_QUIZZES = {}
 AUTORUN_TASKS = {}
 AUTORUN_LIST_TASK = None
 POLLING_LOOP_ACTIVE = True
+NOTES_LOOP_ACTIVE = False
 # Global autorun serial lock — ensures autoruns run one-by-one in SUPPORT_GROUP_ID
 AUTORUN_SERIAL_LOCK = asyncio.Lock()
 # ====================================================================
@@ -206,6 +207,16 @@ def init_db():
         # 🆕 Tracking table for global continuous sequential polling
         cursor.execute("CREATE TABLE IF NOT EXISTS polling_state (key TEXT PRIMARY KEY, last_question_id INTEGER DEFAULT 0)")
         cursor.execute("INSERT OR IGNORE INTO polling_state (key, last_question_id) VALUES ('global_loop', 0)")
+        
+        # 🆕 Table for storing generated topic notes points
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS topic_notes_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                topic_name TEXT,
+                note_point TEXT
+            )
+        """)
+        
         conn.commit()
 
         # Ensure older DBs get the schedule_time column if missing
