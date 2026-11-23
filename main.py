@@ -6785,7 +6785,7 @@ async def auto_topic_notes_worker(app: Application):
                     sent_ids.append(row_id)
 
                 msg_text += f"━━━━━━━━━━━━━━━━━\n"
-                msg_text += f"⏳ <i>अगले महत्वपूर्ण पॉइंट्स 2 मिनट बाद आएंगे... (शेष: {max(0, remaining_count - len(sent_ids))})</i>"
+                msg_text += f"⏳ <i>... (शेष: {max(0, remaining_count - len(sent_ids))})</i>"
 
                 await app.bot.send_message(
                     chat_id=SUPPORT_GROUP_ID,
