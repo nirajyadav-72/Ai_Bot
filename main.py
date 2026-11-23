@@ -6802,8 +6802,8 @@ async def auto_topic_notes_worker(app: Application):
         except Exception as e:
             logging.error(f"Error in auto_topic_notes_worker: {e}", exc_info=True)
 
-        # ⏱️ हर 2 मिनट (120 सेकंड) का इंतज़ार
-        await asyncio.sleep(120)
+        # ⏱️ हर 60 मिनट (3600 सेकंड) का इंतज़ार
+        await asyncio.sleep(3600)
 
 async def start_notes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Owner-only: /startnotes - हर 2 मिनट में ऑटोमैटिक नोट्स भेजना शुरू करने के लिए"""
