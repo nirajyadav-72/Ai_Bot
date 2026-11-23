@@ -6632,6 +6632,179 @@ async def send_news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await status_msg.edit_text("❌ <b>Error:</b> Current Affairs भेजने में समस्या आई। Logs या API Key चेक करें।", parse_mode="HTML")
 
 # =====================================================================
+# 📚 AUTO TOPIC NOTES GENERATOR & 2-MINUTE SENDER WORKER
+# =====================================================================
+
+def generate_topic_notes_ai(topic: str):
+    """Gemini AI से दिए गए टॉपिक के महत्वपूर्ण शॉर्ट नोट्स/पॉइंट्स जनरेट करता है"""
+    if not AI_CLIENTS:
+        return None
+
+    prompt = f"""You are an expert teacher for Indian Competitive Exams (SSC, UPSC, Railway, State Exams).
+Generate 15 to 20 most important exam-oriented Study Notes / One-Liner Points on the topic: "{topic}" strictly in HINDI language (हिंदी भाषा).
+
+CRITICAL RULES:
+1. Return ONLY a valid JSON array of strings. No markdown, no extra text.
+2. Each string in the array must be one complete, factual, and easy-to-read point (2-3 lines max).
+3. Do NOT use markdown symbols like ** or ### inside the strings. You may use basic HTML tags like <b>bold</b> for key terms.
+
+Example Output Format:
+[
+  "<b>सिंधु घाटी सभ्यता</b> का सबसे बड़ा स्थल मोहनजोदड़ो है, जो वर्तमान में पाकिस्तान के सिंध प्रांत में स्थित है।",
+  "लोथल सिंधु सभ्यता का एक प्रमुख बंदरगाह (Dockyard) था, जो गुजरात में भोगवा नदी के किनारे स्थित है।"
+]"""
+
+    for client_idx, client in enumerate(AI_CLIENTS):
+        try:
+            response = client.interactions.create(
+                model='gemini-3.5-flash-lite',
+                input=prompt,
+            )
+            if not response or not response.output_text:
+                continue
+
+            clean_text = response.output_text.strip().replace("```json", "").replace("```", "").strip()
+            match = re.search(r'\[.*\]', clean_text, re.DOTALL)
+            if match:
+                clean_text = match.group(0)
+
+            notes_list = json.loads(clean_text)
+            if isinstance(notes_list, list) and len(notes_list) > 0:
+                return [str(item).strip() for item in notes_list if str(item).strip()]
+        except Exception as e:
+            logging.warning(f"Notes AI Generation failed on Key #{client_idx + 1}: {e}")
+            continue
+    return None
+
+
+async def auto_topic_notes_worker(app: Application):
+    """हर 2 मिनट में डेटाबेस से थोड़े-थोड़े नोट्स पॉइंट्स सपोर्ट ग्रुप में भेजता है"""
+    global NOTES_LOOP_ACTIVE
+    logging.info("📚 Background Topic Notes Worker initialized.")
+    await asyncio.sleep(5)
+
+    while True:
+        try:
+            if not NOTES_LOOP_ACTIVE or not SUPPORT_GROUP_ID:
+                await asyncio.sleep(10)
+                continue
+
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+
+            # 1. चेक करें कि क्या डेटाबेस में पहले से कोई बचे हुए नोट्स हैं
+            cursor.execute("SELECT id, topic_name, note_point FROM topic_notes_queue ORDER BY id ASC LIMIT 3")
+            pending_rows = cursor.fetchall()
+
+            # 2. अगर डेटाबेस खाली है, तो नया टॉपिक चुनें और नोट्स जनरेट करके सेव करें
+            if not pending_rows:
+                cursor.execute("SELECT topic_name FROM autorun_custom_topic WHERE key = 'active_topic'")
+                topic_row = cursor.fetchone()
+                saved_payload = topic_row[0] if (topic_row and topic_row[0].strip()) else None
+
+                if saved_payload:
+                    topics_list = [line.strip() for line in saved_payload.split('\n') if line.strip()]
+                else:
+                    topics_list = [
+                        "सिंधु घाटी सभ्यता", "भारतीय संविधान की प्रस्तावना", "मौलिक अधिकार",
+                        "भारत की प्रमुख नदियाँ", "कोशिका विज्ञान (Cell Biology)", "विटामिन और रोग",
+                        "1857 का विद्रोह", "सौरमंडल और ग्रह", "मुगल साम्राज्य का इतिहास"
+                    ]
+
+                chosen_topic = random.choice(topics_list)
+                logging.info(f"🧠 Generating fresh study notes for topic: {chosen_topic}")
+
+                generated_points = await asyncio.to_thread(generate_topic_notes_ai, chosen_topic)
+
+                if generated_points:
+                    for pt in generated_points:
+                        cursor.execute(
+                            "INSERT INTO topic_notes_queue (topic_name, note_point) VALUES (?, ?)",
+                            (chosen_topic, pt)
+                        )
+                    conn.commit()
+                    
+                    # नई एंट्री होने के बाद शुरुआती 3 पॉइंट्स निकालें
+                    cursor.execute("SELECT id, topic_name, note_point FROM topic_notes_queue ORDER BY id ASC LIMIT 3")
+                    pending_rows = cursor.fetchall()
+                else:
+                    conn.close()
+                    await asyncio.sleep(60)
+                    continue
+
+            # 3. निकाले गए पॉइंट्स को सपोर्ट ग्रुप में भेजें और डेटाबेस से हटा दें
+            if pending_rows:
+                current_topic = pending_rows[0][1]
+                
+                # कुल कितने पॉइंट्स और बचे हैं यह जानने के लिए
+                cursor.execute("SELECT COUNT(*) FROM topic_notes_queue")
+                remaining_count = cursor.fetchone()[0]
+
+                msg_text = f"📘 <b>QUICK STUDY NOTES</b> ✨\n"
+                msg_text += f"🎯 <b>विषय:</b> <code>{html_escape(current_topic)}</code>\n"
+                msg_text += f"━━━━━━━━━━━━━━━━━\n\n"
+
+                sent_ids = []
+                for row_id, _, point_text in pending_rows:
+                    msg_text += f"🔹 {point_text}\n\n"
+                    sent_ids.append(row_id)
+
+                msg_text += f"━━━━━━━━━━━━━━━━━\n"
+                msg_text += f"⏳ <i>अगले महत्वपूर्ण पॉइंट्स 2 मिनट बाद आएंगे... (शेष: {max(0, remaining_count - len(sent_ids))})</i>"
+
+                await app.bot.send_message(
+                    chat_id=SUPPORT_GROUP_ID,
+                    text=msg_text,
+                    parse_mode="HTML"
+                )
+
+                # भेजे गए पॉइंट्स को क्यू (Queue) से डिलीट करें
+                placeholders = ",".join("?" for _ in sent_ids)
+                cursor.execute(f"DELETE FROM topic_notes_queue WHERE id IN ({placeholders})", sent_ids)
+                conn.commit()
+
+            conn.close()
+
+        except Exception as e:
+            logging.error(f"Error in auto_topic_notes_worker: {e}", exc_info=True)
+
+        # ⏱️ हर 2 मिनट (120 सेकंड) का इंतज़ार
+        await asyncio.sleep(120)
+
+
+async def start_notes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Owner-only: /startnotes - हर 2 मिनट में ऑटोमैटिक नोट्स भेजना शुरू करने के लिए"""
+    global NOTES_LOOP_ACTIVE
+    if OWNER_ID is None or update.message.from_user.id != OWNER_ID:
+        await update.message.reply_text("❌ Unauthorized - Only bot owner can use this command.")
+        return
+
+    if NOTES_LOOP_ACTIVE:
+        await update.message.reply_text("⚠️ Topic Notes का ऑटो-सेंडिंग सिस्टम पहले से चालू है।")
+    else:
+        NOTES_LOOP_ACTIVE = True
+        await update.message.reply_text(
+            "✅ <b>Topic Notes Auto-Sender शुरू हो गया है!</b>\n\n"
+            "📚 बॉट अब आपके सेव किए गए टॉपिक्स में से किसी एक के नोट्स जनरेट करके हर <b>2 मिनट</b> में Support Group में भेजेगा।\n"
+            "🛑 बंद करने के लिए: <code>/stopnotes</code>",
+            parse_mode="HTML"
+        )
+
+
+async def stop_notes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Owner-only: /stopnotes - ऑटोमैटिक नोट्स भेजना रोकने के लिए"""
+    global NOTES_LOOP_ACTIVE
+    if OWNER_ID is None or update.message.from_user.id != OWNER_ID:
+        await update.message.reply_text("❌ Unauthorized - Only bot owner can use this command.")
+        return
+
+    if not NOTES_LOOP_ACTIVE:
+        await update.message.reply_text("⚠️ Topic Notes पहले से बंद है।")
+    else:
+        NOTES_LOOP_ACTIVE = False
+        await update.message.reply_text("🛑 <b>Topic Notes Auto-Sender रोक दिया गया है!</b>", parse_mode="HTML")
+
+# =====================================================================
 
 async def main():
     if not BOT_TOKEN:
@@ -6767,6 +6940,10 @@ async def main():
         app.add_handler(CallbackQueryHandler(view_my_quizzes, pattern="^btn_viewquizzes$"))
         app.add_handler(CallbackQueryHandler(handle_back_main, pattern="^back_main$"))
         app.add_handler(CallbackQueryHandler(handle_view_quiz_callback, pattern="^viewq_"))
+
+        # कमांड्स रजिस्टर :
+        app.add_handler(CommandHandler("startnotes", start_notes_command))
+        app.add_handler(CommandHandler("stopnotes", stop_notes_command))
         
         app.add_handler(CallbackQueryHandler(handle_ready_click, pattern="^ready_"))
         app.add_handler(CallbackQueryHandler(handle_start_private, pattern="^startprivate_"))
@@ -6812,6 +6989,7 @@ async def main():
         asyncio.create_task(global_continuous_polling_worker(app))
         asyncio.create_task(auto_quiz_summary_monitor(app.bot))
         asyncio.create_task(daily_current_affairs_worker(app.bot))
+        asyncio.create_task(auto_topic_notes_worker(app))
         await asyncio.Event().wait()
 
     except Exception as e:
