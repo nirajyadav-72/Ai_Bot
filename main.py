@@ -6818,7 +6818,7 @@ async def start_notes_command(update: Update, context: ContextTypes.DEFAULT_TYPE
         NOTES_LOOP_ACTIVE = True
         await update.message.reply_text(
             "✅ <b>Topic Notes Auto-Sender शुरू हो गया है!</b>\n\n"
-            "📚 बॉट अब आपके सेव किए गए टॉपिक्स में से किसी एक के नोट्स जनरेट करके हर <b>2 मिनट</b> में Support Group में भेजेगा।\n"
+            "📚 बॉट अब आपके सेव किए गए टॉपिक्स में से किसी एक के नोट्स जनरेट करके हर <b>60 मिनट</b> में Support Group में भेजेगा।\n"
             "🛑 बंद करने के लिए: <code>/stopnotes</code>",
             parse_mode="HTML"
         )
