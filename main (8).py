@@ -6631,10 +6631,7 @@ async def send_news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await status_msg.edit_text("❌ <b>Error:</b> Current Affairs भेजने में समस्या आई। Logs या API Key चेक करें।", parse_mode="HTML")
 
-# =====================================================================
 # 📚 AUTO TOPIC NOTES GENERATOR & 2-MINUTE SENDER WORKER
-# =====================================================================
-
 def generate_topic_notes_ai(topic: str):
     """Gemini AI से दिए गए टॉपिक के महत्वपूर्ण शॉर्ट नोट्स/पॉइंट्स जनरेट करता है"""
     if not AI_CLIENTS:
@@ -6676,9 +6673,8 @@ Example Output Format:
             continue
     return None
 
-
 async def auto_topic_notes_worker(app: Application):
-    """हर 2 मिनट में डेटाबेस से थोड़े-थोड़े नोट्स पॉइंट्स सपोर्ट ग्रुप में भेजता है"""
+    """हर 2 मिनट में नोट्स भेजता है; केवल ग्रुप क्विज़ गेम चलने पर रुकता है और फेल होने पर 2 घंटे वेट करता है"""
     global NOTES_LOOP_ACTIVE
     logging.info("📚 Background Topic Notes Worker initialized.")
     await asyncio.sleep(5)
@@ -6686,6 +6682,15 @@ async def auto_topic_notes_worker(app: Application):
     while True:
         try:
             if not NOTES_LOOP_ACTIVE or not SUPPORT_GROUP_ID:
+                await asyncio.sleep(10)
+                continue
+
+            # CHECK: केवल सपोर्ट ग्रुप में Group Quiz Game चल रहा है या नहीं (Solo Quiz को इग्नोर करेगा)
+            group_game = GROUP_GAMES.get(SUPPORT_GROUP_ID, {})
+            is_group_quiz_active = group_game.get("quiz_started", False) or group_game.get("starting", False)
+
+            if is_group_quiz_active:
+                # ग्रुप क्विज़ गेम चालू है -> नोट्स नहीं भेजेंगे, 10 सेकंड बाद फिर चेक करेंगे
                 await asyncio.sleep(10)
                 continue
 
@@ -6724,19 +6729,44 @@ async def auto_topic_notes_worker(app: Application):
                         )
                     conn.commit()
                     
-                    # नई एंट्री होने के बाद शुरुआती 3 पॉइंट्स निकालें
                     cursor.execute("SELECT id, topic_name, note_point FROM topic_notes_queue ORDER BY id ASC LIMIT 3")
                     pending_rows = cursor.fetchall()
                 else:
                     conn.close()
-                    await asyncio.sleep(60)
+                    logging.warning("⚠️ Notes generation failed! Alerting owner and entering 2-hour cooldown...")
+                    
+                    if OWNER_ID:
+                        try:
+                            next_try_time = (datetime.now(tz=IST) + timedelta(hours=2)).strftime("%I:%M %p IST")
+                            await app.bot.send_message(
+                                chat_id=OWNER_ID,
+                                text=(
+                                    "⚠️ <b>Topic Notes Generation Alert</b>\n\n"
+                                    f"🎯 <b>Topic:</b> <code>{html_escape(chosen_topic)}</code>\n"
+                                    "❌ Gemini AI से नोट्स जनरेट नहीं हो पाए (संभवतः API Quota Limit या नेटवर्क एरर)।\n\n"
+                                    f"⏳ बॉट अब <b>2 घंटे</b> के लिए रुकेगा और अगला प्रयास <b>{next_try_time}</b> पर करेगा।"
+                                ),
+                                parse_mode="HTML"
+                            )
+                        except Exception as alert_err:
+                            logging.error(f"Failed to send cooldown alert to owner: {alert_err}")
+
+                    for _ in range(720):  # 720 * 10s = 7200s (2 Hours)
+                        if not NOTES_LOOP_ACTIVE:
+                            break
+                        await asyncio.sleep(10)
                     continue
 
-            # 3. निकाले गए पॉइंट्स को सपोर्ट ग्रुप में भेजें और डेटाबेस से हटा दें
+            # 3. भेजने से ठीक पहले एक बार फिर ग्रुप क्विज़ स्टेटस कन्फर्म करें
+            group_game_recheck = GROUP_GAMES.get(SUPPORT_GROUP_ID, {})
+            if group_game_recheck.get("quiz_started", False) or group_game_recheck.get("starting", False):
+                conn.close()
+                await asyncio.sleep(10)
+                continue
+
             if pending_rows:
                 current_topic = pending_rows[0][1]
                 
-                # कुल कितने पॉइंट्स और बचे हैं यह जानने के लिए
                 cursor.execute("SELECT COUNT(*) FROM topic_notes_queue")
                 remaining_count = cursor.fetchone()[0]
 
@@ -6758,7 +6788,6 @@ async def auto_topic_notes_worker(app: Application):
                     parse_mode="HTML"
                 )
 
-                # भेजे गए पॉइंट्स को क्यू (Queue) से डिलीट करें
                 placeholders = ",".join("?" for _ in sent_ids)
                 cursor.execute(f"DELETE FROM topic_notes_queue WHERE id IN ({placeholders})", sent_ids)
                 conn.commit()
@@ -6770,7 +6799,6 @@ async def auto_topic_notes_worker(app: Application):
 
         # ⏱️ हर 2 मिनट (120 सेकंड) का इंतज़ार
         await asyncio.sleep(120)
-
 
 async def start_notes_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Owner-only: /startnotes - हर 2 मिनट में ऑटोमैटिक नोट्स भेजना शुरू करने के लिए"""
