@@ -1345,7 +1345,7 @@ async def global_continuous_polling_worker(app: Application):
                 raw_chats = [r[0] for r in groups] + [r[0] for r in users]
                 all_target_chats = list(set(raw_chats))
                 
-                # 🔥 CRITICAL FIXED: Owner ki private chat ID ko destination list se bahar (Filter) karein
+                # CRITICAL FIXED: Owner ki private chat ID ko destination list se bahar (Filter) karein
                 if OWNER_ID in all_target_chats:
                     all_target_chats.remove(OWNER_ID)
                     
@@ -1357,9 +1357,8 @@ async def global_continuous_polling_worker(app: Application):
                 # Explanation validation (Max 200 chars allowed by Telegram)
                 clean_expl = explanation.strip() if explanation and len(explanation.strip()) <= 200 else None
                 
-                # 5. Build Dynamic Presentation Layouts (Removed ID display text completely)
+                # 5. Build Dynamic Presentation Layouts
                 if is_any_option_too_long:
-                    # Options bahut bade hain, isliye inko text me dikhana padega
                     text_message_payload = "📝 <b>Practice Question</b>\n\n"
                     text_message_payload += f"<b>{q_text}</b>\n\n"
                     text_message_payload += "<b>विकल्प (Options):</b>\n"
@@ -1369,7 +1368,6 @@ async def global_continuous_polling_worker(app: Application):
                     poll_question = "🫵 ऊपर दिए गए प्रश्न का सही उत्तर चुनें: (Select Correct Answer):"
                     poll_options = [f"Option {i+1}" for i in range(len(options))]
                 else:
-                    # Options limit ke andar hain, toh text me sirf question jayega aur options pure poll card me
                     text_message_payload = f"📝 <b>Practice Question</b>\n\n<b>{q_text}</b>"
                     
                     poll_question = "🫵 ऊपर दिए गए प्रश्न का सही उत्तर चुनें: (Select Correct Answer):"
@@ -1379,6 +1377,13 @@ async def global_continuous_polling_worker(app: Application):
                 for target_chat in all_target_chats:
                     if not POLLING_LOOP_ACTIVE:
                         break
+                        
+                    # CHECK: Agar is group me abhi Group Quiz Game chal raha hai toh is chat ko skip karein (Solo Quiz ko ignore karega)
+                    group_game = GROUP_GAMES.get(target_chat, {})
+                    if group_game.get("quiz_started", False) or group_game.get("starting", False):
+                        logging.info(f"⏭️ Skipping Global Poll for chat {target_chat} because a group quiz is active.")
+                        continue
+
                     try:
                         # Step A: Hamesha pehle text message me Question send hoga
                         await app.bot.send_message(
