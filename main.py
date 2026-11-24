@@ -354,8 +354,8 @@ CRITICAL RULES:
 8. Questions must strictly relate to {topic}
 9. NO sample/dummy questions
 10. Each item MUST include an "explanation" string (one or two sentences) explaining the correct answer
-11. STRICT SCRIPT RULE: If Language is "Hindi", write the entire output (questions, options, explanations) strictly in pure Hindi using ONLY the Devanagari script (देवनागरी लिपि). Do NOT mix Urdu (Nastaliq), Telugu, Tamil, Arabic, or any other regional script."""
-12. Return ONLY JSON array
+11. STRICT SCRIPT RULE: If Language is "Hindi", write the entire output (questions, options, explanations) strictly in pure Hindi using ONLY the Devanagari script (देवनागरी लिपि). Do NOT mix Urdu (Nastaliq), Telugu, Tamil, Arabic, or any other regional script
+12. Return ONLY JSON array"""
 
     questions = None
 
