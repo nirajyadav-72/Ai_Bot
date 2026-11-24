@@ -123,7 +123,7 @@ SOLO_QUIZZES = {}
 # In-memory map for autorun asyncio tasks: key = autorun_id, value = asyncio.Task
 AUTORUN_TASKS = {}
 AUTORUN_LIST_TASK = None
-POLLING_LOOP_ACTIVE = True
+POLLING_LOOP_ACTIVE = False
 NOTES_LOOP_ACTIVE = False
 # Global autorun serial lock — ensures autoruns run one-by-one in SUPPORT_GROUP_ID
 AUTORUN_SERIAL_LOCK = asyncio.Lock()
