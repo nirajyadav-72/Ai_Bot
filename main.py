@@ -6540,103 +6540,6 @@ async def auto_quiz_summary_monitor(bot):
         except Exception as monitor_err:
             logging.error(f"Error inside auto_quiz_summary_monitor loop: {monitor_err}", exc_info=True)
 
-async def daily_current_affairs_worker(bot):
-    """हर रोज़ सुबह 08:00 AM IST पर अपने आप Current Affairs भेजता है"""
-    logging.info("📰 Daily Current Affairs Background Worker started.")
-    while True:
-        try:
-            now = datetime.now(tz=IST)
-            # अगला 08:00 AM IST कैलकुलेट करें (आपके मौजूदा helper का उपयोग करके)
-            next_run = next_occurrence_from_hhmm("08:00", ref_dt=now)
-            wait_seconds = (next_run - now).total_seconds()
-            
-            logging.info(f"⏰ Next Current Affairs scheduled at {next_run.strftime('%d-%m-%Y %I:%M %p')} IST")
-            await asyncio.sleep(max(0, wait_seconds))
-            
-            await generate_and_send_current_affairs(bot)
-            # 1 मिनट का ब्रेक ताकि एक ही मिनट में दो बार न चले
-            await asyncio.sleep(60)
-            
-        except asyncio.CancelledError:
-            break
-        except Exception as e:
-            logging.error(f"Error in daily_current_affairs_worker: {e}")
-            await asyncio.sleep(300)
-
-async def generate_and_send_current_affairs(bot):
-    """Gemini AI से आज के ताज़ा Current Affairs हिंदी में जनरेट करके Support Group में भेजता है"""
-    if not ai_client or not SUPPORT_GROUP_ID:
-        logging.warning("AI Client or SUPPORT_GROUP_ID missing for Current Affairs.")
-        return False
-
-    now_ist = datetime.now(tz=IST)
-    current_date_str = now_ist.strftime("%d %B %Y")
-
-    prompt = f"""You are a Daily Current Affairs Expert for Indian Competitive Exams (SSC, UPSC, Banking, Railway).
-Current Date: {current_date_str}
-
-Generate top 8-10 most important and latest National & International Current Affairs highlights of today/this week strictly in HINDI language (हिंदी भाषा).
-
-⚠️ CRITICAL TELEGRAM HTML FORMATTING RULES:
-1. DO NOT use markdown symbols like **, ###, or __ anywhere.
-2. Use ONLY valid Telegram HTML tags: <b>bold</b>, <i>italic</i>, <blockquote>quote</blockquote>.
-3. Structure each news item cleanly with bullet points (🔹) and a short 1-2 line exam-oriented explanation.
-4. Keep the total length under 3800 characters."""
-
-    try:
-        response = await asyncio.to_thread(
-            ai_client.interactions.create,
-            model='gemini-3.5-flash-lite',
-            input=prompt,
-        )
-
-        if not response or not response.output_text:
-            return False
-
-        news_content = response.output_text.strip()
-        
-        final_message = (
-            f"📰 <b>DAILY CURRENT AFFAIRS UPDATE</b> 🇮🇳\n"
-            f"📅 <b>दिनांक:</b> {current_date_str}\n"
-            f"━━━━━━━━━━━━━━━━━\n\n"
-            f"{news_content}\n\n"
-            f"━━━━━━━━━━━━━━━━━\n"
-            f"🤖 <i>Powered by Gemini AI • अपनी तैयारी जारी रखें!</i>"
-        )
-
-        # Support Group में मैसेज भेजें
-        await bot.send_message(
-            chat_id=SUPPORT_GROUP_ID,
-            text=final_message[:4090], # Telegram 4096 character limit safety
-            parse_mode="HTML"
-        )
-        logging.info("✅ Daily Current Affairs successfully sent to SUPPORT_GROUP_ID.")
-        return True
-
-    except Exception as e:
-        logging.error(f"Error generating/sending current affairs: {e}", exc_info=True)
-        return False
-
-async def send_news_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Owner-only command: /sendnews - Support Group में तुरंत आज के Current Affairs भेजने के लिए"""
-    message = update.message
-    if not message:
-        return
-
-    # सिर्फ Owner ही इस कमांड को चला सके
-    if OWNER_ID is None or message.from_user.id != OWNER_ID:
-        await message.reply_text("❌ <b>Unauthorized:</b> यह कमांड केवल Bot Owner के लिए है।", parse_mode="HTML")
-        return
-
-    status_msg = await message.reply_text("⏳ <b>आज के ताज़ा Current Affairs तैयार किए जा रहे हैं...</b>", parse_mode="HTML")
-
-    success = await generate_and_send_current_affairs(context.bot)
-
-    if success:
-        await status_msg.edit_text("✅ <b>Current Affairs सफलतापूर्वक Support Group में भेज दिए गए हैं!</b>", parse_mode="HTML")
-    else:
-        await status_msg.edit_text("❌ <b>Error:</b> Current Affairs भेजने में समस्या आई। Logs या API Key चेक करें।", parse_mode="HTML")
-
 # 📚 AUTO TOPIC NOTES GENERATOR & 2-MINUTE SENDER WORKER
 def generate_topic_notes_ai(topic: str):
     """Gemini AI से दिए गए टॉपिक के महत्वपूर्ण शॉर्ट नोट्स/पॉइंट्स जनरेट करता है"""
@@ -6996,7 +6899,6 @@ async def main():
         app.add_handler(CommandHandler("startquiz", start_quiz_via_command))
         app.add_handler(CallbackQueryHandler(handle_solo_quiz_navigation, pattern="^slnav_"))
         app.add_handler(CallbackQueryHandler(lambda u, c: u.callback_query.answer(), pattern="^dummy_click$"))
-        app.add_handler(CommandHandler("sendnews", send_news_command))
 
         app.add_handler(CallbackQueryHandler(handle_pause_quiz, pattern="^pausequiz_"))
         app.add_handler(CallbackQueryHandler(handle_stop_quiz_from_pause, pattern="^stopquiz_"))
@@ -7022,7 +6924,6 @@ async def main():
         await load_autoruns_on_startup(app)
         asyncio.create_task(global_continuous_polling_worker(app))
         asyncio.create_task(auto_quiz_summary_monitor(app.bot))
-        asyncio.create_task(daily_current_affairs_worker(app.bot))
         asyncio.create_task(auto_topic_notes_worker(app))
         await asyncio.Event().wait()
 
