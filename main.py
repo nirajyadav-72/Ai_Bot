@@ -1422,8 +1422,8 @@ async def global_continuous_polling_worker(app: Application):
         except Exception as e:
             logging.error(f"Error inside global continuous polling worker loop: {e}", exc_info=True)
             
-        # ⏱️ 30 Minutes interval timer (30 * 60 = 1800 seconds)
-        await asyncio.sleep(1800)
+        # ⏱️ 10 Minutes interval timer (10 * 60 = 600 seconds)
+        await asyncio.sleep(600)
 
 async def start_global_polling_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Owner-only command to resume background global 30-min polling"""
@@ -1434,10 +1434,10 @@ async def start_global_polling_command(update: Update, context: ContextTypes.DEF
         return
         
     if POLLING_LOOP_ACTIVE:
-        await update.message.reply_text("⚠️ Global automated 30-min polling is already running.")
+        await update.message.reply_text("⚠️ Global automated 10-min polling is already running.")
     else:
         POLLING_LOOP_ACTIVE = True
-        await update.message.reply_text("✅ <b>Global Automated Polling Resumed!</b>\n\nBot ab har 30 min me database se agla question automatic sabhi users aur groups me send karega (Owner chat blocked).", parse_mode="HTML")
+        await update.message.reply_text("✅ <b>Global Automated Polling Resumed!</b>\n\nBot ab har 10 min me database se agla question automatic sabhi users aur groups me send karega (Owner chat blocked).", parse_mode="HTML")
 
 async def stop_global_polling_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Owner-only command to pause background global 30-min polling"""
