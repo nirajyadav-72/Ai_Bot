@@ -5468,7 +5468,7 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
 
                 # 🧠 Gemini AI से 50 फ्रेश सवाल हिंदी भाषा में बनवाएं
                 ai_questions = await asyncio.to_thread(
-                    generate_bulk_questions_ai, selected_topic, 60, "Hindi", "Medium", 2
+                    generate_bulk_questions_ai, selected_topic, 60, "Hindi", "Medium", 3
                 )
                 
                 # (यह कोड नीचे दिए गए 'भाग B' में जारी रहेगा)
@@ -5505,8 +5505,8 @@ async def autorun_worker(app, autorun_id, quiz_id, interval_minutes, wait_before
                 init_text = (
                     f"<blockquote>🤖 <b><ins>DAILY AUTOMATIC LIVE QUIZ</ins></b> 🚀</blockquote>\n\n"
                     f"<blockquote>📚 <b>Topic:</b> {escape_markdown(selected_topic)}</blockquote>\n"
-                    f"<blockquote>📝 <b>Questions Count:</b> 50 Fresh AI Generated Questions</blockquote>\n"
-                    f"<blockquote>⏱ <b>Duration Limit:</b> 15s per question card</blockquote>\n"
+                    f"<blockquote>📝 <b>Questions Count:</b> ~ 60 Fresh AI Generated Questions</blockquote>\n"
+                    f"<blockquote>⏱ <b>Duration Limit:</b> ~ 15s per question card</blockquote>\n"
                     f"<blockquote>📉 <b>Negative Schema:</b> -0.25 per wrong response</blockquote>\n\n"
                     f"🏁 <i>This quiz has been created natively by Gemini AI and will begin auto-running in {wait_before_start} seconds! Get ready!</i>"
                 )
